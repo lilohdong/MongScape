@@ -27,8 +27,6 @@ namespace Mongscape.Domain
         // Without a connected camera only the keyboard can be played.
         public static bool Allowed(PlayStyle style, bool cameraConnected) => cameraConnected || !UsesCamera(style);
         public static PlayStyle Playable(PlayStyle style, bool cameraConnected) => Allowed(style, cameraConnected) ? style : PlayStyle.Keyboard;
-        // PlayStyle value of a saved label; -1 when the label is missing or unknown.
-        public static int ModeOf(string label) => label == "전신" ? 0 : label == "상체" ? 1 : label == "키보드" ? 2 : -1;
     }
 
     [Serializable]
@@ -107,11 +105,12 @@ namespace Mongscape.Domain
         public bool HasOlderSeason(PlayStyle mode) => entries.Exists(e => !e.Ranked && e.Mode == (int)mode);
         // A deleted member's runs leave this PC's board too.
         public void RemoveAccount(string id) { if (!string.IsNullOrEmpty(id)) entries.RemoveAll(e => e.AccountId == id); }
-        // Older records: version 1 without a version, the mode from the Style label ("전신"/"상체"/"키보드") or -1.
+        // Older records: version 1 without a version; a mode outside the play styles is -1 (left out of the mode tabs).
+        // The mode of records saved before the field existed is read from their label when the file loads (PlayerProgressStore).
         private static void Normalize(RankingEntry entry)
         {
             if (entry.ScoreVersion <= 0) entry.ScoreVersion = 1;
-            if (entry.Mode < 0 || entry.Mode > 2) entry.Mode = PlayStyleInfo.ModeOf(entry.Style);
+            if (entry.Mode < 0 || entry.Mode > 2) entry.Mode = -1;
             if (entry.AccountId == null) entry.AccountId = "";
         }
         // Ranked runs first by score, then unranked older records in their old distance order; ties go to the earlier run.
