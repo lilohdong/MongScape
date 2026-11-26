@@ -1,4 +1,5 @@
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
+using Muhanok.Bootstrap;
 using System;
 using System.Collections;
 using System.IO;
@@ -7,10 +8,10 @@ using Muhanok.Domain;
 using Muhanok.Presentation;
 using UnityEngine;
 
-namespace Muhanok.Bootstrap
+namespace Muhanok.DevTools
 {
-    // Only runs with --muhanok-uicapture: walks through every menu screen, a run and its result, and saves
-    // screenshots to --muhanok-out <dir>. Use with --muhanok-data <dir> so real player data stays untouched.
+    // Only runs with --mongscape-uicapture: walks through every menu screen, a run and its result, and saves
+    // screenshots to --mongscape-out <dir>. Use with --mongscape-data <dir> so real player data stays untouched.
     public sealed class RuntimeUiReview : MonoBehaviour
     {
         private GameBootstrap game;
@@ -20,7 +21,7 @@ namespace Muhanok.Bootstrap
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Install()
         {
-            if (Array.IndexOf(Environment.GetCommandLineArgs(), "--muhanok-uicapture") < 0) return;
+            if (Array.IndexOf(Environment.GetCommandLineArgs(), "--mongscape-uicapture") < 0) return;
             new GameObject("UI Review").AddComponent<RuntimeUiReview>();
         }
         private void Start()
@@ -28,7 +29,7 @@ namespace Muhanok.Bootstrap
             reviewStarted=Time.realtimeSinceStartup;
             UnityEngine.Application.logMessageReceived+=LogFailure;
             UnityEngine.Application.runInBackground = true;
-            var args = Environment.GetCommandLineArgs(); int at = Array.IndexOf(args, "--muhanok-out");
+            var args = Environment.GetCommandLineArgs(); int at = Array.IndexOf(args, "--mongscape-out");
             destination = at >= 0 && at + 1 < args.Length ? args[at + 1] : Path.Combine(UnityEngine.Application.persistentDataPath, "UiReview");
             Directory.CreateDirectory(destination);
             StartCoroutine(Run());

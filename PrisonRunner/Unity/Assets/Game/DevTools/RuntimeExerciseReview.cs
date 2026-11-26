@@ -1,4 +1,5 @@
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
+using Muhanok.Bootstrap;
 using System;
 using System.Collections;
 using System.IO;
@@ -7,10 +8,10 @@ using Muhanok.Domain;
 using Muhanok.Presentation;
 using UnityEngine;
 
-namespace Muhanok.Bootstrap
+namespace Muhanok.DevTools
 {
     // Only runs with --mongscape-exercise-review: screenshots of the exercise-plan screens without a webcam (synthetic workout
-    // numbers and a fake account server), saved to --review-output <dir>. Use with --muhanok-data <dir>.
+    // numbers and a fake account server), saved to --mongscape-review-output <dir>. Use with --mongscape-data <dir>.
     // The log ends with MONGSCAPE_EXERCISE_REVIEW_PASS or MONGSCAPE_EXERCISE_REVIEW_FAIL.
     public sealed class RuntimeExerciseReview : MonoBehaviour
     {
@@ -30,7 +31,7 @@ namespace Muhanok.Bootstrap
             started = Time.realtimeSinceStartup;
             UnityEngine.Application.logMessageReceived += LogFailure;
             UnityEngine.Application.runInBackground = true;
-            var args = Environment.GetCommandLineArgs(); int at = Array.IndexOf(args, "--review-output");
+            var args = Environment.GetCommandLineArgs(); int at = Array.IndexOf(args, "--mongscape-review-output");
             destination = at >= 0 && at + 1 < args.Length ? args[at + 1] : Path.Combine(UnityEngine.Application.persistentDataPath, "ExerciseReview");
             Directory.CreateDirectory(destination);
             StartCoroutine(Run());

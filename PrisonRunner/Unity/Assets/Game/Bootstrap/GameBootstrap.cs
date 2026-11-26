@@ -107,9 +107,9 @@ namespace Muhanok.Bootstrap
         private void Awake()
         {
             var flags=System.Environment.GetCommandLineArgs();
-            automated=System.Array.IndexOf(flags,"--muhanok-smoke")>=0||System.Array.IndexOf(flags,"--muhanok-uicapture")>=0
+            automated=System.Array.IndexOf(flags,"--mongscape-smoke")>=0||System.Array.IndexOf(flags,"--mongscape-uicapture")>=0
                 ||System.Array.IndexOf(flags,"--mongscape-review")>=0||System.Array.IndexOf(flags,"--mongscape-tests")>=0
-                ||System.Array.IndexOf(flags,"--muhanok-capture")>=0||System.Array.IndexOf(flags,"--mongscape-recording")>=0
+                ||System.Array.IndexOf(flags,"--mongscape-capture")>=0||System.Array.IndexOf(flags,"--mongscape-recording")>=0
                 ||System.Array.IndexOf(flags,"--mongscape-exercise-review")>=0;
             Session = new RunSession(Settings != null ? JsonUtility.FromJson<RunConfig>(JsonUtility.ToJson(Settings.Run)) : new RunConfig());
             if (ChunkPrefabs == null || ChunkPrefabs.Length < 5 || CameraRig == null || OutputCamera == null)
@@ -506,7 +506,7 @@ namespace Muhanok.Bootstrap
             string name = Pose.StartRecording(PoseRecordingFolder);
             if (name != null) Debug.Log("Pose recording started: " + name);
         }
-        // Development builds can keep player data in another folder (--muhanok-data <dir>) for captures and tests.
+        // Development builds can keep player data in another folder (--mongscape-data <dir>) for captures and tests.
         // On foot on a stair chunk, or within 3 m of one (people start lifting their knees a little early).
         private bool OnOrBeforeStairs()
         {
@@ -517,7 +517,7 @@ namespace Muhanok.Bootstrap
         private static string DataRoot()
         {
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            var args = System.Environment.GetCommandLineArgs(); int at = System.Array.IndexOf(args, "--muhanok-data");
+            var args = System.Environment.GetCommandLineArgs(); int at = System.Array.IndexOf(args, "--mongscape-data");
             if (at >= 0 && at + 1 < args.Length) return args[at + 1];
 #endif
             return null;
@@ -561,9 +561,9 @@ namespace Muhanok.Bootstrap
             {
                 Time.timeScale = 1;
                 var args=System.Environment.GetCommandLineArgs();
-                bool tooling=System.Array.IndexOf(args,"--muhanok-capture")>=0||System.Array.IndexOf(args,"--muhanok-smoke")>=0
+                bool tooling=System.Array.IndexOf(args,"--mongscape-capture")>=0||System.Array.IndexOf(args,"--mongscape-smoke")>=0
                     ||System.Array.IndexOf(args,"--mongscape-review")>=0||System.Array.IndexOf(args,"--mongscape-tests")>=0
-                    ||System.Array.IndexOf(args,"--muhanok-uicapture")>=0;
+                    ||System.Array.IndexOf(args,"--mongscape-uicapture")>=0;
                 lastEntry=null; lastStreakCoins=0; lastRank=lastTodayRank=0; lastBestScore=-1; lastNewBest=false; lastStats=null; lastStatsFailed=false;
                 if(!tooling&&playerRun) RecordFinishedRun();
             }

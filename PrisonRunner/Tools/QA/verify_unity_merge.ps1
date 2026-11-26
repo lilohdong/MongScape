@@ -8,7 +8,7 @@ $project=if($ProjectPath){[IO.Path]::GetFullPath($ProjectPath)}else{Join-Path $p
 if(-not (Test-Path -LiteralPath (Join-Path $project 'ProjectSettings/ProjectVersion.txt'))){throw 'Unity project path missing'}
 $log=Join-Path $qa 'Unity.log'
 $xml=Join-Path $qa 'tests.xml'
-$arguments=@('-batchmode','-projectPath',('"'+$project+'"'),'-logFile',('"'+$log+'"'),'--mongscape-tests','--muhanok-data',('"'+(Join-Path $qa 'PlayerData')+'"'))
+$arguments=@('-batchmode','-projectPath',('"'+$project+'"'),'-logFile',('"'+$log+'"'),'--mongscape-tests','--mongscape-data',('"'+(Join-Path $qa 'PlayerData')+'"'))
 if($Phase -eq 'Build'){$arguments+=@('-quit','-executeMethod','Muhanok.Editor.MuhanokBuildTools.BuildWindows')}
 else{$arguments+=@('-runTests','-testPlatform',$Phase,'-testResults',('"'+$xml+'"'))}
 if($Phase -ne 'Build' -and $TestFilter){$arguments+=@('-testFilter',$TestFilter)}

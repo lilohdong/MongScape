@@ -1,0 +1,17 @@
+{
+  "name": "Mongscape.DevTools",
+  "references": [
+    "Muhanok.Application",
+    "Muhanok.Domain",
+    "Muhanok.Infrastructure",
+    "Muhanok.Presentation",
+    "Muhanok.Content",
+    "Muhanok.LegacyCore",
+    "Muhanok.Bootstrap",
+    "Unity.Timeline",
+    "Unity.Cinemachine"
+  ],
+  "autoReferenced": false,
+  "defineConstraints": ["UNITY_EDITOR || DEVELOPMENT_BUILD"],
+  "noEngineReferences": false
+}
