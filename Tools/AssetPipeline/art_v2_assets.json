@@ -271,6 +271,30 @@
    "loop": false,
    "avatar_from": "",
    "frames": 24
+  },
+  {
+   "name": "Characters/AN_Monkey_Demo_ArmsCrossX.fbx",
+   "kind": "humanoid",
+   "group": "TutorialDemo",
+   "loop": true,
+   "avatar_from": "",
+   "frames": 61
+  },
+  {
+   "name": "Characters/AN_Monkey_Demo_ArmsT.fbx",
+   "kind": "humanoid",
+   "group": "TutorialDemo",
+   "loop": true,
+   "avatar_from": "",
+   "frames": 31
+  },
+  {
+   "name": "Models/MD_Sign_ForkX.fbx",
+   "kind": "prop",
+   "group": "Signs",
+   "loop": false,
+   "avatar_from": "",
+   "frames": 0
   }
  ]
 }

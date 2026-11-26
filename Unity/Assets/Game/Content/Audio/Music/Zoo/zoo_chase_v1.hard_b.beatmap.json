@@ -1,0 +1,440 @@
+{
+  "song": "zoo_chase_v1",
+  "chart": "zoo_chase_v1.hard_b",
+  "difficulty": "hard",
+  "variant": "b",
+  "audio": "zoo_chase_v1.ogg",
+  "bpm": 160,
+  "time_signature": [
+    4,
+    4
+  ],
+  "bars": 40,
+  "offset_sec": 0.0,
+  "beat_unit": "beat 0 = bar 1 beat 1; time = offset_sec + beat * 60 / bpm",
+  "length_sec": 60.0,
+  "audio_length_sec": 61.5,
+  "counts": {
+    "jump": 24,
+    "arms_up": 23,
+    "total": 47
+  },
+  "rules": {
+    "min_jump_gap_beats": 4,
+    "min_after_jump_beats": 2,
+    "min_note_gap_beats": 2,
+    "shortest_jump_to_jump": 4,
+    "shortest_after_jump": 2
+  },
+  "notes_on_music_cue": 36,
+  "sections": [
+    {
+      "name": "intro",
+      "start_bar": 1,
+      "end_bar": 2,
+      "start_beat": 0,
+      "end_beat": 8,
+      "start_time": 0.0,
+      "end_time": 3.0,
+      "jump": 0,
+      "arms_up": 0
+    },
+    {
+      "name": "verse1",
+      "start_bar": 3,
+      "end_bar": 10,
+      "start_beat": 8,
+      "end_beat": 40,
+      "start_time": 3.0,
+      "end_time": 15.0,
+      "jump": 6,
+      "arms_up": 3
+    },
+    {
+      "name": "chorus1",
+      "start_bar": 11,
+      "end_bar": 18,
+      "start_beat": 40,
+      "end_beat": 72,
+      "start_time": 15.0,
+      "end_time": 27.0,
+      "jump": 7,
+      "arms_up": 8
+    },
+    {
+      "name": "break",
+      "start_bar": 19,
+      "end_bar": 22,
+      "start_beat": 72,
+      "end_beat": 88,
+      "start_time": 27.0,
+      "end_time": 33.0,
+      "jump": 0,
+      "arms_up": 0
+    },
+    {
+      "name": "verse2",
+      "start_bar": 23,
+      "end_bar": 32,
+      "start_beat": 88,
+      "end_beat": 128,
+      "start_time": 33.0,
+      "end_time": 48.0,
+      "jump": 6,
+      "arms_up": 6
+    },
+    {
+      "name": "chorus2",
+      "start_bar": 33,
+      "end_bar": 38,
+      "start_beat": 128,
+      "end_beat": 152,
+      "start_time": 48.0,
+      "end_time": 57.0,
+      "jump": 5,
+      "arms_up": 6
+    },
+    {
+      "name": "exit",
+      "start_bar": 39,
+      "end_bar": 40,
+      "start_beat": 152,
+      "end_beat": 160,
+      "start_time": 57.0,
+      "end_time": 60.0,
+      "jump": 0,
+      "arms_up": 0
+    }
+  ],
+  "notes": [
+    {
+      "beat": 12,
+      "time": 4.5,
+      "type": "jump",
+      "bar": 4,
+      "beat_in_bar": 1
+    },
+    {
+      "beat": 16,
+      "time": 6.0,
+      "type": "jump",
+      "bar": 5,
+      "beat_in_bar": 1
+    },
+    {
+      "beat": 18,
+      "time": 6.75,
+      "type": "arms_up",
+      "bar": 5,
+      "beat_in_bar": 3
+    },
+    {
+      "beat": 20,
+      "time": 7.5,
+      "type": "jump",
+      "bar": 6,
+      "beat_in_bar": 1
+    },
+    {
+      "beat": 24,
+      "time": 9.0,
+      "type": "jump",
+      "bar": 7,
+      "beat_in_bar": 1
+    },
+    {
+      "beat": 26,
+      "time": 9.75,
+      "type": "arms_up",
+      "bar": 7,
+      "beat_in_bar": 3
+    },
+    {
+      "beat": 28,
+      "time": 10.5,
+      "type": "jump",
+      "bar": 8,
+      "beat_in_bar": 1
+    },
+    {
+      "beat": 32,
+      "time": 12.0,
+      "type": "jump",
+      "bar": 9,
+      "beat_in_bar": 1
+    },
+    {
+      "beat": 34,
+      "time": 12.75,
+      "type": "arms_up",
+      "bar": 9,
+      "beat_in_bar": 3
+    },
+    {
+      "beat": 40,
+      "time": 15.0,
+      "type": "jump",
+      "bar": 11,
+      "beat_in_bar": 1
+    },
+    {
+      "beat": 42,
+      "time": 15.75,
+      "type": "arms_up",
+      "bar": 11,
+      "beat_in_bar": 3
+    },
+    {
+      "beat": 44,
+      "time": 16.5,
+      "type": "jump",
+      "bar": 12,
+      "beat_in_bar": 1
+    },
+    {
+      "beat": 48,
+      "time": 18.0,
+      "type": "arms_up",
+      "bar": 13,
+      "beat_in_bar": 1
+    },
+    {
+      "beat": 50,
+      "time": 18.75,
+      "type": "jump",
+      "bar": 13,
+      "beat_in_bar": 3
+    },
+    {
+      "beat": 52,
+      "time": 19.5,
+      "type": "arms_up",
+      "bar": 14,
+      "beat_in_bar": 1
+    },
+    {
+      "beat": 54,
+      "time": 20.25,
+      "type": "arms_up",
+      "bar": 14,
+      "beat_in_bar": 3
+    },
+    {
+      "beat": 56,
+      "time": 21.0,
+      "type": "jump",
+      "bar": 15,
+      "beat_in_bar": 1
+    },
+    {
+      "beat": 58,
+      "time": 21.75,
+      "type": "arms_up",
+      "bar": 15,
+      "beat_in_bar": 3
+    },
+    {
+      "beat": 60,
+      "time": 22.5,
+      "type": "jump",
+      "bar": 16,
+      "beat_in_bar": 1
+    },
+    {
+      "beat": 62,
+      "time": 23.25,
+      "type": "arms_up",
+      "bar": 16,
+      "beat_in_bar": 3
+    },
+    {
+      "beat": 64,
+      "time": 24.0,
+      "type": "arms_up",
+      "bar": 17,
+      "beat_in_bar": 1
+    },
+    {
+      "beat": 66,
+      "time": 24.75,
+      "type": "jump",
+      "bar": 17,
+      "beat_in_bar": 3
+    },
+    {
+      "beat": 68,
+      "time": 25.5,
+      "type": "arms_up",
+      "bar": 18,
+      "beat_in_bar": 1
+    },
+    {
+      "beat": 70,
+      "time": 26.25,
+      "type": "jump",
+      "bar": 18,
+      "beat_in_bar": 3
+    },
+    {
+      "beat": 88,
+      "time": 33.0,
+      "type": "jump",
+      "bar": 23,
+      "beat_in_bar": 1
+    },
+    {
+      "beat": 92,
+      "time": 34.5,
+      "type": "jump",
+      "bar": 24,
+      "beat_in_bar": 1
+    },
+    {
+      "beat": 94,
+      "time": 35.25,
+      "type": "arms_up",
+      "bar": 24,
+      "beat_in_bar": 3
+    },
+    {
+      "beat": 98,
+      "time": 36.75,
+      "type": "arms_up",
+      "bar": 25,
+      "beat_in_bar": 3
+    },
+    {
+      "beat": 100,
+      "time": 37.5,
+      "type": "jump",
+      "bar": 26,
+      "beat_in_bar": 1
+    },
+    {
+      "beat": 104,
+      "time": 39.0,
+      "type": "arms_up",
+      "bar": 27,
+      "beat_in_bar": 1
+    },
+    {
+      "beat": 108,
+      "time": 40.5,
+      "type": "jump",
+      "bar": 28,
+      "beat_in_bar": 1
+    },
+    {
+      "beat": 112,
+      "time": 42.0,
+      "type": "arms_up",
+      "bar": 29,
+      "beat_in_bar": 1
+    },
+    {
+      "beat": 116,
+      "time": 43.5,
+      "type": "jump",
+      "bar": 30,
+      "beat_in_bar": 1
+    },
+    {
+      "beat": 118,
+      "time": 44.25,
+      "type": "arms_up",
+      "bar": 30,
+      "beat_in_bar": 3
+    },
+    {
+      "beat": 124,
+      "time": 46.5,
+      "type": "jump",
+      "bar": 32,
+      "beat_in_bar": 1
+    },
+    {
+      "beat": 126,
+      "time": 47.25,
+      "type": "arms_up",
+      "bar": 32,
+      "beat_in_bar": 3
+    },
+    {
+      "beat": 128,
+      "time": 48.0,
+      "type": "jump",
+      "bar": 33,
+      "beat_in_bar": 1
+    },
+    {
+      "beat": 130,
+      "time": 48.75,
+      "type": "arms_up",
+      "bar": 33,
+      "beat_in_bar": 3
+    },
+    {
+      "beat": 132,
+      "time": 49.5,
+      "type": "jump",
+      "bar": 34,
+      "beat_in_bar": 1
+    },
+    {
+      "beat": 134,
+      "time": 50.25,
+      "type": "arms_up",
+      "bar": 34,
+      "beat_in_bar": 3
+    },
+    {
+      "beat": 136,
+      "time": 51.0,
+      "type": "jump",
+      "bar": 35,
+      "beat_in_bar": 1
+    },
+    {
+      "beat": 138,
+      "time": 51.75,
+      "type": "arms_up",
+      "bar": 35,
+      "beat_in_bar": 3
+    },
+    {
+      "beat": 140,
+      "time": 52.5,
+      "type": "arms_up",
+      "bar": 36,
+      "beat_in_bar": 1
+    },
+    {
+      "beat": 142,
+      "time": 53.25,
+      "type": "jump",
+      "bar": 36,
+      "beat_in_bar": 3
+    },
+    {
+      "beat": 144,
+      "time": 54.0,
+      "type": "arms_up",
+      "bar": 37,
+      "beat_in_bar": 1
+    },
+    {
+      "beat": 146,
+      "time": 54.75,
+      "type": "jump",
+      "bar": 37,
+      "beat_in_bar": 3
+    },
+    {
+      "beat": 148,
+      "time": 55.5,
+      "type": "arms_up",
+      "bar": 38,
+      "beat_in_bar": 1
+    }
+  ]
+}
