@@ -20,6 +20,12 @@ namespace Mongscape.Domain
         public static readonly int[] Chunks = { 7, 4, 5, 7, 5, 4, 7, 4, 5, 6, RouteSurface.PrisonExit };
         // RoutePlan branch hook: the same fixed sets on every lap (the visit makes them harder, not the layout).
         public static int[] Branch(int lap) => (int[])Chunks.Clone();
+        // First route chunk of the prison branch in this chunk's lap, once the fork chose the prison (-1 otherwise).
+        public static int BranchStart(RoutePlan plan, int sequence)
+        {
+            if (plan == null || !plan.Extended || !plan.HasFork(sequence) || plan.DestinationAt(sequence) != 0) return -1;
+            return sequence - plan.LocalSequence(sequence) + CartFork.DestinationChunk;
+        }
         // Index of a route chunk inside a chosen prison branch, or -1.
         public static int BranchIndex(RoutePlan plan, int sequence)
         {

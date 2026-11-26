@@ -90,6 +90,8 @@ namespace Mongscape.Presentation
         public void Bonk() => Play(bonk, BonkGain);
         // A coach hint line appears.
         public void Cue() => Play(cue, CueGain);
+        // A map's own effect clip (prison lock clicks, the cell opening) at the effects volume.
+        public void PlayEffect(AudioClip clip, float gain = 1f) { if (effects != null && clip != null) effects.PlayOneShot(clip, effectsVolume * gain); }
 
         // Chaser sound hook (plan 6-8): played when a warning lands. Files MuhanokAudio/Sfx/lion_roar and alarm_bell when
         // present; the police use the siren swell, the others fall back to the hit sound.

@@ -267,6 +267,15 @@ namespace Mongscape.Tests
             Assert.IsFalse(layout.Slots.Contains(true)); Assert.AreEqual(0, layout.Blockers.Count); Assert.AreEqual(0, layout.Bananas.Count); Assert.IsFalse(layout.Animal);
         }
 
+        [Test] public void PrisonArtResolvesEveryPiece()
+        {
+            var art = Mongscape.Presentation.Map.PrisonArt.Load();
+            Assert.IsNotNull(art, "Resources/" + Mongscape.Presentation.Map.PrisonArt.ResourcePath);
+            Assert.IsNotNull(art.CellDoor); Assert.IsNotNull(art.Searchlight);
+            Assert.IsNotNull(art.CellDoorMotion); Assert.IsNotNull(art.SearchlightMotion);
+            Assert.IsNotNull(art.LockClick); Assert.IsNotNull(art.LockOpen); Assert.IsNotNull(art.MonkeyRescue);
+        }
+
         [Test] public void BeginClearsTheVisit()
         {
             var course = new PrisonCourse(); course.Begin(1);
