@@ -101,9 +101,13 @@ class App:
         if 'weight' in data: values['weight']=DEFAULT_WEIGHT if data['weight'] is None else number(data,'weight',WEIGHT_MIN,WEIGHT_MAX,message=f'몸무게는 {WEIGHT_MIN}~{WEIGHT_MAX}kg 숫자로 입력하세요.')
         if 'style' in data: values['style']=number(data,'style',0,2,True)
         if 'goal' in data: values['goal']=number(data,'goal',1,5000)
+        if 'tutorial_chapter' in data: # 0~3: tutorial chapters done (chapter 2 opens after 1, 3 after 2); never goes back
+            values['tutorial_chapter']=number(data,'tutorial_chapter',0,3,True)
+            if values['tutorial_chapter']>=1: values['tutorial_done']=True # chapter 1 done is the old flag
         if 'tutorial_done' in data:
             if type(data['tutorial_done']) is not bool: raise ApiError('잘못된 값: tutorial_done')
-            values['tutorial_done']=data['tutorial_done']
+            values['tutorial_done']=values.get('tutorial_done',False) or data['tutorial_done']
+            if values['tutorial_done']: values['tutorial_chapter']=max(1,values.get('tutorial_chapter',0))
         return values
     def handle(self,path,data,token='',client=''):
         if path=='/name-check':
@@ -115,7 +119,7 @@ class App:
             self.limit(('face',client),FACE_LIMIT); self.limit(('face',),FACE_LIMIT_ALL)
             if path=='/enroll':
                 if data.get('consent') is not True: raise ApiError('얼굴 저장 동의가 필요합니다.')
-                name=self.nickname(data.get('name')); settings=self.settings(data); settings.pop('tutorial_done',None)
+                name=self.nickname(data.get('name')); settings=self.settings(data); settings.pop('tutorial_done',None); settings.pop('tutorial_chapter',None)
             features,avatar=self.faces.samples(data); pid=self.faces.match(self.store,features)
             if path=='/enroll':
                 if pid: raise ApiError('이미 등록된 얼굴입니다. 얼굴 로그인을 눌러 주세요.',409)
@@ -137,7 +141,7 @@ class App:
             values=self.settings(data)
             if 'name' in data: values['name']=self.nickname(data['name'],pid); values['name_key']=name_key(values['name'])
             if values:
-                with self.store.db: self.store.db.execute('UPDATE profiles SET '+','.join(k+'=?' for k in values)+' WHERE id=?',(*values.values(),pid))
+                with self.store.db: self.store.db.execute('UPDATE profiles SET '+','.join(('tutorial_chapter=GREATEST(tutorial_chapter,?)' if k=='tutorial_chapter' else k+'=?') for k in values)+' WHERE id=?',(*values.values(),pid))
             return dict(ok=True,profile=self.store.account(pid))
         if path=='/delete': self.store.delete(pid); return dict(ok=True)
         if path=='/logout':

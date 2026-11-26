@@ -135,12 +135,12 @@ namespace Mongscape.Bootstrap
             string id = Account.Id;
             Gateway.UpdateProfile(Account.Token, AccountProfileUpdate.From(Account.Settings), reply => { if (reply.HasProfile && reply.profile.id == id) Account.Apply(reply.profile); });
         }
-        // A member's profile remembers the finished tutorial.
-        public void MarkTutorialDone()
+        // A member's account remembers the finished tutorial chapters (the first one is also the old tutorial_done flag).
+        public void MarkTutorialChapter(TutorialChapter chapter)
         {
             if (!Account.IsMember) return;
-            string id = Account.Id; Account.SetTutorialDone(true);
-            Gateway.UpdateProfile(Account.Token, new AccountProfileUpdate { TutorialDone = true }, reply => { if (reply != null && reply.HasProfile && reply.profile.id == id && reply.profile.tutorial_done) Account.Apply(reply.profile); });
+            string id = Account.Id; int count = (int)chapter + 1; Account.SetTutorialChapters(count);
+            Gateway.UpdateProfile(Account.Token, new AccountProfileUpdate { TutorialDone = true, TutorialChapter = count }, reply => { if (reply != null && reply.HasProfile && reply.profile.id == id && reply.profile.tutorial_chapter >= count) Account.Apply(reply.profile); });
         }
         // Members unlock the next level of a trait on the server, which checks the price and the monkeys and answers with
         // the profile; guests own no trait.

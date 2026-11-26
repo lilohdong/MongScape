@@ -67,7 +67,7 @@ class IdentityTests(PostgresCase):
   return caught.exception.status
  def test_real_model_enroll_reopen_login_record_delete(self):
   first=self.enroll(weight=72.5,style=1,goal=30);self.assertTrue(first['ok']);self.assertTrue(first['avatar']);self.assertNotEqual(first['token'],'')
-  self.assertEqual(first['profile'],dict(id=first['id'],name='Tester',weight=72.5,style=1,goal=30.0,coins=0,unlocked=[],tutorial_done=False))
+  self.assertEqual(first['profile'],dict(id=first['id'],name='Tester',weight=72.5,style=1,goal=30.0,coins=0,unlocked=[],tutorial_done=False,tutorial_chapter=0))
   self.assertNotIn('avatar',self.store.columns('profiles'))
   self.assertEqual(self.store.db.execute('SELECT consent_version FROM profiles').fetchone()[0],'account-v3')
   self.store.db.close();self.store=self.make_store();self.app=App(self.store,self.faces)
@@ -123,7 +123,7 @@ class IdentityTests(PostgresCase):
  def test_profile_and_update(self):
   pid,token=self.member('Alpha');self.member('Beta')
   self.assertEqual(self.status('/profile',{}),401);self.assertEqual(self.status('/profile/update',dict(name='Gamma'),'bad'),401)
-  self.assertEqual(self.app.handle('/profile',{},token)['profile'],dict(id=pid,name='Alpha',weight=65.0,style=0,goal=50.0,coins=0,unlocked=[],tutorial_done=False))
+  self.assertEqual(self.app.handle('/profile',{},token)['profile'],dict(id=pid,name='Alpha',weight=65.0,style=0,goal=50.0,coins=0,unlocked=[],tutorial_done=False,tutorial_chapter=0))
   self.assertEqual(self.status('/profile/update',dict(name='beta'),token),409)
   for fields in (dict(name=''),dict(name='12345678901'),dict(weight=-1),dict(weight=9.9),dict(weight=351),dict(style=2.5),dict(goal=6000),dict(tutorial_done=1)):
    self.assertEqual(self.status('/profile/update',fields,token),400,fields)
@@ -241,14 +241,37 @@ class IdentityTests(PostgresCase):
   try:decoded=self.cv.imdecode(huge,self.cv.IMREAD_COLOR)
   except self.cv.error:decoded=None
   self.assertIsNone(decoded) # refused from the header by OPENCV_IO_MAX_IMAGE_PIXELS, before allocating pixels
- def test_fresh_db_is_v3_and_newer_schema_refused(self):
-  self.assertEqual(self.store.version(),3);self.assertIn('moderate_seconds',self.store.columns('runs'));self.assertTrue({'profiles_name_key','runs_mode_score'}<=self.store.indexes())
+ def test_fresh_db_is_v4_and_newer_schema_refused(self):
+  self.assertEqual(self.store.version(),4);self.assertIn('tutorial_chapter',self.store.columns('profiles'));self.assertIn('moderate_seconds',self.store.columns('runs'));self.assertTrue({'profiles_name_key','runs_mode_score'}<=self.store.indexes())
   self.assertEqual(migrate_account.migrate(database_url=self.url),[])
   self.store.db.close();self.store=self.make_store() # a restart keeps the single version row
   self.assertEqual(self.store.db.execute('SELECT version FROM schema_version').fetchall(),[(SCHEMA_VERSION,)])
-  with self.store.db:self.store.db.execute('UPDATE schema_version SET version=4')
+  with self.store.db:self.store.db.execute('UPDATE schema_version SET version=5')
   self.store.db.close()
   with self.assertRaisesRegex(SchemaError,'newer'):self.store=self.make_store()
+ def test_tutorial_chapter_is_saved_per_account_and_never_goes_back(self):
+  pid,token=self.member('Chapters')
+  profile=lambda **fields:self.app.handle('/profile/update',fields,token)['profile']
+  self.assertEqual(self.app.handle('/profile',{},token)['profile']['tutorial_chapter'],0)
+  for fields in (dict(tutorial_chapter=4),dict(tutorial_chapter=-1),dict(tutorial_chapter=1.5),dict(tutorial_chapter=True),dict(tutorial_chapter='2')):
+   self.assertEqual(self.status('/profile/update',fields,token),400,fields)
+  p=profile(tutorial_chapter=2);self.assertEqual((p['tutorial_chapter'],p['tutorial_done']),(2,True),'Chapter 1 done is the old flag')
+  p=profile(tutorial_chapter=1);self.assertEqual(p['tutorial_chapter'],2,'A replay of an earlier chapter keeps the progress')
+  p=profile(tutorial_chapter=3);self.assertEqual(p['tutorial_chapter'],3)
+  other,other_token=self.member('Old flag')
+  p=self.app.handle('/profile/update',dict(tutorial_done=True),other_token)['profile'];self.assertEqual((p['tutorial_done'],p['tutorial_chapter']),(True,1),'The old flag alone means chapter 1')
+  p=self.app.handle('/profile/update',dict(tutorial_done=True,tutorial_chapter=2),other_token)['profile'];self.assertEqual(p['tutorial_chapter'],2)
+ def test_v3_db_gains_tutorial_chapter_and_old_flag_becomes_chapter_one(self):
+  done,_=self.member('Done');fresh,_=self.member('Fresh')
+  with self.store.db:
+   self.store.db.execute('UPDATE profiles SET tutorial_done=TRUE WHERE id=?',(done,))
+   self.store.db.execute('ALTER TABLE profiles DROP COLUMN tutorial_chapter');self.store.db.execute('UPDATE schema_version SET version=3')
+  self.store.db.close()
+  with self.assertRaisesRegex(SchemaError,'v3'):self.store=self.make_store()
+  self.assertEqual(migrate_account.migrate(database_url=self.url),['add_profile_columns','backfill_tutorial_chapter','set_schema_version'])
+  self.assertEqual(migrate_account.migrate(database_url=self.url),[])
+  self.store=self.make_store();self.app=App(self.store,self.faces)
+  self.assertEqual(self.store.account(done)['tutorial_chapter'],1);self.assertEqual(self.store.account(fresh)['tutorial_chapter'],0)
  def test_v2_db_gains_moderate_seconds_and_keeps_runs(self):
   # The live DB before this change: schema v2, runs without moderate_seconds. Migration only adds the column.
   pid,token=self.member('Before',coins=7);self.record(pid,500,kcal=4,seconds=120);self.record(pid,800,version=2)
@@ -260,7 +283,7 @@ class IdentityTests(PostgresCase):
   self.assertEqual(migrate_account.migrate(database_url=self.url),['add_run_columns','set_schema_version'])
   self.assertEqual(migrate_account.migrate(database_url=self.url),[])
   self.store=self.make_store();self.app=App(self.store,self.faces)
-  self.assertEqual(self.store.version(),3)
+  self.assertEqual(self.store.version(),4)
   self.assertEqual(self.store.db.execute('SELECT id,profile_id,distance,score,kcal,goal,activities,created_at,mode,coins,score_version,play_seconds FROM runs ORDER BY id').fetchall(),before)
   self.assertEqual({row[0] for row in self.store.db.execute('SELECT moderate_seconds FROM runs')},{0.0})
   self.assertEqual(self.app.handle('/stats',{},token)['best_score'],[500,0,0]) # records and ranking kept
@@ -282,15 +305,15 @@ class IdentityTests(PostgresCase):
   with mock.patch.object(migrate_account,'STEPS',migrate_account.STEPS+(('fail',fail),)),self.assertRaises(RuntimeError):
    migrate_account.migrate(database_url=self.url)
   with self.assertRaisesRegex(SchemaError,'v1'):self.store=self.make_store() # every DDL step was rolled back
-  self.assertEqual(migrate_account.migrate(database_url=self.url),[name for name,_ in migrate_account.STEPS])
+  self.assertEqual(migrate_account.migrate(database_url=self.url),[name for name,_ in migrate_account.STEPS if name!='backfill_tutorial_chapter'])
   self.assertEqual(migrate_account.migrate(database_url=self.url),[])
   self.store=self.make_store();self.app=App(self.store,self.faces)
-  self.assertEqual(self.store.version(),3);self.assertNotIn('avatar',self.store.columns('profiles'))
+  self.assertEqual(self.store.version(),4);self.assertNotIn('avatar',self.store.columns('profiles'))
   names=dict(self.store.db.execute('SELECT id,name FROM profiles').fetchall())
   self.assertEqual(names,dict(legacy='Legacy exp',c='Kim',b='kim3',a='kim2',d='T win',e='Twin2',f='탐험가'))
   self.assertEqual(dict(self.store.db.execute('SELECT id,name_key FROM profiles').fetchall())['e'],'twin2')
   login=self.app.handle('/login',dict(images=self.images))
-  self.assertEqual(login['profile'],dict(id='legacy',name='Legacy exp',weight=65.0,style=0,goal=50.0,coins=0,unlocked=[],tutorial_done=False))
+  self.assertEqual(login['profile'],dict(id='legacy',name='Legacy exp',weight=65.0,style=0,goal=50.0,coins=0,unlocked=[],tutorial_done=False,tutorial_chapter=0))
   self.assertTrue(login['avatar'])
   self.assertEqual(len(self.app.handle('/history',{},login['token'])['runs']),1)
   self.assertEqual(self.app.handle('/stats',{},login['token'])['best_score'],[0,0,0]) # old records keep score_version 1

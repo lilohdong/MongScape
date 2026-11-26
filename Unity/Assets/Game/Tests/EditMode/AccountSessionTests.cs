@@ -76,10 +76,23 @@ namespace Mongscape.Tests
         }
 
         [Test]
+        public void TutorialChaptersComeFromTheAccountAndNeverGoBack()
+        {
+            var session = new AccountSession();
+            session.SignInMember(new AccountProfile { id = "m", name = "a", tutorial_done = true }, "t");
+            Assert.AreEqual(1, session.TutorialChapters, "The old flag alone means chapter 1");
+            session.SetTutorialChapters(3); Assert.AreEqual(3, session.TutorialChapters); session.SetTutorialChapters(2); Assert.AreEqual(3, session.TutorialChapters);
+            session.SignInMember(new AccountProfile { id = "n", name = "b", tutorial_chapter = 2 }, "t");
+            Assert.AreEqual(2, session.TutorialChapters); Assert.IsTrue(session.TutorialDone);
+            session.SignOut(); Assert.AreEqual(0, session.TutorialChapters);
+        }
+
+        [Test]
         public void ProfileUpdateSendsOnlyTheFieldsThatAreSet()
         {
             Assert.AreEqual("{}", new AccountProfileUpdate().ToJson());
             Assert.AreEqual("{\"name\":\"a\\\"b\",\"tutorial_done\":true}", new AccountProfileUpdate { Name = "a\"b", TutorialDone = true }.ToJson());
+            Assert.AreEqual("{\"tutorial_done\":true,\"tutorial_chapter\":2}", new AccountProfileUpdate { TutorialDone = true, TutorialChapter = 2 }.ToJson());
             Assert.AreEqual("{\"weight\":65,\"style\":2,\"goal\":50}", AccountProfileUpdate.From(new AccountSettings { Style = PlayStyle.Keyboard }).ToJson());
         }
 

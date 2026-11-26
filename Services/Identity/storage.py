@@ -9,7 +9,7 @@ import time
 import unicodedata
 
 BASE=Path(__file__).resolve().parent
-SCHEMA_VERSION=3 # 3: runs.moderate_seconds (weekly goal minutes)
+SCHEMA_VERSION=4 # 3: runs.moderate_seconds (weekly goal minutes); 4: profiles.tutorial_chapter (0~3)
 NAME_MAX=10
 POSTGRES_REQUIRED='PostgreSQL settings are required: set IDENTITY_DATABASE_URL, or PGHOST/PGPORT/PGDATABASE/PGUSER with PGPASSWORD_FILE.'
 
@@ -141,10 +141,10 @@ class Store:
 
     def account(self,profile_id):
         """Profile object of the API (section 4.2); the JSONB unlocked array arrives already parsed."""
-        row=self.db.execute('SELECT id,name,weight,style,goal,coins,unlocked,tutorial_done FROM profiles WHERE id=?',(profile_id,)).fetchone()
+        row=self.db.execute('SELECT id,name,weight,style,goal,coins,unlocked,tutorial_done,tutorial_chapter FROM profiles WHERE id=?',(profile_id,)).fetchone()
         if not row:raise ApiError('프로필 없음',404)
         return dict(id=row[0],name=row[1],weight=float(row[2]),style=row[3],goal=float(row[4]),coins=row[5],
-                    unlocked=sorted(row[6]),tutorial_done=row[7])
+                    unlocked=sorted(row[6]),tutorial_done=row[7],tutorial_chapter=row[8])
 
     def profile(self,profile_id,token,avatar):
         # avatar is this request's aligned face JPG; it is returned once and never stored.

@@ -19,7 +19,7 @@ namespace Mongscape.Domain
     public enum TutorialPass { Framed, Calibrated, Paced, ObstaclePassed, ForkChosen, Station, Picture, Paused, None }
 
     // The lesson hazards of the course; every random hazard, item and coin is removed.
-    public enum TutorialHazard { None, LaneBlock, JumpRow, CrouchRow, StairChunk, Bananas }
+    public enum TutorialHazard { None, LaneBlock, JumpRow, CrouchRow, Rescue, Bananas }
 
     // Lessons for one chapter and play style. Steps the style lacks are left out (plan 6-3): keyboard play needs no camera
     // check, calibration, cadence or beat sync (the keys are shown instead of a demo). Members who finished the earlier
@@ -202,22 +202,25 @@ namespace Mongscape.Domain
         // Mine only: start, the pace chunk (cadence holds here), lane, jump, slide, the rescue spot, bananas, the pause spot.
         public static readonly int[] BasicsLap = { 0, 0, 0, 0, 0, 0, 0, 0 };
         public static readonly int[] ZooLap = { 12, 12, 12, 12 };
-        // Corridor, corridor, the stair chunk (type 7), corridor, corridor.
-        public static readonly int[] PrisonLap = { 4, 4, 7, 4, 4, 4 };
+        // The first set of the real prison branch (PrisonCourse): the stair chunk (type 7), the cell chunk with its door and searchlight (type 4), the flat.
+        public static readonly int[] PrisonLap = { 7, 4, 5, 5 };
         public const int PaceChunk = 1, LaneChunk = 2, JumpChunk = 3, CrouchChunk = 4, RescueChunk = 5, BananaChunk = 6, PauseChunk = 7;
-        public const int PrisonStairChunk = 2;
+        public const int PrisonStairChunk = 0, PrisonCellChunk = 1, RescueSide = 1;
         public const float LaneBlockZ = 12f;
         // The stations hold the runner here until they pass: end of the pace chunk (basics), the zoo and the prison after the stair.
         public static float HoldZ(TutorialChapter chapter, TutorialStep step)
         {
             if (chapter == TutorialChapter.Zoo) return 1 * RouteSurface.Length;
-            if (chapter == TutorialChapter.Prison) return (PrisonStairChunk + 2) * RouteSurface.Length;
+            if (chapter == TutorialChapter.Prison) return (PrisonCellChunk + 1) * RouteSurface.Length + 4f;
             return step == TutorialStep.Cadence ? (PaceChunk + 1) * RouteSurface.Length - 4f
                 : step == TutorialStep.Rescue ? RescueChunk * RouteSurface.Length + 14f
                 : step == TutorialStep.WarnRule ? (BananaChunk + 1) * RouteSurface.Length + 2f : (PauseChunk) * RouteSurface.Length + 10f;
         }
         // Two peels in the blocked lane of the banana chunk: step aside for both.
         public static readonly float[] BananaZ = { 8f, 16f };
+        // The prison chapter is the real branch (PrisonCourse); this tells it where the first set starts.
+        public static bool PrisonChapter => Script != null && Script.Chapter == TutorialChapter.Prison;
+        public static int PrisonIndex(int sequence) => PrisonChapter && sequence >= 0 && sequence < PrisonLap.Length ? sequence : -1;
         public static int ForkLapStart => BasicsLap.Length;
         public static float ForkDecisionZ => ForkLapStart * RouteSurface.Length + CartFork.Decision;
         public static int[] LapOf(TutorialChapter chapter) => chapter == TutorialChapter.Zoo ? ZooLap : chapter == TutorialChapter.Prison ? PrisonLap : BasicsLap;
@@ -231,7 +234,7 @@ namespace Mongscape.Domain
             if (!Basics) return TutorialHazard.None;
             return sequence == LaneChunk && On(TutorialStep.Lane) ? TutorialHazard.LaneBlock
                 : sequence == JumpChunk && On(TutorialStep.Jump) ? TutorialHazard.JumpRow : sequence == CrouchChunk && On(TutorialStep.Crouch) ? TutorialHazard.CrouchRow
-                : sequence == BananaChunk && On(TutorialStep.Banana) ? TutorialHazard.Bananas : TutorialHazard.None;
+                : sequence == RescueChunk && On(TutorialStep.Rescue) ? TutorialHazard.Rescue : sequence == BananaChunk && On(TutorialStep.Banana) ? TutorialHazard.Bananas : TutorialHazard.None;
         }
         public static int ChunkOf(TutorialStep step) => step == TutorialStep.Cadence ? PaceChunk : step == TutorialStep.Lane ? LaneChunk
             : step == TutorialStep.Jump ? JumpChunk : step == TutorialStep.Crouch ? CrouchChunk : step == TutorialStep.Rescue ? RescueChunk
@@ -248,11 +251,12 @@ namespace Mongscape.Domain
                 case TutorialStep.Rescue: return RescueChunk * RouteSurface.Length;
                 case TutorialStep.Banana: return BananaChunk * RouteSurface.Length - 6f;
                 // Early in the corridor before the stair, with time to read the call.
-                case TutorialStep.Stair: return PrisonStairChunk * RouteSurface.Length - 20f;
+                case TutorialStep.Stair: return 2f;
                 // On the cart, before the fork window.
                 case TutorialStep.Fork: return (ForkLapStart + 1) * RouteSurface.Length + 2f;
                 case TutorialStep.Sync: case TutorialStep.Verse: case TutorialStep.Rearview: return HoldZ(TutorialChapter.Zoo, step);
-                case TutorialStep.Hide: case TutorialStep.AlarmRule: return HoldZ(TutorialChapter.Prison, step);
+                case TutorialStep.Hide: return PrisonCellChunk * RouteSurface.Length + 2f;
+                case TutorialStep.AlarmRule: return HoldZ(TutorialChapter.Prison, step);
                 default: return 2f;
             }
         }

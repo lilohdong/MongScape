@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS profiles (
     coins INTEGER NOT NULL DEFAULT 0 CHECK (coins >= 0),
     unlocked JSONB NOT NULL DEFAULT '[]',
     tutorial_done BOOLEAN NOT NULL DEFAULT FALSE,
+    tutorial_chapter INTEGER NOT NULL DEFAULT 0 CHECK (tutorial_chapter BETWEEN 0 AND 3),
     created_at BIGINT NOT NULL,
     consent_version TEXT NOT NULL
 );

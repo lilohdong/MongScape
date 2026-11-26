@@ -181,7 +181,7 @@ chmod +x backup.sh && ./backup.sh                       # 한 번 실행해 확�
 `migrate_account.py`는 기존 DB를 v1 또는 v2에서 v3으로 바꿉니다. 단계는 다음 순서이며, v2 DB에는 5·6단계만 적용됩니다(칼럼 추가, 기존 기록·랭킹은 그대로).
 
 1. `profiles.avatar`(저장된 얼굴 사진) 삭제
-2. `profiles`에 `name_key`, `weight`(65), `style`(0), `goal`(50), `coins`(0), `unlocked`(`[]`), `tutorial_done`(거짓) 추가
+2. `profiles`에 `name_key`, `weight`(65), `style`(0), `goal`(50), `coins`(0), `unlocked`(`[]`), `tutorial_done`(거짓), `tutorial_chapter`(0) 추가
 3. 닉네임 정리: 규칙(앞뒤 공백 제거 후 1~10자, 제어 문자 없음)에 맞게 자르고, 비어 있으면 `탐험가`로 둡니다. 정규화 값(공백 제거·소문자)이 겹치면 먼저 가입한 회원(가입 시각, 같으면 ID 순)이 이름을 유지하고 뒤 회원에게 `2`, `3`…을 붙입니다. 기존에 겹치지 않던 이름은 바뀌지 않습니다.
 4. `name_key` UNIQUE 인덱스
 5. `runs`에 `mode`(기존 기록은 NULL), `coins`(0), `score_version`(1), `play_seconds`(0), `moderate_seconds`(0, v3)와 `runs_mode_score` 인덱스 추가. 기존 기록은 점수 버전 1이라 랭킹·최고 기록에 들어가지 않고, 칼로리 합계에는 들어갑니다.
@@ -217,7 +217,7 @@ HTTPS 구성이면 `up`에 3장과 같은 `--env-file .env -f compose.yaml -f co
 | `/enroll` | - | `{name, consent:true, images:[3], weight?, style?, goal?}` → `{ok, token, avatar, profile}` |
 | `/login` | - | `{images:[3]}` → `{ok, token, avatar, profile}` |
 | `/profile` | 필요 | `{}` → `{ok, profile}` |
-| `/profile/update` | 필요 | `{name?, weight?, style?, goal?, tutorial_done?}`(보낸 필드만 변경) → `{ok, profile}` |
+| `/profile/update` | 필요 | `{name?, weight?, style?, goal?, tutorial_done?, tutorial_chapter?}`(보낸 필드만 변경. `tutorial_chapter`는 0~3, 줄어들지 않고, 1 이상이면 `tutorial_done`도 참) → `{ok, profile}` |
 | `/runs` | 필요 | `{id, distance, score, kcal, goal, activities:[5], mode, coins, play_seconds, moderate_seconds, score_version}` → `{ok, coins}`(적립 후 잔액) |
 | `/traits` | - | `{}` → `{ok, traits:[{id, key, costs:[단계별 원숭이 수]}]}`. 특성 가격표는 여기 한 곳 |
 | `/traits/unlock` | 필요 | `{trait, level}` → `{ok, profile}`. 앞 단계가 있어야 다음 단계 |
@@ -225,7 +225,7 @@ HTTPS 구성이면 `up`에 3장과 같은 `--env-file .env -f compose.yaml -f co
 | `/stats` | 필요 | `{}` → `{ok, today_kcal, total_kcal, best_score:[전신, 상체, 키보드], previous_best, week_kcal, week_seconds, last_week_kcal, last_week_seconds, week_moderate_seconds, last_week_moderate_seconds}` |
 | `/logout`, `/delete`, `/history` | 필요 | 기존과 같음. `/delete`는 프로필·특징값·세션·기록 삭제 |
 
-- `profile`: `{id, name, weight, style, goal, coins, unlocked, tutorial_done}`. `/enroll`·`/login` 응답은 이전 클라이언트를 위해 `id`, `name`도 최상위에 둡니다.
+- `profile`: `{id, name, weight, style, goal, coins, unlocked, tutorial_done, tutorial_chapter}`. `/enroll`·`/login` 응답은 이전 클라이언트를 위해 `id`, `name`도 최상위에 둡니다.
 - 닉네임: 앞뒤 공백 제거 후 1~10자(유니코드 코드 포인트 기준, 이모지 1개 = 1자), 제어·서식(U+200B 등)·사용자 정의 문자 등 유니코드 C 범주 금지. 게임의 입력 검사도 같은 규칙입니다. 공백을 지우고 소문자로 바꾼 값이 같으면 같은 닉네임입니다(`Min Su` = `minsu`).
 - 값 범위: `weight` 10~350(게임의 몸무게 입력과 같음, null이면 65), `style`·`mode` 0 전신/1 상체/2 키보드(`mode` 10~12는 같은 방식의 오늘의 도전), `goal` 1~5000, `coins` 0~5000 정수, `score_version` 1~3, `play_seconds`·`moderate_seconds` 0~86400(없으면 0).
 - `coins`는 구한 원숭이 수입니다(칼럼 이름은 그대로). 특성: 1 보호막 5/15/30, 2 예민한 귀 10/20, 3 두꺼운 털 20, 4 부르는 소리 5/15, 5 손재주 10/20/30, 6 의리 25, 7 땀방울 5/15. 해금한 단계는 `unlocked`에 `특성*10+단계`로 쌓입니다(0~2는 예전 상점 아이템, 무시).

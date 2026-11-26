@@ -37,6 +37,8 @@ namespace Mongscape.Application
         public int Monkeys { get; private set; }
         public TraitLevels Traits => traits;
         public bool TutorialDone { get; private set; }
+        // Tutorial chapters done (0~3), saved on the account.
+        public int TutorialChapters { get; private set; }
         public event Action Changed;
 
         public void SignInMember(AccountProfile account, string token)
@@ -68,9 +70,10 @@ namespace Mongscape.Application
             Nickname = name.Trim(); Notify();
         }
         public void SetTutorialDone(bool done) { TutorialDone = done; Notify(); }
+        public void SetTutorialChapters(int count) { TutorialChapters = Math.Max(TutorialChapters, Math.Max(0, Math.Min(3, count))); if (TutorialChapters >= 1) TutorialDone = true; Notify(); }
         public void SignOut()
         {
-            Kind = AccountKind.Guest; Id = Token = ""; Nickname = GuestName; TutorialDone = false;
+            Kind = AccountKind.Guest; Id = Token = ""; Nickname = GuestName; TutorialDone = false; TutorialChapters = 0;
             settings = new AccountSettings(); Monkeys = 0; traits.Clear(); Notify();
         }
 
@@ -116,7 +119,7 @@ namespace Mongscape.Application
         {
             Nickname = string.IsNullOrWhiteSpace(account.name) ? GuestName : account.name.Trim();
             settings = Sanitize(account.weight, account.style, account.goal);
-            TutorialDone = account.tutorial_done;
+            TutorialDone = account.tutorial_done || account.tutorial_chapter >= 1; TutorialChapters = Math.Max(0, Math.Min(3, Math.Max(account.tutorial_chapter, account.tutorial_done ? 1 : 0)));
             Monkeys = Math.Max(0, account.coins); traits.Restore(account.unlocked);
         }
         private static AccountSettings Sanitize(double weight, int style, double goal) => new AccountSettings
