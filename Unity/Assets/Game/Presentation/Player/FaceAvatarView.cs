@@ -20,7 +20,7 @@ namespace Mongscape.Presentation
                 }
                 badge=GameObject.CreatePrimitive(PrimitiveType.Quad).transform;badge.name="PlayerFaceBadge";badge.SetParent(transform,false);
                 Destroy(badge.GetComponent<Collider>()); badge.localScale=new Vector3(.55f,.62f,1);
-                var shader=Resources.Load<Shader>("MuhanokUI/FacePhoto")??Shader.Find("Universal Render Pipeline/Unlit");
+                var shader=RuntimeShader.Find(Resources.Load<Shader>("MuhanokUI/FacePhoto"),"Universal Render Pipeline/Unlit",RuntimeShader.Lit);
                 material=new Material(shader);if(material.HasProperty("_Cull"))material.SetFloat("_Cull",0);
                 badgeRenderer=badge.GetComponent<Renderer>();badgeRenderer.sharedMaterial=material;
             }

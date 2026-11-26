@@ -39,7 +39,7 @@ namespace Mongscape.Presentation.Map
                 view.monkey = GameObject.CreatePrimitive(PrimitiveType.Capsule); view.monkey.name = "WallMonkey";
                 Destroy(view.monkey.GetComponent<Collider>()); view.monkey.transform.SetParent(root.transform, false);
                 view.monkey.transform.localScale = new Vector3(.5f, .6f, .5f);
-                view.monkey.GetComponent<Renderer>().sharedMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit")) { color = new Color(.55f, .36f, .2f) };
+                view.monkey.GetComponent<Renderer>().sharedMaterial = new Material(RuntimeShader.Find(RuntimeShader.Lit)) { color = new Color(.55f, .36f, .2f) };
             }
             if (art != null && art.Rescue != null)
             {
@@ -61,7 +61,7 @@ namespace Mongscape.Presentation.Map
                 wall = new GameObject(name); wall.transform.SetParent(parent, false);
                 var slab = GameObject.CreatePrimitive(PrimitiveType.Cube); Destroy(slab.GetComponent<Collider>());
                 slab.transform.SetParent(wall.transform, false); slab.transform.localPosition = new Vector3(0, 1.6f, .35f); slab.transform.localScale = new Vector3(3f, 3.2f, .5f);
-                slab.GetComponent<Renderer>().sharedMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit")) { color = new Color(.72f, .67f, .6f) };
+                slab.GetComponent<Renderer>().sharedMaterial = new Material(RuntimeShader.Find(RuntimeShader.Lit)) { color = new Color(.72f, .67f, .6f) };
             }
             anchor = FindDeep(wall.transform, "MonkeyAnchor");
             if (anchor == null) { anchor = new GameObject("MonkeyAnchor").transform; anchor.SetParent(wall.transform, false); }

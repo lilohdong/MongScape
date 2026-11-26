@@ -34,13 +34,15 @@ namespace Mongscape.Presentation.Map
             door = Place(art != null ? art.CellDoor : null, "CellDoor", root, new Vector3(WallX, 0, 0), Quaternion.Euler(0, -90, 0));
             if (door != null && art != null && art.CellDoorMotion != null)
             {
-                doorMotion = door.GetComponentInChildren<Animator>() ?? door.gameObject.AddComponent<Animator>();
+                doorMotion = door.GetComponentInChildren<Animator>();
+                if (doorMotion == null) doorMotion = door.gameObject.AddComponent<Animator>();
                 doorMotion.runtimeAnimatorController = art.CellDoorMotion; doorMotion.speed = 0f;
             }
             lamp = Place(art != null ? art.Searchlight : null, "Searchlight", root, new Vector3(-WallX, LampY, 0), Quaternion.Euler(0, 90, 0));
             if (lamp != null && art != null && art.SearchlightMotion != null)
             {
-                var motion = lamp.GetComponentInChildren<Animator>() ?? lamp.gameObject.AddComponent<Animator>();
+                var motion = lamp.GetComponentInChildren<Animator>();
+                if (motion == null) motion = lamp.gameObject.AddComponent<Animator>();
                 motion.runtimeAnimatorController = art.SearchlightMotion;
             }
             var light = new GameObject("SearchlightSpot"); light.transform.SetParent(root, false);
@@ -65,7 +67,8 @@ namespace Mongscape.Presentation.Map
             var bar = GameObject.CreatePrimitive(PrimitiveType.Cube); bar.name = name;
             Destroy(bar.GetComponent<Collider>());
             bar.transform.SetParent(parent, false); bar.transform.localPosition = position;
-            var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
+            // The fork deck's flat unlit colour keeps the gauge looking the same under the corridor lights.
+            var shader = RuntimeShader.Find(Resources.Load<Shader>("MuhanokUI/ForkSurface"), RuntimeShader.Lit);
             material = new Material(shader) { color = color };
             if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", color);
             var renderer = bar.GetComponent<Renderer>(); renderer.sharedMaterial = material;

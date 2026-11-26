@@ -400,7 +400,7 @@ namespace Mongscape.Presentation.Map
         private static Material Material(Color color)
         {
             if (materials.TryGetValue(color, out var material) && material != null) return material;
-            var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+            var shader = RuntimeShader.Find(RuntimeShader.Lit, "Standard");
             material = new Material(shader) { color = color };
             if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", color);
             if (material.HasProperty("_Smoothness")) material.SetFloat("_Smoothness", .25f);
