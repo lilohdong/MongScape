@@ -1,0 +1,15 @@
+{
+  "name": "Mongscape.Presentation",
+  "autoReferenced": true,
+  "references": [
+    "Mongscape.Application",
+    "Mongscape.Domain",
+    "Mongscape.LegacyCore",
+    "Unity.Cinemachine",
+    "Unity.RenderPipelines.Core.Runtime",
+    "Unity.RenderPipelines.GPUDriven.Runtime",
+    "Unity.RenderPipelines.Universal.Runtime",
+    "Unity.Timeline"
+  ],
+  "noEngineReferences": false
+}

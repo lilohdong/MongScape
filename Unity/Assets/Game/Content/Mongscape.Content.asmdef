@@ -1,0 +1,8 @@
+{
+  "name": "Mongscape.Content",
+  "autoReferenced": true,
+  "references": [
+    "Mongscape.Domain"
+  ],
+  "noEngineReferences": false
+}

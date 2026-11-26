@@ -1,0 +1,15 @@
+{
+  "name": "Mongscape.Bootstrap",
+  "autoReferenced": true,
+  "references": [
+    "Mongscape.Application",
+    "Mongscape.Domain",
+    "Mongscape.Infrastructure",
+    "Mongscape.Presentation",
+    "Mongscape.Content",
+    "Mongscape.LegacyCore",
+    "Unity.Timeline",
+    "Unity.Cinemachine"
+  ],
+  "noEngineReferences": false
+}

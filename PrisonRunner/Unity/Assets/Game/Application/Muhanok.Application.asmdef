@@ -1,9 +1,0 @@
-{
-  "name": "Muhanok.Application",
-  "autoReferenced": true,
-  "references": [
-    "Muhanok.Domain",
-    "Muhanok.LegacyCore"
-  ],
-  "noEngineReferences": false
-}

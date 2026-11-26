@@ -76,28 +76,28 @@ flowchart LR
 
 ## 얼굴 로그인 서버
 
-`PrisonRunner/Services/Identity`에 있는 Python 서버가 얼굴 로그인과 계정을 맡습니다. OpenCV의 YuNet으로 얼굴을 찾고 SFace로 얼굴마다 다른 숫자 값을 뽑습니다. 얼굴 사진은 저장하지 않고 이 값만 PostgreSQL 17에 넣습니다.
+`Services/Identity`에 있는 Python 서버가 얼굴 로그인과 계정을 맡습니다. OpenCV의 YuNet으로 얼굴을 찾고 SFace로 얼굴마다 다른 숫자 값을 뽑습니다. 얼굴 사진은 저장하지 않고 이 값만 PostgreSQL 17에 넣습니다.
 
 서버는 Docker Compose로 Caddy, API, PostgreSQL을 묶어 VPS에 올렸습니다. 한 사람이 요청을 너무 자주 보내면 잠시 막고, 압축을 풀면 크기가 터무니없이 커지는 이미지는 받지 않습니다. DB는 매일 백업하고 14일치를 남깁니다.
 
-서버가 없어도 게임은 됩니다. 얼굴 로그인만 안 될 뿐 게스트로 키보드와 몸동작 플레이를 모두 할 수 있습니다. 서버 주소를 정하는 방법은 [처음 실행하기](PrisonRunner/START_HERE.md)에, 서버를 띄우는 방법은 [서버 안내](PrisonRunner/Services/Identity/README_DOCKER.md)에 있습니다.
+서버가 없어도 게임은 됩니다. 얼굴 로그인만 안 될 뿐 게스트로 키보드와 몸동작 플레이를 모두 할 수 있습니다. 서버 주소를 정하는 방법은 [처음 실행하기](START_HERE.md)에, 서버를 띄우는 방법은 [서버 안내](Services/Identity/README_DOCKER.md)에 있습니다.
 
 회원가입 때는 만 14세 이상 확인, 개인정보 수집, 얼굴 특징값 수집 동의를 따로따로 받습니다. 동의하지 않아도 게스트로 할 수 있습니다.
 
 ## 개발
 
-Unity 6000.3.10f1로 `PrisonRunner/Unity`를 열고 메뉴의 **Mongscape → Play GameScene**을 누릅니다. Windows 실행 파일은 **Mongscape → Build Windows Demo**로 만듭니다.
+Unity 6000.3.10f1로 `Unity`를 열고 메뉴의 **Mongscape → Play GameScene**을 누릅니다. Windows 실행 파일은 **Mongscape → Build Windows Demo**로 만듭니다.
 
 테스트는 Unity EditMode와 PlayMode에 261개, 서버에 30개 있습니다. 웹캠 동작을 녹화해 두고 카메라 없이 다시 재생해서 판정이 바뀌지 않았는지 확인하는 테스트도 있습니다.
 
 | 더 볼 문서 | |
 | --- | --- |
-| [처음 실행하기](PrisonRunner/START_HERE.md) | 실행 순서, 조작, 서버 주소 |
-| [아키텍처](PrisonRunner/docs/ARCHITECTURE.md) | 계정, 몸동작, 저장 구조 |
-| [몸동작 안내](PrisonRunner/docs/BODY_TRACKING.md) | 손 메뉴와 보정 |
-| [진행 상태](PrisonRunner/docs/PROGRESS.md) | 검사한 것과 남은 일 |
-| [문서 목록](PrisonRunner/docs/README.md) | 전체 문서 |
-| [외부 리소스](PrisonRunner/THIRD_PARTY_NOTICES.md) | Kenney, Mixamo, 글꼴의 사용 조건 |
+| [처음 실행하기](START_HERE.md) | 실행 순서, 조작, 서버 주소 |
+| [아키텍처](docs/ARCHITECTURE.md) | 계정, 몸동작, 저장 구조 |
+| [몸동작 안내](docs/BODY_TRACKING.md) | 손 메뉴와 보정 |
+| [진행 상태](docs/PROGRESS.md) | 검사한 것과 남은 일 |
+| [문서 목록](docs/README.md) | 전체 문서 |
+| [외부 리소스](THIRD_PARTY_NOTICES.md) | Kenney, Mixamo, 글꼴의 사용 조건 |
 
 Mixamo 원본 동작 파일은 저장소에 넣지 않았습니다. 받는 방법은 외부 리소스 문서에 있습니다. 개인 DB, 얼굴 데이터, 토큰, 설치마다 다른 서버 설정도 Git에 올리지 않습니다.
 

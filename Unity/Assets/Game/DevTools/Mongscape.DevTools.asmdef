@@ -1,0 +1,17 @@
+{
+  "name": "Mongscape.DevTools",
+  "references": [
+    "Mongscape.Application",
+    "Mongscape.Domain",
+    "Mongscape.Infrastructure",
+    "Mongscape.Presentation",
+    "Mongscape.Content",
+    "Mongscape.LegacyCore",
+    "Mongscape.Bootstrap",
+    "Unity.Timeline",
+    "Unity.Cinemachine"
+  ],
+  "autoReferenced": false,
+  "defineConstraints": ["UNITY_EDITOR || DEVELOPMENT_BUILD"],
+  "noEngineReferences": false
+}

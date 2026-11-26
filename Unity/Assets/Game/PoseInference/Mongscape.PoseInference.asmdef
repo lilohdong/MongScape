@@ -1,0 +1,27 @@
+{
+    "name": "Mongscape.PoseInference",
+    "rootNamespace": "Mongscape.PoseInference",
+    "references": [
+        "Unity.InferenceEngine",
+        "Mongscape.Domain",
+        "Mongscape.Application",
+        "Mongscape.Infrastructure"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "MUHANOK_INFERENCE"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.unity.ai.inference",
+            "expression": "2.2.0",
+            "define": "MUHANOK_INFERENCE"
+        }
+    ],
+    "noEngineReferences": false
+}

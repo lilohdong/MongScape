@@ -1,0 +1,5 @@
+{
+  "name": "Mongscape.PlayModeTests",
+  "references": ["Mongscape.Domain", "Mongscape.Application", "Mongscape.Infrastructure", "Mongscape.Presentation", "Mongscape.Bootstrap", "Mongscape.Content", "Unity.Cinemachine", "Unity.Timeline", "Unity.InputSystem", "Unity.RenderPipelines.Universal.Runtime"],
+  "optionalUnityReferences": ["TestAssemblies"]
+}

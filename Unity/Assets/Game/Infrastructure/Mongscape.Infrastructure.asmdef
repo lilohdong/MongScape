@@ -1,0 +1,11 @@
+{
+  "name": "Mongscape.Infrastructure",
+  "autoReferenced": true,
+  "references": [
+    "Mongscape.Application",
+    "Mongscape.Domain",
+    "Mongscape.LegacyCore",
+    "Unity.InputSystem"
+  ],
+  "noEngineReferences": false
+}
