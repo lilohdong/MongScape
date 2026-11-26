@@ -93,11 +93,39 @@ namespace Mongscape.Domain
             if (local < CartFork.Decision || choices.ContainsKey(c) || !ForkCycle(c)) return;
             lane = Math.Max(-1, Math.Min(1, lane)); choices[c] = lane;
             // The three directions are shuffled each lap; the signs and the preview show where each leads (exercise plan 3).
-            int[] lap = ExtendedLap(destinations[c][lane + 1]);
-            PlaceStairs(c, start, lap, destinations[c][lane + 1]);
-            for (int i = CartFork.ConnectorChunk; i < lap.Length; i++) types[start + i] = lap[i];
-            RebuildBases(start + CartFork.ConnectorChunk);
+            int destination = destinations[c][lane + 1];
+            int[] lap = CustomLap(destination, c) ?? ExtendedLap(destination);
+            if (!branchLayouts.ContainsKey(destination)) PlaceStairs(c, start, lap, destination);
+            // A custom branch can be longer or shorter than the placeholder: splice it in and move the later laps.
+            int from = start + CartFork.ConnectorChunk, end = c + 1 < starts.Count ? starts[c + 1] : types.Count;
+            types.RemoveRange(from, end - from); cycles.RemoveRange(from, end - from);
+            for (int i = CartFork.ConnectorChunk; i < lap.Length; i++) { types.Insert(start + i, lap[i]); cycles.Insert(start + i, c); }
+            int shift = (start + lap.Length) - end;
+            for (int k = c + 1; k < starts.Count; k++) starts[k] += shift;
+            RebuildBases(from);
         }
+        // Branch hook (v2 maps): a map that lays out its own branch registers the chunk types from CartFork.DestinationChunk
+        // to the end of the lap (its return chunk included) for a lap index. The lap may be any length; laps after it move.
+        // A registered branch gets no random stairs. Without one the branch keeps the default 18-chunk layout.
+        private readonly Dictionary<int, Func<int, int[]>> branchLayouts = new Dictionary<int, Func<int, int[]>>();
+        public void SetBranchLayout(int destination, Func<int, int[]> chunksForLap)
+        {
+            if (chunksForLap == null) branchLayouts.Remove(destination); else branchLayouts[destination] = chunksForLap;
+        }
+        public void SetBranchLayout(SectionKind kind, Func<int, int[]> chunksForLap) => SetBranchLayout(SectionDef.DestinationOf(kind), chunksForLap);
+        private int[] CustomLap(int destination, int lapIndex)
+        {
+            if (!branchLayouts.TryGetValue(destination, out var layout)) return null;
+            int[] branch = layout(lapIndex);
+            if (branch == null || branch.Length == 0) return null;
+            var lap = new List<int>(ExtendedLap(destination));
+            lap.RemoveRange(CartFork.DestinationChunk, lap.Count - CartFork.DestinationChunk);
+            lap.AddRange(branch);
+            return lap.ToArray();
+        }
+        // Chunks in a lap (18 unless a branch layout changed it).
+        public int LapChunks(int lapIndex) { while (lapIndex + 1 >= starts.Count) AppendLap(); return starts[lapIndex + 1] - starts[lapIndex]; }
+        public int LapStart(int lapIndex) { while (lapIndex >= starts.Count) AppendLap(); return starts[lapIndex]; }
         public int DestinationAt(int sequence)
         {
             int c = CycleAt(sequence);

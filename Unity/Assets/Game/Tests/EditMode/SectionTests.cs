@@ -24,6 +24,25 @@ namespace Mongscape.Tests
             return plan;
         }
 
+        [TestCase(SectionKind.Zoo, 25)][TestCase(SectionKind.Prison, 6)]
+        public void BranchLayoutHookSetsTheBranchLength(SectionKind kind, int branchChunks)
+        {
+            var plan = new RoutePlan(new RunConfig(), 3);
+            int type = kind == SectionKind.Zoo ? 12 : 4;
+            plan.SetBranchLayout(kind, lap => { var b = new int[branchChunks]; for (int i = 0; i < b.Length; i++) b[i] = type; b[b.Length - 1] = kind == SectionKind.Zoo ? 3 : RouteSurface.PrisonExit; return b; });
+            // Generate the next lap first so the splice has to move it.
+            Assert.AreEqual(0, plan.CycleAt(RoutePlan.ExtendedLapChunks - 1)); plan.TypeAt(RoutePlan.ExtendedLapChunks * 2);
+            int lane = 0; for (int l = -1; l <= 1; l++) if (SectionDef.KindOfDestination(plan.DestinationFor(CartFork.FirstChunk, l)) == kind) lane = l;
+            plan.UpdateChoice(CartFork.Decision + 1, lane);
+            int length = CartFork.DestinationChunk + branchChunks;
+            Assert.AreEqual(length, plan.LapChunks(0)); Assert.AreEqual(length, plan.LapStart(1));
+            for (int i = CartFork.DestinationChunk; i < length - 1; i++) Assert.AreEqual(type, plan.TypeAt(i));
+            Assert.AreEqual(0, plan.CycleAt(length - 1)); Assert.AreEqual(1, plan.CycleAt(length));
+            Assert.AreEqual(kind, SectionSpan.At(plan, length - 2).Kind);
+            Assert.AreEqual(SectionKind.Mine, SectionSpan.At(plan, length).Kind);
+            Assert.AreEqual(0, plan.LocalSequence(length));
+            for (int i = 0; i < length * 2; i++) Assert.AreEqual(plan.BaseHeight(i) + RouteSurface.Rise(plan.TypeAt(i)), plan.BaseHeight(i + 1), .001f);
+        }
         [Test] public void EachMapHasItsChaserAndRules()
         {
             Assert.AreEqual(ChaserKind.Police, SectionDef.Mine.Chaser.Kind);
