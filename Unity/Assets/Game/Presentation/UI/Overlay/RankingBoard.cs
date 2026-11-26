@@ -101,8 +101,9 @@ namespace Mongscape.Presentation
             });
         }
 
-        void ShowLocal(List<RankingEntry> list)
+        void ShowLocal(List<RankingEntry> view)
         {
+            var list = BestPerName(view, MineEntry);
             for (int i = 0; i < list.Count; i++)
             {
                 var row = new RankingRow { Rank = i + 1, Name = list[i].Name ?? "", Score = list[i].Score, Member = list[i].Member, Distance = list[i].Distance };
@@ -114,14 +115,33 @@ namespace Mongscape.Presentation
         public bool MembersMissing { get; private set; }
         public const string MembersMissingText = "회원 기록 연결 안 됨\n이 PC 기록만 표시";
 
-        // This PC's guest runs (every run) and the server's members (best run each), by score; ties keep the guest first.
+        // One row per player in this PC's list (best first): a guest name, or a member (account id), keeps its best run.
+        // The run just finished always stays: it stands for its name when it is the best, else it is listed beside the best.
+        public static List<RankingEntry> BestPerName(IList<RankingEntry> list, RankingEntry mineEntry)
+        {
+            string mineKey = mineEntry != null && list.Contains(mineEntry) ? PlayerKey(mineEntry) : null;
+            var seen = new HashSet<string>();
+            var kept = new List<RankingEntry>();
+            foreach (var entry in list)
+            {
+                if (entry == null) continue;
+                string key = PlayerKey(entry);
+                if (entry == mineEntry) { seen.Add(key); kept.Add(entry); continue; }
+                if (key == mineKey && mineEntry.Score >= entry.Score) continue;
+                if (seen.Add(key)) kept.Add(entry);
+            }
+            return kept;
+        }
+        static string PlayerKey(RankingEntry entry) => entry.Member ? "m:" + entry.AccountId : "g:" + (entry.Name ?? "").Trim();
+
+        // This PC's guests (best run per name) and the server's members (best run each), by score; ties keep the guest first.
         // This PC's member runs are left out because the server already has them, except a member run that just finished
         // and is not on the server yet (its upload is still on the way), which stands in for that member's server row.
         public static List<RankingRow> Combined(IList<RankingEntry> local, LeaderboardReply reply, RankingEntry mineEntry, out RankingRow mine)
         {
             mine = null;
             var guests = new List<RankingEntry>();
-            foreach (var entry in local) if (entry != null && !entry.Member) guests.Add(entry);
+            foreach (var entry in BestPerName(local, mineEntry)) if (!entry.Member) guests.Add(entry);
             var members = new List<RankingRow>();
             int serverMine = reply.me != null && reply.me.rank > 0 ? reply.me.rank : 0;
             // Only a run on this view (its play style and period) can stand in for the member's server row.

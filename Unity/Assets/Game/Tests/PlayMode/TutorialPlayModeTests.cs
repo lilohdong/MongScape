@@ -93,9 +93,11 @@ namespace Mongscape.Tests
             game.OpenMainMenu();hud.SelectMenu(MenuAction.Tutorial);hud.ChooseTutorial(TutorialChoice.Start,PlayStyle.UpperBody,TutorialChapter.Basics);
             float deadline=Time.realtimeSinceStartup+10;
             while((game.IsLoading||game.Session.Flow.State!=GameFlowState.Running)&&Time.realtimeSinceStartup<deadline)yield return null;
-            Assert.AreEqual(PlayStyle.UpperBody,game.Tutorial.Script.Style);
-            CollectionAssert.AreEqual(new TutorialScript(TutorialChapter.Basics,PlayStyle.UpperBody).Steps,game.Tutorial.Script.Steps);
-            Assert.AreEqual(TutorialStep.Camera,game.Tutorial.Script.Steps[0],"Body styles check the camera first");Assert.AreEqual(TutorialStep.Calibrate,game.Tutorial.Script.Steps[1],"then calibrate before the first lesson");
+            // --mongscape-no-camera has no webcam to play a body style with: the keyboard is chosen instead.
+            var style=CameraAccess.Disabled?PlayStyle.Keyboard:PlayStyle.UpperBody;
+            Assert.AreEqual(style,game.Tutorial.Script.Style);
+            CollectionAssert.AreEqual(new TutorialScript(TutorialChapter.Basics,style).Steps,game.Tutorial.Script.Steps);
+            if(!CameraAccess.Disabled){Assert.AreEqual(TutorialStep.Camera,game.Tutorial.Script.Steps[0],"Body styles check the camera first");Assert.AreEqual(TutorialStep.Calibrate,game.Tutorial.Script.Steps[1],"then calibrate before the first lesson");}
             game.ExitToMenu();game.FaceLogout(false);
         }
 

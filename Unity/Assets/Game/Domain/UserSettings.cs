@@ -64,6 +64,11 @@ namespace Mongscape.Domain
         public System.Collections.Generic.List<string> UpdatedTutorialSeen = new System.Collections.Generic.List<string>();
         // Beat sync (zoo): how many milliseconds late the player's jump lands after the beat; measured in tutorial chapter 2.
         public int SyncOffsetMs = 0;
+        // True once the offset was measured (a measured 0 ms counts); settings saved before the flag count a nonzero value.
+        public bool SyncMeasured = false;
+        public const float DefaultCameraSync = .12f;
+        // The delay the zoo judges notes with: the measured one, else the usual camera delay; the keyboard has none.
+        public float ZooSyncSeconds(bool camera) => !camera ? 0f : SyncMeasured || SyncOffsetMs != 0 ? SyncOffsetMs / 1000f : DefaultCameraSync;
 
         public static readonly int[] FrameCaps = { 30, 60, 0 };
 

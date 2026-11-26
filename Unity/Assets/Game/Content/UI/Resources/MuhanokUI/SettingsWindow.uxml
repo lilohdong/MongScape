@@ -31,7 +31,7 @@
                         <ui:Toggle name="vsync" label="수직 동기화" class="settings-row" />
                         <ui:DropdownField name="shadow-quality" label="그림자" class="settings-row" />
                         <ui:Toggle name="ambient-occlusion" label="주변광 차폐 (입체감)" class="settings-row" />
-                        <ui:Slider name="detail-distance" label="소품·조명 표시 거리" low-value="0.5" high-value="1" class="settings-row" />
+                        <ui:Slider name="detail-distance" label="소품과 조명 표시 거리" low-value="0.5" high-value="1" class="settings-row" />
                         <ui:Toggle name="gpu-resident-drawer" label="반복 물체 묶어 그리기 (성능)" class="settings-row" />
                         <ui:Toggle name="fullscreen" label="전체 화면" class="settings-row" />
                     </ui:VisualElement>

@@ -19,7 +19,7 @@ namespace Mongscape.Presentation
         public static string Clock(double seconds) { int s = (int)Math.Round(Math.Max(0, double.IsNaN(seconds) ? 0 : seconds)); return (s / 60).ToString(Num) + ":" + (s % 60).ToString("00", Num); }
 
         // With "달리기 속도 조절" off, stepping earns nothing: the report shows one row, the time of the motion moments.
-        public const string MoveRowLabel = "동작", CadenceOffNote = "속도 조절 꺼짐 · 점프·숙이기·무릎·옆걸음만 칼로리";
+        public const string MoveRowLabel = "동작", CadenceOffNote = "속도 조절 꺼짐, 점프, 숙이기, 무릎, 옆걸음만 칼로리";
         public static bool CadenceOff(WorkoutEstimate workout) => workout != null && !workout.CadenceCounts;
         public static string IntensityTitle(WorkoutEstimate workout) => CadenceOff(workout) ? "동작한 시간" : "강도별 시간";
         // (label, seconds, share of the walking + running + sprinting time); cadence off: the motion-moment time alone.
@@ -43,8 +43,8 @@ namespace Mongscape.Presentation
         {
             var rows = new List<KeyValuePair<string, string>>();
             if (stats == null) return rows;
-            rows.Add(new KeyValuePair<string, string>("이번 주", Kcal(stats.week_kcal) + " · " + Minutes(stats.week_seconds)));
-            rows.Add(new KeyValuePair<string, string>("지난주", Kcal(stats.last_week_kcal) + " · " + Minutes(stats.last_week_seconds)));
+            rows.Add(new KeyValuePair<string, string>("이번 주", Kcal(stats.week_kcal) + "  " + Minutes(stats.week_seconds)));
+            rows.Add(new KeyValuePair<string, string>("지난주", Kcal(stats.last_week_kcal) + "  " + Minutes(stats.last_week_seconds)));
             return rows;
         }
         // "하루 평균 12% 더", "하루 평균 5% 덜", "지난주 기록 없음" (by calories; short enough for the 162 px column). This week is only part done, so it is
@@ -53,7 +53,7 @@ namespace Mongscape.Presentation
         public static string WeekChange(StatsReply stats, DateTime utcNow)
         {
             if (stats == null) return "";
-            if (stats.last_week_kcal <= 0) return stats.week_kcal > 0 ? "지난주 기록 없음 · 이번 주가 시작이에요" : "";
+            if (stats.last_week_kcal <= 0) return stats.week_kcal > 0 ? "지난주 기록 없음, 이번 주가 시작이에요" : "";
             var today = ExerciseLog.Kst(utcNow);
             int days = (today - ExerciseLog.WeekStart(today)).Days + 1;
             double now = stats.week_kcal / days, before = stats.last_week_kcal / 7;

@@ -105,7 +105,7 @@ namespace Mongscape.DevTools
         private void ChapterAt(string name)
         {
             result.chapters.Add(new Chapter{name=name,seconds=(float)(Time.realtimeSinceStartupAsDouble-started),distance=game?.Session.Runner.Z??0});
-            Debug.Log("GAMEPLAY_RECORDING_CHAPTER: "+name+" · "+Mathf.RoundToInt(game?.Session.Runner.Z??0)+"m");
+            Debug.Log("GAMEPLAY_RECORDING_CHAPTER: "+name+"  "+Mathf.RoundToInt(game?.Session.Runner.Z??0)+"m");
         }
         private void Update()
         {
@@ -117,7 +117,7 @@ namespace Mongscape.DevTools
             {
                 if(type==0&&(previousType<0||previousType>3))ChapterAt("광산");
                 else if(type==1&&previousType==0)ChapterAt("수레 철로");
-                else if(type==7)ChapterAt("감옥 진입 · 하이니");
+                else if(type==7)ChapterAt("감옥 진입, 하이니");
                 else if(type==4&&previousType!=5)ChapterAt("감옥 구간");
                 else if(type==12&&previousType!=12)ChapterAt("동물원 구간");previousType=type;
             }
@@ -129,7 +129,7 @@ namespace Mongscape.DevTools
                 else if(animated is FallenTreeHazard)result.animalsSeen|=4;
             }
             if((before^result.animalsSeen)!=0)ChapterAt((result.animalsSeen^before)==1?"기린 목 장애물":(result.animalsSeen^before)==2?"코끼리 코 장애물":"쓰러지는 나무");
-            if(run.SlipStrikes>result.bananaHits){result.bananaHits=run.SlipStrikes;firstSlip=z;deliberatePeel=null;ChapterAt(run.SlipStrikes==1?"바나나 접촉 · 사이렌 경고":"두 번째 바나나 · 경찰 추격");}
+            if(run.SlipStrikes>result.bananaHits){result.bananaHits=run.SlipStrikes;firstSlip=z;deliberatePeel=null;ChapterAt(run.SlipStrikes==1?"바나나 접촉, 사이렌 경고":"두 번째 바나나, 경찰 추격");}
             if(run.Runner.Riding)
             {
                 var plan=RouteSurface.ActivePlan;

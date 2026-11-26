@@ -79,7 +79,7 @@ GUI.Label(new Rect(195,500,420,30),RunHudModel.KeyboardKcal,skin.Style(17,FontSt
         public const string CadenceOffHint = "꺼짐: 걸음은 칼로리에서 빠져요";
         // Under the cadence button, inside the panel and clear of 시작하기 (584).
         public static readonly Rect CadenceOffHintRect = new Rect(640, 544, 450, 32);
-        public const string NoCameraGuide = "카메라가 연결되어 있지 않아 키보드로만 플레이할 수 있어요. 카메라를 연결하면 전신·상체를 고를 수 있어요.";
+        public const string NoCameraGuide = "카메라가 연결되어 있지 않아 키보드로만 플레이할 수 있어요. 카메라를 연결하면 전신이나 상체를 고를 수 있어요.";
         private bool Choice(Rect rect, string text, bool selected, bool enabled = true)
         {
             skin.Card(rect, selected ? Palette.Gold : enabled ? Palette.Panel : Palette.A(Palette.Panel, .35f));

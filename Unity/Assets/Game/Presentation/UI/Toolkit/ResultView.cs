@@ -26,6 +26,8 @@ namespace Mongscape.Presentation
         readonly UiButton retry, calibrate, menu, moreButton, moreClose, infoClose;
         readonly VisualElement mineRow; readonly Label mineRank, mineName, mineScore, mineDistance;
         readonly List<VisualElement> ghosts = new List<VisualElement>();
+        // The ranking rows in list order with their top inside the scrolled content (partly visible rows are hidden).
+        readonly List<KeyValuePair<VisualElement, float>> tableRows = new List<KeyValuePair<VisualElement, float>>();
         readonly VisualElement moreBody;
         RankingBoard board; IHudData data; RunSession session;
         ShapeElement modeIcon; PlayStyle modeStyle; Label keyboardNote; UiButton kcalButtonRef;
@@ -315,7 +317,7 @@ namespace Mongscape.Presentation
             {
                 Section(right, "지난주 같은 요일까지");
                 var change = WorkoutReport.WeekChange(data.LastStats);
-                if (change.Length > 0) right.Add(UiTokens.Label(change.Replace(" · ", "  "), 44, UiTokens.Text));
+                if (change.Length > 0) right.Add(UiTokens.Label(change, 44, UiTokens.Text));
             }
             var who = UiTokens.Label("WHO 권장 주 150분", 36, UiTokens.TextDim); who.style.marginTop = 24; right.Add(who);
         }
@@ -389,13 +391,15 @@ namespace Mongscape.Presentation
             if (index >= 0)
             {
                 float rowY = index * RowPitch;
-                float scroll = Mathf.Clamp(rowY + MineH / 2 - viewH / 2, 0, Mathf.Max(0, count * RowPitch + (MineH - RowH) - viewH));
+                float scroll = SnapScroll(rowY + MineH / 2 - viewH / 2, count * RowPitch + (MineH - RowH) - viewH);
                 content.style.top = -scroll;
+                ShowWholeRows(scroll, viewH);
                 target = PanelTop + 18 + rowY - scroll - (MineH - RowH) / 2;
             }
             else
             {
                 content.style.top = 0;
+                ShowWholeRows(0, viewH);
                 target = PanelBottom - 18 - MineH;
             }
             target = Mathf.Clamp(target, PanelTop + 8, PanelBottom - 8 - MineH);
@@ -409,6 +413,18 @@ namespace Mongscape.Presentation
                 UiTokens.Show(ghosts[i], on);
                 ghosts[i].style.top = Mathf.Lerp(1100, target, UiTokens.EaseOut((t - .06f * (i + 1)) / RiseSeconds));
             }
+        }
+
+        // The table scrolls by whole rows, so the top row is never cut; rows that do not fit whole are not drawn.
+        public static float SnapScroll(float wanted, float max)
+        {
+            if (max <= 0) return 0;
+            return Mathf.Clamp(Mathf.Round(wanted / RowPitch), 0, Mathf.Ceil(max / RowPitch)) * RowPitch;
+        }
+        void ShowWholeRows(float scroll, float viewH)
+        {
+            foreach (var row in tableRows)
+                row.Key.style.visibility = row.Value - scroll >= -.5f && row.Value - scroll + RowH <= viewH + .5f ? Visibility.Visible : Visibility.Hidden;
         }
 
         // The run is not on the board yet (still saving, or this PC's list did not mark it): it is placed by its score,
@@ -431,7 +447,7 @@ namespace Mongscape.Presentation
 
         void BuildRows()
         {
-            content.Clear();
+            content.Clear(); tableRows.Clear();
             statusText.text = board == null ? "" : board.StatusText;
             UiTokens.Show(statusText, statusText.text.Length > 0 && rowsCount == 0);
             if (board == null) return;
@@ -457,7 +473,7 @@ namespace Mongscape.Presentation
                     var score = UiTokens.Label(UiTokens.N(r.Score), 52, UiTokens.Text, TextAnchor.MiddleRight); var dist = UiTokens.Label(UiTokens.N(Mathf.FloorToInt(r.Distance)) + " m", 44, UiTokens.TextDim, TextAnchor.MiddleRight);
                     RowLayout(row, rank, name, score, dist, RowH);
                 }
-                content.Add(row);
+                content.Add(row); tableRows.Add(new KeyValuePair<VisualElement, float>(row, y));
             }
             if (pinned == 1)
             {
