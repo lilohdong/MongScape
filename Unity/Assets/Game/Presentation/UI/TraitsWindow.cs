@@ -184,7 +184,6 @@ namespace Mongscape.Presentation
         private void Update()
         {
             if (!IsOpen || data == null) return;
-            if (Input.GetKeyDown(KeyCode.Escape)) { if (chosen != null) Choose(null); else Close(); return; }
             // The server's answer (prices, a new balance) arrives later: refresh when the numbers move.
             int version = data.Monkeys * 1000 + TraitVersion();
             if (version != shownVersion) { shownVersion = version; Refresh(); }
@@ -200,6 +199,9 @@ namespace Mongscape.Presentation
         private void OnGUI()
         {
             if (!IsOpen || root == null) return;
+            // Esc: closes the detail box, then the screen (IMGUI event; the project reads keys through the Input System).
+            var e = Event.current;
+            if (e.type == EventType.KeyDown && e.keyCode == KeyCode.Escape) { e.Use(); if (chosen != null) Choose(null); else Close(); return; }
             var old = GUI.matrix; GUI.matrix = ViewportLayout.GuiMatrix; GesturePointer.BeginPass();
             var screen = GUI.matrix.MultiplyPoint3x4(GesturePointer.Position);
             var panelPoint = new Vector2(screen.x / Mathf.Max(1, Screen.width) * root.layout.width, screen.y / Mathf.Max(1, Screen.height) * root.layout.height);

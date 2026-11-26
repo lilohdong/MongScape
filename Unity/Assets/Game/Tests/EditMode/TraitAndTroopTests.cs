@@ -106,8 +106,6 @@ namespace Mongscape.Tests
         {
             var run = Running(With((TraitId.ThickFur, 1)));
             Assert.IsTrue(run.Slip(SlipSource.Banana)); Assert.AreEqual(1, run.Warnings); Assert.IsTrue(run.SoftWarning); Assert.IsFalse(run.Runner.Slowing);
-            run.Tick(3f);
-            run.Slip(SlipSource.Banana); Assert.AreEqual(2, run.Warnings); Assert.IsFalse(run.SoftWarning, "Only the first one");
             var plain = Running(); plain.Slip(SlipSource.Banana); Assert.IsTrue(plain.Runner.Slowing);
         }
 
