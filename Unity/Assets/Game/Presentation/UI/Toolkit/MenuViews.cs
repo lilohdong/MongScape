@@ -193,7 +193,7 @@ namespace Mongscape.Presentation
             track = UiTokens.Box(10, 10, 280, 100); UiTokens.Radius(track, 50); toggle.Add(track);
             knob = UiTokens.Box(0, 8, 84, 84); UiTokens.Radius(knob, 42); knob.style.backgroundColor = UiTokens.Text; track.Add(knob);
             speedState = UiTokens.Label("", 56, UiTokens.Accent); UiTokens.Absolute(speedState, 820, 45, 300, 80); speedRow.Add(speedState);
-            keyHint = UiTokens.Label("A D 옆으로    Space 점프    S 숙이기    W 무릎", 44, UiTokens.TextDim, TextAnchor.MiddleCenter); UiTokens.Absolute(keyHint, 0, 50, 1310, 70); panel.Add(keyHint);
+            keyHint = UiTokens.Label("F J 번갈아 달리기    A D 옆으로    Space 점프    S 숙이기    W 무릎", 38, UiTokens.TextDim, TextAnchor.MiddleCenter); UiTokens.Absolute(keyHint, 0, 50, 1310, 70); panel.Add(keyHint);
             var back = Gestures.Add(new UiButton("뒤로", false, () => Back?.Invoke(), 64, MenuIcons.Back(UiTokens.Text))); UiTokens.Absolute(back, 90, 900, 300, 120); frame.Add(back);
             var go = Gestures.Add(new UiButton("시작", true, () => Start?.Invoke(), 72, MenuIcons.Play(UiTokens.Panel))); UiTokens.Absolute(go, 1830 - 420, 900, 420, 130); frame.Add(go);
             Root.Visible = false;

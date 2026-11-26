@@ -117,11 +117,12 @@ namespace Mongscape.DevTools
                 return;
             }
             if (zoo != null && zoo.Chase.Active)
-                for (int i = 0; i < zoo.Chase.Map.Notes.Count; i++)
+                for (int i = 0; i < zoo.Chase.Obstacles.Count; i++)
                 {
-                    var note = zoo.Chase.Map.Notes[i];
-                    if (!zoo.Chase.IsJudged(i) && Mathf.Abs(note.Time - zoo.Chase.SongTime) < .08f)
-                        runner.Command(note.Kind == ZooNoteKind.Jump ? MotionCommand.Jump : MotionCommand.ArmsUp);
+                    var obstacle = zoo.Chase.Obstacles[i];
+                    float ahead = obstacle.Distance - zoo.Chase.Distance;
+                    if (!zoo.Chase.IsJudged(i) && ahead > 0f && ahead < 3f)
+                        runner.Command(obstacle.Kind == ZooNoteKind.Jump ? MotionCommand.Jump : MotionCommand.ArmsUp);
                 }
             if (run.Prison.Phase == PrisonPhase.Hold) runner.Command(MotionCommand.Crouch);
             if (StairJudge.StepDue(runner)) runner.Command(MotionCommand.KneeStep);

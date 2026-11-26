@@ -12,9 +12,9 @@ namespace Mongscape.Tests
 {
     public sealed class ZooPlayModeTests
     {
-        // Entering the zoo branch starts the song-paced chase: cut, then the song; the runner follows the song clock, the
-        // chunks carry no random hazards, and the notes, the gate and the lion are placed.
-        [UnityTest] public IEnumerator EnteringTheZooStartsTheSongPacedChase()
+        // Entering the zoo branch starts the chase: cut, then the run; the runner runs at the zoo base speed, the chunks carry
+        // no random hazards, the fences and bars, the gate and the lion are placed, and the main camera never draws the lion.
+        [UnityTest] public IEnumerator EnteringTheZooStartsTheChase()
         {
             yield return SceneManager.LoadSceneAsync("GameScene"); yield return null;
             var game = Object.FindFirstObjectByType<GameBootstrap>();
@@ -31,8 +31,8 @@ namespace Mongscape.Tests
             Assert.IsNotNull(ZooContent.Load().Music, "The zoo song is referenced");
             yield return new WaitUntil(() => zoo.Chase.Active || game.Session.Flow.State != GameFlowState.Running);
             Assert.IsTrue(zoo.Chase.Active, "The zoo chase starts at the zoo entrance");
-            Assert.Greater(zoo.Chase.Map.Notes.Count, 0, "A chart was loaded from ZooContent");
-            Assert.AreEqual(ZooTier.Easy, zoo.Chase.Map.Tier, "First visit is easy");
+            Assert.Greater(zoo.Chase.Obstacles.Count, 5, "Fences and bars are laid out");
+            Assert.AreEqual(ZooChase.SpacingFor(1), zoo.Chase.Obstacles[1].Distance - zoo.Chase.Obstacles[0].Distance, ZooChase.SpacingFor(1) * .2f, "First visit is the widest spacing");
             Assert.IsTrue(GameObject.Find("Zoo_Lion") != null || GameObject.Find("Zoo_Note") != null, "The lion is placed");
             yield return new WaitUntil(() => zoo.Chase.Phase == ZooPhase.Song || !zoo.Chase.Active);
             Assert.AreEqual(ZooPhase.Song, zoo.Chase.Phase);
@@ -45,8 +45,8 @@ namespace Mongscape.Tests
             yield return new WaitForSeconds(.2f);
             int moved = 0; for (int i = 1; i < bones.Length; i++) if (Quaternion.Angle(before[i], bones[i].localRotation) > 1f) moved++;
             Assert.Greater(moved, 3, "The run clip binds to the lion's bones");
-            float expected = zoo.Chase.EntryZ + zoo.Chase.DistanceAt(zoo.Chase.SongTime);
-            Assert.AreEqual(expected, game.Session.Runner.Z, 1.5f, "The runner follows the song clock");
+            Assert.AreEqual(ZooMapView.BaseSpeed, game.Session.CurrentSpeed, 1f, "The runner runs at the zoo base speed");
+            Assert.AreEqual(0, game.OutputCamera.cullingMask & (1 << ZooMapView.LionLayer), "The main camera never draws the lion");
             Assert.AreEqual(0, game.Session.Runner.Lane);
             foreach (var active in game.Map.Active)
             {

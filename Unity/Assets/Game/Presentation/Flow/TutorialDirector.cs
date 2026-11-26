@@ -373,7 +373,7 @@ namespace Mongscape.Presentation
                 case TutorialStep.Cadence: DrawPace(); break;
                 case TutorialStep.Rescue: TutorialPictures.Reach(skin, Mathf.Clamp01(reachFor / ReachSeconds)); break;
                 case TutorialStep.Sync: if (stationBegun) TutorialPictures.Beats(skin, now - (float)sync.Start, (float)BeatSync.Interval, BeatSync.LeadBeats, BeatSync.Beats, sync.Hits); break;
-                case TutorialStep.Verse: if (Zoo != null && Zoo.Chase.Practice && Zoo.Chase.Phase == ZooPhase.Song) TutorialPictures.Count(skin, Zoo.Chase.Hits, ZooPractice.PassHits(Zoo.Chase.Map.Notes.Count)); break;
+                case TutorialStep.Verse: if (Zoo != null && Zoo.Chase.Practice && Zoo.Chase.Phase == ZooPhase.Song) TutorialPictures.Count(skin, Zoo.Chase.Hits, ZooPractice.PassHits(Zoo.Chase.Obstacles.Count)); break;
                 case TutorialStep.WarnRule: TutorialPictures.WarnRule(skin, pictureFor / PictureSeconds); break;
                 case TutorialStep.AlarmRule: TutorialPictures.AlarmRule(skin, pictureFor / PictureSeconds); break;
             }
