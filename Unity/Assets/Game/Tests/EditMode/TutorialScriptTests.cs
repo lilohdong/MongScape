@@ -108,7 +108,7 @@ namespace Mongscape.Tests
             Assert.AreEqual(TutorialCourse.ForkLapStart - 1, TutorialCourse.PauseChunk, "The pause spot closes the warm-up");
             Assert.AreEqual(TutorialHazard.LaneBlock, TutorialCourse.HazardAt(TutorialCourse.LaneChunk));
             Assert.AreEqual(TutorialHazard.JumpRow, TutorialCourse.HazardAt(TutorialCourse.JumpChunk)); Assert.AreEqual(TutorialHazard.CrouchRow, TutorialCourse.HazardAt(TutorialCourse.CrouchChunk));
-            Assert.AreEqual(TutorialHazard.Bananas, TutorialCourse.HazardAt(TutorialCourse.BananaChunk)); Assert.AreEqual(TutorialHazard.None, TutorialCourse.HazardAt(TutorialCourse.RescueChunk));
+            Assert.AreEqual(TutorialHazard.Bananas, TutorialCourse.HazardAt(TutorialCourse.BananaChunk)); Assert.AreEqual(TutorialHazard.Rescue, TutorialCourse.HazardAt(TutorialCourse.RescueChunk));
             Assert.Less(TutorialCourse.HoldZ(TutorialChapter.Basics, TutorialStep.Cadence), TutorialCourse.LaneChunk * RouteSurface.Length, "The pace lesson holds before the lane lesson");
             Assert.Less(TutorialCourse.RestartZ(TutorialStep.Jump), TutorialCourse.JumpChunk * RouteSurface.Length + 7, "Restart is in front of the step's obstacle");
             Assert.Greater(TutorialCourse.RestartZ(TutorialStep.Jump), TutorialCourse.LaneChunk * RouteSurface.Length + TutorialCourse.LaneBlockZ, "and past the previous one");
@@ -129,7 +129,6 @@ namespace Mongscape.Tests
             Assert.AreEqual(7, prison.TypeAt(TutorialCourse.PrisonStairChunk), "The stair lesson is the prison stair chunk");
             Assert.IsTrue(RouteSurface.IsStair(prison.TypeAt(TutorialCourse.PrisonStairChunk)));
             Assert.AreEqual(TutorialCourse.PrisonStairChunk, TutorialCourse.ChunkOf(TutorialStep.Stair));
-            Assert.Less(TutorialCourse.RestartZ(TutorialStep.Stair), TutorialCourse.PrisonStairChunk * RouteSurface.Length, "A stair retry starts in front of it");
             Assert.Greater(TutorialCourse.HoldZ(TutorialChapter.Prison, TutorialStep.Hide), (TutorialCourse.PrisonStairChunk + 1) * RouteSurface.Length, "The searchlight waits after the stair");
         }
 
@@ -172,13 +171,8 @@ namespace Mongscape.Tests
         }
 
         [Test]
-        public void ArmPoseReadsTheReachAndTheHandsUp()
+        public void ArmPoseReadsTheHandsUp()
         {
-            Assert.IsFalse(ArmPose.Reach(Frame(.40f, .60f, .5f)), "Arms down are no reach");
-            Assert.IsTrue(ArmPose.Reach(Frame(.2f, .6f, .3f)), "One arm out to the side");
-            Assert.IsTrue(ArmPose.Reach(Frame(.4f, .8f, .3f)), "either side");
-            Assert.IsFalse(ArmPose.Reach(Frame(.2f, .8f, .3f)), "Both arms out is the T pose, not a reach");
-            Assert.IsFalse(ArmPose.Reach(null)); Assert.IsFalse(ArmPose.Reach(new PoseFrame()));
             Assert.IsTrue(ArmPose.HandsUp(Frame(.4f, .6f, .05f))); Assert.IsFalse(ArmPose.HandsUp(Frame(.4f, .6f, .5f)));
             Assert.IsFalse(ArmPose.HandsUp(Frame(.2f, .8f, .3f)), "The T pose has the hands level with the shoulders");
         }
@@ -210,21 +204,28 @@ namespace Mongscape.Tests
             Assert.IsFalse(verse.Over(verse.NoteTime(7))); Assert.IsTrue(verse.Over(verse.NoteTime(7) + BeatVerse.Window + .01));
         }
 
+
         [Test]
-        public void HidingFillsTheLockAndStandingInTheLightIsSpotted()
+        public void ThePrisonChapterRunsTheRealFirstSetOfThePrisonBranch()
         {
-            var good = new HideSet(); good.Begin();
-            for (double t = 0; t < HideSet.Approach + HideSet.Sweep + .5 && !good.Passed; t += .05) good.Tick(.05, true, false);
-            Assert.IsTrue(good.Passed); Assert.IsFalse(good.Spotted); Assert.AreEqual(1f, good.Gauge, 1e-6, "A crouch through the whole sweep fills the lock");
-            var deep = new HideSet(); deep.Begin(); var shallow = new HideSet(); shallow.Begin();
-            for (double t = 0; t < HideSet.Approach + 1.5; t += .05) { deep.Tick(.05, true, true); shallow.Tick(.05, true, false); }
-            Assert.Greater(deep.Gauge, shallow.Gauge * 1.8f, "A deeper crouch fills the lock faster");
-            var seen = new HideSet(); seen.Begin();
-            for (double t = 0; t < HideSet.Approach + 3 && !seen.Spotted; t += .05) seen.Tick(.05, false, false);
-            Assert.IsTrue(seen.Spotted, "Standing in the light is a miss"); Assert.IsFalse(seen.Passed);
-            var early = new HideSet(); early.Begin();
-            for (double t = 0; t < HideSet.Approach - .1; t += .05) early.Tick(.05, false, false);
-            Assert.IsFalse(early.Spotted, "Before the light arrives standing is fine"); Assert.IsFalse(early.Lit);
+            Assert.AreEqual(-1, PrisonCourse.BranchIndex(null, 0), "Outside the prison chapter the plan decides");
+            TutorialCourse.Script = new TutorialScript(TutorialChapter.Prison, PlayStyle.Keyboard);
+            try
+            {
+                Assert.AreEqual(0, PrisonCourse.BranchStart(null, 2)); Assert.AreEqual(1, PrisonCourse.BranchIndex(null, 1)); Assert.AreEqual(-1, PrisonCourse.BranchIndex(null, TutorialCourse.PrisonLap.Length));
+                for (int i = 0; i < 3; i++) Assert.AreEqual(PrisonCourse.Chunks[i], TutorialCourse.PrisonLap[i], "Same chunks as set one of the branch");
+                Assert.AreEqual(PrisonPhase.Hold, PrisonCourse.PhaseOf(TutorialCourse.PrisonCellChunk, PrisonCourse.DoorZ, out _));
+            }
+            finally { TutorialCourse.Script = null; }
+        }
+
+        [Test]
+        public void TheTutorialWallMonkeyStandsInTheRescueChunk()
+        {
+            Assert.AreEqual(TutorialHazard.Rescue, TutorialCourse.HazardAt(TutorialCourse.RescueChunk));
+            Assert.AreEqual(TutorialCourse.RescueChunk, TutorialCourse.ChunkOf(TutorialStep.Rescue));
+            Assert.Greater(MineRescuePlan.RouteZ(TutorialCourse.RescueChunk), TutorialCourse.HoldZ(TutorialChapter.Basics, TutorialStep.Rescue), "The runner waits in front of the monkey");
+            var judge = new MineRescueJudge(); judge.Reach(1); Assert.IsTrue(judge.Reaching(1)); judge.Advance(.5f); Assert.IsFalse(judge.Reaching(1), "A reach expires once the clock runs");
         }
     }
 }

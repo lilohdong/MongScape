@@ -385,7 +385,7 @@ namespace Mongscape.Domain
         private float PrisonStep(float dt, float move)
         {
             int sequence = RouteSurface.SequenceAt(Runner.Z);
-            int branch = tutorial ? -1 : PrisonCourse.BranchIndex(RouteSurface.ActivePlan, sequence);
+            int branch = tutorial ? TutorialCourse.PrisonIndex(sequence) : PrisonCourse.BranchIndex(RouteSurface.ActivePlan, sequence);
             float local = Runner.Z - sequence * RouteSurface.Length;
             float stop = Prison.Tick(dt, branch, local, branch >= 0 && Hiding, HideDepth);
             Stair.GapScale = branch >= 0 ? Prison.GapScale : 1f;
@@ -424,6 +424,7 @@ namespace Mongscape.Domain
             if (!before.SameStay(Sections.Current)) SectionSpeed = null;
             Workout.Section = Section.Kind;
             if (!tutorial) MineRescue.Tick(dt, RouteSurface.ActivePlan, Runner.Z, Runner.Lane, MoveSpeed * Runner.SpeedMultiplier * SpeedScale);
+            else MineRescue.Advance(dt);
             // Stair chunks: a missed knee rhythm counts as a slip strike; in the tutorial it is a counted miss that restarts the step.
             int chunk = RouteSurface.SequenceAt(Runner.Z);
             bool onStair = RouteSurface.IsStair(RouteSurface.TypeAt(chunk));

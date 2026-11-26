@@ -15,8 +15,7 @@ namespace Mongscape.Infrastructure
         public static bool RecalibratePressed => Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame;
         // Esc pauses and resumes a run (plan 6-7a).
         public static bool PausePressed => Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame;
-        // Tutorial stations: Q or E is the rescue reach, W held is the hands-up note (keyboard play has no arms to read).
-        public static bool ReachHeld => Keyboard.current != null && (Keyboard.current.qKey.isPressed || Keyboard.current.eKey.isPressed);
+        // Tutorial verse: W held is the hands-up note (keyboard play has no arms to read).
         public static bool HandsHeld => Keyboard.current != null && Keyboard.current.wKey.isPressed;
         public static bool SettingsPressed => Keyboard.current != null && Keyboard.current.f1Key.wasPressedThisFrame;
         public static bool OverlayPressed => Keyboard.current != null && Keyboard.current.f3Key.wasPressedThisFrame;

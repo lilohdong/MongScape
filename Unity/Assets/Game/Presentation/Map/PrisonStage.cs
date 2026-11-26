@@ -86,7 +86,7 @@ namespace Mongscape.Presentation.Map
             // The next door still ahead (or the one the runner holds at); none after the third set.
             int set = -1;
             if (start >= 0)
-                for (int s = 0; s < PrisonCourse.Sets && set < 0; s++)
+                for (int s = 0; s < (TutorialCourse.PrisonChapter ? 1 : PrisonCourse.Sets) && set < 0; s++)
                 {
                     int cell = start + s * 3 + 1;
                     if (runner < cell || runner == cell && (course.Holding || session.Runner.Z - cell * RouteSurface.Length < PrisonCourse.DoorZ + 4f)) set = s;

@@ -23,9 +23,14 @@ namespace Mongscape.Presentation.Map
         }
         public IReadOnlyList<StuckMonkeyView> StuckMonkeys => stuckActive;
 
-        private void PlaceStuckMonkey(MongscapeMapChunk chunk, int sequence, List<Component> list)
+        private void PlaceStuckMonkey(MongscapeMapChunk chunk, int sequence, List<Component> list) => PlaceStuckMonkey(chunk, sequence, list, chunk.Layout.RescueSide);
+        // The tutorial's rescue lesson puts one wall monkey on the chosen side of its chunk.
+        public void PlaceTutorialMonkey(MongscapeMapChunk chunk, int sequence, int side)
         {
-            int side = chunk.Layout.RescueSide;
+            if (placed.TryGetValue(chunk, out var list)) PlaceStuckMonkey(chunk, sequence, list, side);
+        }
+        private void PlaceStuckMonkey(MongscapeMapChunk chunk, int sequence, List<Component> list, int side)
+        {
             if (side == 0) return;
             var view = stuckPool.Count > 0 ? stuckPool.Pop() : StuckMonkeyView.Build(MineArt.Load());
             float z = MineRescuePlan.RouteZ(sequence);

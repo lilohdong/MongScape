@@ -170,6 +170,28 @@ namespace Mongscape.Tests
         }
 
         [UnityTest]
+        public IEnumerator PrisonChapterOpensTheRealCellWhenTheRunnerHidesThroughTheLight()
+        {
+            yield return DriveToStairs();
+            var run=game.Session.Runner;Time.timeScale=3;
+            float deadline=Time.realtimeSinceStartup+90;
+            bool sawGauge=false;
+            while(game.Tutorial.Active&&game.Tutorial.Script.Current!=TutorialStep.AlarmRule&&Time.realtimeSinceStartup<deadline)
+            {
+                var step=game.Tutorial.Script.Current;
+                if(!game.Tutorial.Retrying)
+                {
+                    if(step==TutorialStep.Stair&&run.SinceKneeStep>=.4f)run.Command(MotionCommand.KneeStep);
+                    else if(step==TutorialStep.Hide&&game.Session.Prison.Holding){run.Command(MotionCommand.Crouch);sawGauge|=game.Session.Prison.LockGauge>0f;}
+                }
+                yield return null;
+            }
+            Assert.AreEqual(TutorialStep.AlarmRule,game.Tutorial.Script.Current,"Hiding through the real searchlight opens the cell and passes the step");
+            Assert.IsTrue(sawGauge,"The real lock gauge filled");Assert.IsTrue(game.Session.Prison.Opened[0]);
+            Time.timeScale=1;game.ExitToMenu();game.FaceLogout(false);
+        }
+
+        [UnityTest]
         public IEnumerator ZooChapterWaitsAtItsBeatStationOnTheZooMap()
         {
             yield return OpenAsMember();
@@ -194,12 +216,12 @@ namespace Mongscape.Tests
             yield return WaitRunning();
             CollectionAssert.AreEqual(new TutorialScript(TutorialChapter.Basics,PlayStyle.Keyboard).Steps,game.Tutorial.Script.Steps);
             var run=game.Session.Runner;
-            game.Tutorial.Reaching=()=>true;
             float deadline=Time.realtimeSinceStartup+200;
             while(game.Tutorial.Active&&Time.realtimeSinceStartup<deadline)
             {
                 var t=game.Tutorial;var step=t.Script.Current;
                 if(!game.Session.Paused)Time.timeScale=3;
+                if(step==TutorialStep.Rescue&&t.Waiting)game.Session.Command(MotionCommand.ReachRight);
                 // Esc pauses (the pause step) and the pause screen's resume counts back in.
                 if(game.Session.Paused&&!game.PauseControl.Counting){game.TogglePause();yield return null;continue;}
                 if(!t.Retrying&&!t.Script.Finished&&game.Session.Flow.State==GameFlowState.Running)

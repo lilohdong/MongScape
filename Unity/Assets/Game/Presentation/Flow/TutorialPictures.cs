@@ -35,21 +35,11 @@ namespace Mongscape.Presentation
         }
         private static void Panel(Rect r, float alpha) { Box(r, new Color(.07f, .06f, .05f, .8f * alpha)); }
 
-        // The monkey stuck in the wall: it follows once one arm reaches out (the ring fills while the arm is out).
-        public static void Rescue(HudSkin skin, bool rescued, float since, float progress, PlayStyle style)
+
+        // How long the reach has been held (the wall monkey itself is the real StuckMonkeyView).
+        public static void Reach(HudSkin skin, float progress)
         {
-            Box(new Rect(1040, 300, 240, 280), Wall);
-            for (int i = 0; i < 4; i++) Box(new Rect(1040, 330 + i * 60, 240, 6), new Color(0, 0, 0, .25f));
-            var stuck = new Vector2(1100, 420); var free = new Vector2(780, 560);
-            float k = rescued ? Mathf.SmoothStep(0, 1, Mathf.Clamp01(since / .9f)) : 0;
-            Monkey(Vector2.Lerp(stuck, free, k), 44, !rescued);
-            if (!rescued)
-            {
-                // The hand: an arm shape reaching toward the wall, growing with the held reach.
-                float len = 120 + 140 * progress;
-                Box(new Rect(1080 - len, 412, len, 16), Gold); Round(new Vector2(1080 - len, 420), 14, Gold);
-                Box(new Rect(960, 590, 200, 14), new Color(1, 1, 1, .2f)); Box(new Rect(960, 590, 200 * progress, 14), Green);
-            }
+            Box(new Rect(540, 336, 200, 14), new Color(1, 1, 1, .2f)); Box(new Rect(540, 336, 200 * progress, 14), Green);
         }
 
         // Four beats to jump on: the discs light up in time and turn green when caught; a pulse rings at each tick.
@@ -88,23 +78,6 @@ namespace Mongscape.Presentation
             Mark(skin, new Rect(220, y + 56, 900, 30), verse.Hits + " / " + BeatVerse.PassHits, 22, verse.Passed ? Green : Color.white);
         }
 
-        // The cell door with its lock gauge and the searchlight sweeping over it; crouch in the light to fill the lock.
-        public static void Hide(HudSkin skin, HideSet hide)
-        {
-            var door = new Rect(520, 400, 240, 190);
-            Box(door, Ink);
-            for (int i = 0; i < 6; i++) Box(new Rect(door.x + 16 + i * 42, door.y + 8, 10, door.height - 16), Steel);
-            Round(new Vector2(640, 500), 30, Gold); Box(new Rect(628, 495, 24, 22), Wall);
-            Box(new Rect(door.x, door.yMax + 12, door.width, 18), new Color(1, 1, 1, .2f)); Box(new Rect(door.x, door.yMax + 12, door.width * hide.Gauge, 18), hide.Gauge >= 1 ? Green : Gold);
-            float alpha = hide.Lit ? .25f + .75f * hide.Beam : Mathf.Clamp01((float)(hide.Elapsed / HideSet.Approach)) * .3f;
-            float sweep = hide.Lit ? (float)((hide.Elapsed - HideSet.Approach) / HideSet.Sweep) : 0f;
-            float cx = 640 + Mathf.Sin(sweep * Mathf.PI * 2) * 150;
-            for (int k = 0; k < 20; k++)
-            {
-                float w = 80 + k * 24;
-                Box(new Rect(cx - w * .5f, 330 + k * 13, w, 14), new Color(1f, .95f, .6f, .16f * alpha));
-            }
-        }
 
         // 1 yellow warning stays until the map ends, the second one means the cuffs (shown as four small pictures in a row).
         public static void WarnRule(HudSkin skin, float t)

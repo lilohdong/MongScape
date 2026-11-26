@@ -23,12 +23,14 @@ namespace Mongscape.Domain
         // First route chunk of the prison branch in this chunk's lap, once the fork chose the prison (-1 otherwise).
         public static int BranchStart(RoutePlan plan, int sequence)
         {
+            if (TutorialCourse.PrisonChapter) return TutorialCourse.PrisonIndex(sequence) >= 0 ? 0 : -1;
             if (plan == null || !plan.Extended || !plan.HasFork(sequence) || plan.DestinationAt(sequence) != 0) return -1;
             return sequence - plan.LocalSequence(sequence) + CartFork.DestinationChunk;
         }
         // Index of a route chunk inside a chosen prison branch, or -1.
         public static int BranchIndex(RoutePlan plan, int sequence)
         {
+            if (TutorialCourse.PrisonChapter) return TutorialCourse.PrisonIndex(sequence);
             if (plan == null || !plan.Extended || !plan.HasFork(sequence) || plan.DestinationAt(sequence) != 0) return -1;
             int index = plan.LocalSequence(sequence) - CartFork.DestinationChunk;
             return index >= 0 && index < Chunks.Length ? index : -1;

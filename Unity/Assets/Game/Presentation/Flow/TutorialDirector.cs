@@ -45,8 +45,8 @@ namespace Mongscape.Presentation
         public Func<bool> NoCamera;
         public Func<float> StepsPerMinute, PaceScale;
         public float RunCadence = 100f;
-        // The arm readings the stations need (camera or keys): one arm out, both hands up.
-        public Func<bool> Reaching, HandsUp;
+        // Both hands up (camera or key), for the verse; the rescue reach comes from the run (pose or Q and E).
+        public Func<bool> HandsUp;
         // Sound hooks: a beat tick, and a cleared station. The saved sync offset in ms and where to save a new one.
         public Action Beat, Cleared;
         public Func<int> SyncMs;
@@ -62,12 +62,10 @@ namespace Mongscape.Presentation
         // Seconds the camera lesson waits for a framed body, the pace lesson for a held pace.
         public const float FramedSeconds = 3f, PacedSeconds = 5f;
         private float framedFor, pacedFor, reachFor, pictureFor;
-        private bool cadenceSpeed = true, pauseSeen, wasJumping, wasHands, rescued, stationBegun;
-        private float rescuedAt;
+        private bool cadenceSpeed = true, pauseSeen, wasJumping, wasHands, stationBegun;
         private int bigAtStart, lastTick;
         private readonly BeatSync sync = new BeatSync();
         private readonly BeatVerse verse = new BeatVerse();
-        private readonly HideSet hide = new HideSet();
 
         public void Configure(RunSession run, ChunkSpawner spawner, Func<bool> calibrated, Action<float> restartAt, Action complete, Func<bool> canDraw)
         {
@@ -87,7 +85,7 @@ namespace Mongscape.Presentation
         }
         private void ResetStation()
         {
-            framedFor = pacedFor = reachFor = pictureFor = 0; pauseSeen = wasJumping = wasHands = rescued = stationBegun = false; lastTick = -1;
+            framedFor = pacedFor = reachFor = pictureFor = 0; pauseSeen = wasJumping = wasHands = stationBegun = false; lastTick = -1;
         }
 
         public void Tick(float now)
@@ -201,16 +199,20 @@ namespace Mongscape.Presentation
         {
             var runner = session.Runner;
             // The runner must stand at the station's spot first.
-            if (runner.Z < TutorialCourse.HoldZ(Script.Chapter, step) - .5f) return;
+            if (step != TutorialStep.Hide && runner.Z < TutorialCourse.HoldZ(Script.Chapter, step) - .5f) return;
             bool jumping = runner.Y > .01f, jumpEdge = jumping && !wasJumping; wasJumping = jumping;
             bool hands = HandsUp != null && HandsUp(), handsEdge = hands && !wasHands; wasHands = hands;
             if (NoCamera != null && NoCamera() && PlayStyleInfo.UsesCamera(Script.Style)) { Next(now); return; }
             switch (step)
             {
                 case TutorialStep.Rescue:
-                    // One arm out for a moment: the stuck monkey comes along.
-                    reachFor = Reaching != null && Reaching() ? reachFor + Time.deltaTime : 0;
-                    if (reachFor >= ReachSeconds) { rescued = true; rescuedAt = now; Next(now); }
+                    // One arm out toward the wall for a moment (the run's own reach: pose or Q and E): the stuck monkey pops out.
+                    reachFor = session.MineRescue.Reaching(-1) || session.MineRescue.Reaching(1) ? reachFor + Time.deltaTime : 0;
+                    if (reachFor >= ReachSeconds)
+                    {
+                        foreach (var monkey in FindObjectsByType<StuckMonkeyView>(FindObjectsSortMode.None)) if (monkey.gameObject.activeInHierarchy && monkey.Sequence == TutorialCourse.RescueChunk) monkey.Rescue();
+                        Next(now);
+                    }
                     return;
                 case TutorialStep.Sync:
                 {
@@ -231,10 +233,10 @@ namespace Mongscape.Presentation
                     return;
                 }
                 case TutorialStep.Hide:
-                    if (!stationBegun) { hide.Begin(); stationBegun = true; }
-                    hide.Tick(Time.deltaTime, runner.Crouching, runner.DeepSliding);
-                    if (hide.Spotted) Miss(now);
-                    else if (hide.Passed) Next(now);
+                    // The real cell door and searchlight (PrisonStage, PrisonCourse): the lock opening passes it; the light going by
+                    // with the door shut (or the alarm, which is a counted miss) means another try.
+                    if (session.Prison.Opened[0]) { Next(now); return; }
+                    if (session.Prison.Phase == PrisonPhase.Flat && runner.Z > TutorialCourse.PrisonCellChunk * RouteSurface.Length + PrisonCourse.DoorZ + 1f) Miss(now);
                     return;
             }
         }
@@ -359,10 +361,9 @@ namespace Mongscape.Presentation
             switch (step)
             {
                 case TutorialStep.Cadence: DrawPace(); break;
-                case TutorialStep.Rescue: TutorialPictures.Rescue(skin, rescued, now - rescuedAt, Mathf.Clamp01(reachFor / ReachSeconds), Script.Style); break;
+                case TutorialStep.Rescue: TutorialPictures.Reach(skin, Mathf.Clamp01(reachFor / ReachSeconds)); break;
                 case TutorialStep.Sync: if (stationBegun) TutorialPictures.Beats(skin, now - (float)sync.Start, (float)BeatSync.Interval, BeatSync.LeadBeats, BeatSync.Beats, sync.Hits); break;
                 case TutorialStep.Verse: if (stationBegun) TutorialPictures.Verse(skin, verse, now, Script.Style); break;
-                case TutorialStep.Hide: TutorialPictures.Hide(skin, hide); break;
                 case TutorialStep.WarnRule: TutorialPictures.WarnRule(skin, pictureFor / PictureSeconds); break;
                 case TutorialStep.Rearview: TutorialPictures.Rearview(skin, pictureFor / PictureSeconds); break;
                 case TutorialStep.AlarmRule: TutorialPictures.AlarmRule(skin, pictureFor / PictureSeconds); break;

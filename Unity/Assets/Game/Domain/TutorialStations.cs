@@ -3,26 +3,14 @@ using System.Collections.Generic;
 
 namespace Mongscape.Domain
 {
-    // Arm readings of one pose frame that the tutorial stations need (the classifier has no reach or hands-up reading yet).
+    // The hands-up reading of one pose frame (the classifier reads the reach itself, Reading.Reach).
     // Sideways distances are in shoulder widths from the shoulder centre, like the classifier's upper-body reach.
     public static class ArmPose
     {
-        public const float ReachWidths = 1.1f, RestWidths = .85f, MinVisibility = .4f;
+        public const float MinVisibility = .4f;
         private static bool Seen(PoseFrame f, int joint) => f.Points[joint].Visibility >= MinVisibility;
         private static float Width(PoseFrame f) => Math.Abs(f.Points[PoseJoint.RightShoulder].X - f.Points[PoseJoint.LeftShoulder].X);
-        private static float Out(PoseFrame f, int wrist)
-        {
-            float centre = (f.Points[PoseJoint.LeftShoulder].X + f.Points[PoseJoint.RightShoulder].X) * .5f, width = Math.Max(1e-4f, Width(f));
-            return Math.Abs(f.Points[wrist].X - centre) / width;
-        }
         private static bool Usable(PoseFrame f) => f != null && f.HasPose && Seen(f, PoseJoint.LeftShoulder) && Seen(f, PoseJoint.RightShoulder) && Width(f) > 1e-3f;
-        // One arm held out to the side (either side) while the other hangs near the body: the rescue reach.
-        public static bool Reach(PoseFrame f)
-        {
-            if (!Usable(f) || !Seen(f, PoseJoint.LeftWrist) || !Seen(f, PoseJoint.RightWrist)) return false;
-            float left = Out(f, PoseJoint.LeftWrist), right = Out(f, PoseJoint.RightWrist);
-            return left >= ReachWidths && right < RestWidths || right >= ReachWidths && left < RestWidths;
-        }
         // Both wrists above the nose: the hands-up (만세) note.
         public static bool HandsUp(PoseFrame f)
         {
@@ -103,28 +91,4 @@ namespace Mongscape.Domain
         }
     }
 
-    // One searchlight set (plan 6-2 prison practice): the light sweeps in and the player has to stay crouched until it passes.
-    // The cell lock gauge fills while hiding, twice as fast when the crouch is deep. Standing up in the light too long is a miss.
-    public sealed class HideSet
-    {
-        public const double Approach = 2, Sweep = 5, FillSeconds = 3.5, SpotGrace = .8;
-        public double Elapsed { get; private set; }
-        // 0..1 of the lock gauge.
-        public float Gauge { get; private set; }
-        public bool Spotted { get; private set; }
-        public bool Passed { get; private set; }
-        private double exposed;
-        public bool Lit => Elapsed >= Approach && Elapsed < Approach + Sweep && !Passed;
-        // 0 while the light is far, up to 1 at the middle of the sweep (drawing the beam).
-        public float Beam => Lit ? (float)Math.Sin((Elapsed - Approach) / Sweep * Math.PI) : 0;
-        public void Begin() { Elapsed = 0; Gauge = 0; Spotted = Passed = false; exposed = 0; }
-        public void Tick(double dt, bool crouching, bool deep)
-        {
-            if (Spotted || Passed || dt <= 0) return;
-            Elapsed += dt;
-            if (!Lit) { if (Elapsed >= Approach + Sweep) Passed = true; return; }
-            if (crouching) { exposed = 0; Gauge = (float)Math.Min(1, Gauge + dt / FillSeconds * (deep ? 2 : 1)); }
-            else { exposed += dt; if (exposed >= SpotGrace) Spotted = true; }
-        }
-    }
 }

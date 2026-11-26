@@ -77,6 +77,8 @@ namespace Mongscape.Domain
 
         public void Reach(int side) { if (side != 0) lastReach[side < 0 ? 0 : 1] = clock; }
         public bool Reaching(int side) => side != 0 && clock - lastReach[side < 0 ? 0 : 1] <= ReachMemorySeconds;
+        // The tutorial has no stuck monkeys to judge but keeps the reach clock running.
+        public void Advance(float dt) { clock += Math.Max(0f, dt); }
         public void Reset() { clock = 0; lastReach[0] = lastReach[1] = -10f; resolved = -1; Rescued = Missed = 0; }
 
         public void Tick(float dt, RoutePlan plan, float runnerZ, int lane, float speed)
