@@ -19,6 +19,8 @@ BLEND_DIR = ROOT / 'References/Blender'
 STAGING = ROOT / 'Unity/Assets/External/Staging/Blender'
 OUT_CHAR = STAGING / 'Characters'
 OUT_MODELS = STAGING / 'Models'
+OUT_ANIMALS = STAGING / 'Animals'   # Generic rigs; kept out of Characters/ (Humanoid-only folder)
+ASSETS_JSON = ROOT / 'Tools/AssetPipeline/art_v2_assets.json'
 PALETTE_JSON = ROOT / 'Tools/AssetPipeline/art_v2_palette.json'
 REVIEW = Path(os.environ.get('MONG_ART_REVIEW', str(ROOT.parents[1] / 'art-review')))
 STYLE_IMAGES = ROOT.parent / 'docs/images/style'
@@ -70,15 +72,37 @@ def mat(name, hex_color, rough=.62, metal=0.0, emit=None, strength=0.0, alpha=No
                        'emission_strength': strength, 'alpha': alpha}
     return m
 
+def _load_items(path):
+    if not path.exists(): return {}
+    return {i['name']: i for i in json.loads(path.read_text(encoding='utf-8'))['items']}
+
+def _save_items(path, items):
+    path.write_text(json.dumps({'items': [items[k] for k in sorted(items)]}, indent=1, ensure_ascii=False) + '\n', encoding='utf-8')
+
 def write_palette(asset):
-    """Merge this asset's materials into art_v2_palette.json (read by the Unity import script)."""
-    data = json.loads(PALETTE_JSON.read_text(encoding='utf-8')) if PALETTE_JSON.exists() else {}
+    """Merge this asset's materials into art_v2_palette.json (read by MongscapeArtV2Import.cs).
+    A material whose name matches an existing Unity material in ArtV2/Materials reuses that material."""
+    data = _load_items(PALETTE_JSON)
+    for name in list(data):  # this asset no longer uses materials it is not registering now
+        if name not in _registry and asset in data[name].get('assets', []):
+            data[name]['assets'].remove(asset)
+            if not data[name]['assets']: del data[name]
     for name, v in _registry.items():
-        v = dict(v); v.setdefault('assets', [])
         old = data.get(name, {})
+        v = dict(v, name=name, emission=v['emission'] or '', alpha=-1 if v['alpha'] is None else v['alpha'])
         v['assets'] = sorted(set(old.get('assets', [])) | {asset})
         data[name] = v
-    PALETTE_JSON.write_text(json.dumps(dict(sorted(data.items())), indent=1, ensure_ascii=False) + '\n', encoding='utf-8')
+    _save_items(PALETTE_JSON, data)
+
+def register_asset(path, kind, group, loop=False, avatar_from=None, frames=None):
+    """Record an exported FBX for MongscapeArtV2Import.cs.
+
+    kind: 'humanoid' (Monkey rig clip), 'generic_model', 'generic_clip', 'prop' (static), 'prop_anim'.
+    path is relative to Unity/Assets/External/Staging/Blender."""
+    data = _load_items(ASSETS_JSON)
+    rel = Path(path).resolve().relative_to(STAGING.resolve()).as_posix()
+    data[rel] = {'name': rel, 'kind': kind, 'group': group, 'loop': loop, 'avatar_from': avatar_from or '', 'frames': frames or 0}
+    _save_items(ASSETS_JSON, data)
 
 # ---------------------------------------------------------------- scene / geometry
 
@@ -169,7 +193,7 @@ def triangles(objects):
         ob.evaluated_get(dg).to_mesh_clear()
     return n
 
-def fuse_surface(parts, name, voxel=.022, smooth=.5, iterations=3, decimate=.5):
+def fuse_surface(parts, name, voxel=.022, smooth=.5, iterations=3, decimate=.5, neighbours=4, weight_smooth=0):
     """Union rounded parts into one continuous skin and transfer their bone weights (character method)."""
     samples = []
     for ob in parts:
@@ -189,13 +213,19 @@ def fuse_surface(parts, name, voxel=.022, smooth=.5, iterations=3, decimate=.5):
     mesh.vertex_groups.clear(); groups = {}
     for v in mesh.data.vertices:
         w = {}
-        for _, idx, dist in tree.find_n(v.co, 4):
+        for _, idx, dist in tree.find_n(v.co, neighbours):
             inf = 1 / max(dist, .005) ** 2
             for bone, bw in samples[idx][1]: w[bone] = w.get(bone, 0) + bw * inf
         tot = sum(w.values())
         for bone, bw in w.items():
             if bone not in groups: groups[bone] = mesh.vertex_groups.new(name=bone)
             groups[bone].add([v.index], bw / tot, 'REPLACE')
+    if weight_smooth:  # soften joint creases on strongly bending limbs (lion shoulders, hips)
+        bpy.ops.object.select_all(action='DESELECT'); mesh.select_set(True); bpy.context.view_layer.objects.active = mesh
+        bpy.ops.object.mode_set(mode='WEIGHT_PAINT')
+        bpy.ops.object.vertex_group_smooth(group_select_mode='ALL', factor=.5, repeat=weight_smooth)
+        bpy.ops.object.vertex_group_normalize_all(lock_active=False)
+        bpy.ops.object.mode_set(mode='OBJECT')
     for p in mesh.data.polygons: p.use_smooth = True
     return mesh
 
@@ -281,7 +311,7 @@ def studio(ground=True):
     bg = next(n for n in world.node_tree.nodes if n.type == 'BACKGROUND')
     bg.inputs[0].default_value = (*hex_linear(STUDIO_BG), 1); bg.inputs[1].default_value = 1.0
     if ground:
-        bpy.ops.mesh.primitive_plane_add(size=60, location=(0, 0, 0))
+        bpy.ops.mesh.primitive_plane_add(size=400, location=(0, 0, 0))
         g = bpy.context.object; g.name = 'Studio ground'; g['mong_studio'] = True
         g.data.materials.append(mat('Studio ground', STUDIO_GROUND, .9))
         _registry.pop('Studio ground', None)
