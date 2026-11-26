@@ -12,6 +12,8 @@ namespace Mongscape.Presentation
     {
         // Who plays the current or next run: the saved profile.
         PlayerProfile Player { get; }
+        // The run's pause state: count-in number, silhouette, X gesture progress (plan 6-7a).
+        PauseFlow Pause { get; }
         PlayerProfile SavedProfile { get; }
         Texture CameraTexture { get; }
         // A webcam is plugged in. Without one no screen shows a camera view.

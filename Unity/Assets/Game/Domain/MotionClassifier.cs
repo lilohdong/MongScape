@@ -107,7 +107,7 @@ namespace Mongscape.Domain
                 if (calibrated && lost <= tuning.LostGraceSeconds && !duckOnLoss) return Reading;
                 if (calibrated && duckOnLoss && lost <= tuning.DuckHoldSeconds) { Reading.Crouch = true; Reading.Active = true; Status = PoseStatus.Tracking; return Reading; }
                 if (now - lostSince > tuning.LostSeconds && calibrated) Recalibrate();
-                Status = PoseStatus.Searching; Reading.Crouch = Reading.Active = false; crouchPendingSince = -1; kneeSide = 0; kneeUpL = kneeUpR = false;
+                Status = PoseStatus.Searching; Reading.Crouch = Reading.Active = Reading.ArmsCrossed = false; crouchPendingSince = -1; kneeSide = 0; kneeUpL = kneeUpR = false;
                 return Reading;
             }
             // Landmarks right after re-acquiring the body jump around; ignore actions for a moment.
@@ -117,10 +117,26 @@ namespace Mongscape.Domain
             Status = PoseStatus.Tracking;
             if (style == PlayStyle.UpperBody) TrackUpper(frame.Aspect, now); else TrackFull(frame.Aspect, now);
             UpdateCadence(now);
+            Reading.ArmsCrossed = ArmsCrossed();
             Reading.Active = now - lastStep < .8 || now - lastJump < 1 || Reading.Crouch || now - lastKneeStep < KneeStepActiveSeconds || now - lastLaneChange < 1 || now < pumpUntil;
             return Reading;
         }
 
+        // The X: the wrists have swapped sides (crossed past each other by a sixth of the shoulder width), both in front of the
+        // chest (from just above the shoulder line to well below it) and near the body's centre line.
+        private bool ArmsCrossed()
+        {
+            if (!ActionSeen(PoseJoint.LeftWrist) || !ActionSeen(PoseJoint.RightWrist)) return false;
+            float width = ShoulderWidth; if (width < 1e-4f) return false;
+            float shoulders = px[PoseJoint.LeftShoulder] - px[PoseJoint.RightShoulder], wrists = px[PoseJoint.LeftWrist] - px[PoseJoint.RightWrist];
+            if (Math.Sign(shoulders) == 0 || Math.Sign(wrists) == Math.Sign(shoulders) || Math.Abs(wrists) / width < tuning.CrossOverlap) return false;
+            foreach (int wrist in new[] { PoseJoint.LeftWrist, PoseJoint.RightWrist })
+            {
+                float down = (py[wrist] - ShoulderY) / width;
+                if (down < -.3f || down > tuning.CrossBelowShoulder || Math.Abs(px[wrist] - ShoulderX) / width > 1f) return false;
+            }
+            return true;
+        }
         private bool Smooth(PoseFrame frame)
         {
             float a = smoothed ? Clamp(tuning.Smoothing, .05f, 1f) : 1f;

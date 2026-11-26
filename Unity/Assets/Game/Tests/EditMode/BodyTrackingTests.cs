@@ -43,6 +43,7 @@ namespace Mongscape.Tests
                 if (r.JumpEdge) events.Add("jump");
                 if (r.Crouch != crouch) { events.Add(r.Crouch ? "crouch" : "stand"); crouch = r.Crouch; }
                 if (r.KneeStep) events.Add("knee");
+                if (r.ArmsCrossed && !events.Contains("x")) events.Add("x");
             }
             return events;
         }
@@ -180,6 +181,14 @@ namespace Mongscape.Tests
             CollectionAssert.DoesNotContain(Play(PlayStyle.UpperBody, t => In(t, .2, .6) ? new Body { WristL = .36f, OutL = .17f } : new Body(), 1.2), "jump", "One arm out is the reach");
             CollectionAssert.AreEqual(new[] { "crouch", "stand" }, Play(PlayStyle.UpperBody, t => new Body { Shoulder = In(t, .2, 1) ? .07f : 0 }, 1.4));
             Assert.AreEqual(0, Play(PlayStyle.UpperBody, t => { int s = (int)(t / .3) % 2; bool on = In(t, .2, 1.8); return new Body { WristL = on ? (s == 0 ? .4f : .62f) : .6f, WristR = on ? (s == 1 ? .4f : .62f) : .6f }; }, 2.0).Count(e => e == "knee"), "Arm swings are steps; the stair exercise is the pull-down (exercise plan 6)");
+        }
+        [TestCase(PlayStyle.FullBody)] [TestCase(PlayStyle.UpperBody)]
+        public void ArmsCrossedInFrontOfTheChestReadAsTheX(PlayStyle style)
+        {
+            // Wrists swapped past each other at chest height: the X pause gesture (plan 6-7a).
+            CollectionAssert.Contains(Play(style, t => In(t, .2, 1.2) ? new Body { WristL = .45f, WristR = .45f, OutL = -.15f, OutR = -.15f } : new Body(), 1.4), "x");
+            CollectionAssert.DoesNotContain(Play(style, t => new Body { WristL = .45f, WristR = .45f, OutL = -.05f, OutR = -.05f }, 1.4), "x", "Hands together but not crossed");
+            CollectionAssert.DoesNotContain(Play(style, t => In(t, .2, .6) ? new Body { WristL = .36f, WristR = .36f, OutL = .17f, OutR = .17f } : new Body(), 1.2), "x", "The T is not the X");
         }
         [Test] public void AReachingArmHoldsTheUpperBodyLane()
         {

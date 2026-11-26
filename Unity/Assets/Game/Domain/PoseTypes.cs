@@ -113,6 +113,9 @@ namespace Mongscape.Domain
         // shoulder centre and within UpperTBand widths of the shoulder line. One wrist past UpperReachHold widths (reaching
         // for a monkey, or on the way into the T) holds the lane: the shoulder tilt of a reaching arm must not change lanes.
         public float UpperTReach = 1.4f, UpperTBand = .7f, UpperReachHold = 1.1f;
+        // X pause gesture: the wrists crossed past each other by CrossOverlap shoulder widths, at most CrossBelowShoulder widths
+        // below the shoulder line.
+        public float CrossOverlap = .17f, CrossBelowShoulder = 1.6f;
         // Upper body steps: the wrists swing apart by ArmSwingAmplitude shoulder widths and the elbows go along by ArmSwingElbow
         // (a flick of the wrists is not a swing). Raised from .3 after QA 2026-11-25.
         public float ArmPumpAmplitude = .6f, ArmSwingAmplitude = .5f, ArmSwingElbow = .15f;
@@ -138,6 +141,8 @@ namespace Mongscape.Domain
         public bool JumpEdge, KneeStep, Crouch, Active;
         // Big movements: one-frame edges for jump, knee step and lane change; CrouchDeep holds while the crouch is deep.
         public bool BigJump, BigKnee, BigLane, CrouchDeep;
-        public void Clear() { Lane = 0; JumpEdge = KneeStep = Crouch = Active = BigJump = BigKnee = BigLane = CrouchDeep = false; }
+        // Both forearms crossed in front of the chest (the X pause gesture, plan 6-7a); holds while crossed.
+        public bool ArmsCrossed;
+        public void Clear() { Lane = 0; JumpEdge = KneeStep = Crouch = Active = BigJump = BigKnee = BigLane = CrouchDeep = ArmsCrossed = false; }
     }
 }

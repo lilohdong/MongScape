@@ -136,7 +136,7 @@ namespace Mongscape.Bootstrap
             hud.Map=Map; hud.Data=this; hud.PoliceAlert=()=>PursuitCue.Visible;
             hud.Configure(Session, RetrySamePlayer);
             hud.TitleLogo = TitleLogo;
-            hud.LoadingImage=LoadingImage; hud.BeginRun=StartPlayerRun; hud.PauseRun=TogglePause; hud.ToMenu=ExitToMenu;
+            hud.LoadingImage=LoadingImage; hud.BeginRun=StartPlayerRun; hud.PauseRun=TogglePause; hud.ToMenu=ExitToMenu; hud.Recalibrate=RecalibrateAndResume; HookPause();
             hud.TextInput=KeyboardGameInput.SetTextInput; hud.Quit=QuitGame;
             hud.StartTutorial=StartTutorial; hud.OfferTutorial=OfferTutorial;
             Tutorial=gameObject.AddComponent<TutorialDirector>();
@@ -319,11 +319,21 @@ namespace Mongscape.Bootstrap
             yield return new WaitForSecondsRealtime(.25f);
             Session.Flow.Transition(GameFlowState.Running); hud.EndLoading();
         }
+        // Pause button, Esc and the settings window: pause, or count back in when paused (plan 6-7a).
         public void TogglePause()
         {
             if(Session.Flow.State!=GameFlowState.Running) return;
-            Session.Paused=!Session.Paused; Time.timeScale=Session.Paused?0:1;
-            keyboard.Clear(); poseInput.Clear();
+            PauseControl.Toggle(Session);
+        }
+        // Pause screen "보정 다시": measure the standing pose again, then count back in.
+        public void RecalibrateAndResume() { Pose.Recalibrate(); PauseControl.Resume(Session); }
+        // The pause flow drives Session.Paused; time stops while paused and the inputs start clean on both edges.
+        public readonly PauseFlow PauseControl = new PauseFlow();
+        private void HookPause()
+        {
+            PauseControl.Paused += reason => { Time.timeScale = 0; keyboard.Clear(); poseInput.Clear(); };
+            PauseControl.Resumed += () => { Time.timeScale = 1; keyboard.Clear(); poseInput.Clear(); Pose.ResetCommands(); };
+            PauseControl.Count += n => audioPlayer?.Countdown(false);
         }
         private void UpdateAdaptive(bool live)
         {
@@ -367,6 +377,13 @@ namespace Mongscape.Bootstrap
             OperatorKeys();
             if (Accounts.ExpiryPending && Session.Flow.State == GameFlowState.TitleIdle && !hud.Loading) Accounts.ApplyExpiry();
             TickInput();
+            // Pause (plan 6-7a): out of view, the X held for a second while not running in place, Esc.
+            if (Session.Flow.State == GameFlowState.Running && !hud.Loading && !hud.Revealing && (settingsWindow == null || !settingsWindow.IsOpen))
+            {
+                if (KeyboardGameInput.PausePressed) TogglePause();
+                bool camera = Pose.UsesCamera && !Tutorial.Active;
+                PauseControl.Tick(Session, Time.unscaledDeltaTime, camera, Pose.Tracking, Pose.Reading.ArmsCrossed, Pose.CadenceStage != CadenceStage.Standing);
+            }
             if (Session.Flow.State == GameFlowState.Caught && Time.timeScale < 1 && Time.realtimeSinceStartup - caughtAt > .7f) Time.timeScale = 1;
             if(Session.Paused||hud.Loading||hud.Revealing) return;
             float dt = Mathf.Min(Time.deltaTime, .1f);
@@ -595,6 +612,7 @@ namespace Mongscape.Bootstrap
         public void ExitToMenu()
         {
             if (Session.Paused) { Session.Paused = false; Time.timeScale = 1; }
+            PauseControl.Clear();
             playerRun = false;
             Retry();
             Results = new RunResults(Accounts, () => Store);
