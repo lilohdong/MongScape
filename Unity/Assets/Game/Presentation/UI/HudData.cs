@@ -164,7 +164,7 @@ namespace Mongscape.Presentation
             if ((status == PoseStatus.NoCamera || status == PoseStatus.NoModel) && !string.IsNullOrEmpty(data.PoseMessage))
                 GUI.Label(new Rect(area.x + 16, area.y + 16, area.width - 32, area.height - 70), data.PoseMessage, skin.Style(16, FontStyle.Normal));
             string text = status == PoseStatus.Calibrating && data.PoseKneesMissing ? KneesHint : PoseStatusText.Korean(status);
-            if (status == PoseStatus.Tracking && data.StepsPerMinute > 0) text += " (분당 " + Mathf.RoundToInt(data.StepsPerMinute) + "걸음 · " + Domain.Cadence.Korean(data.Cadence) + ")";
+            if (status == PoseStatus.Tracking && data.StepsPerMinute > 0) text += " (분당 " + Mathf.RoundToInt(data.StepsPerMinute) + "걸음, " + Domain.Cadence.Korean(data.Cadence) + ")";
             // Camera setup: a body cut off at the picture's edge (or standing too far or to one side) gets a hint instead.
             string hint = FramingHint(data, status);
             if (hint != null) text = hint;
@@ -209,7 +209,7 @@ namespace Mongscape.Presentation
             var lane = new Rect(area.x + 8, area.y + 8, 120, 34);
             skin.Card(lane, new Color(0, 0, 0, .6f));
             GUI.Label(lane, motion.Lane < 0 ? "◀ 왼쪽" : motion.Lane > 0 ? "오른쪽 ▶" : "가운데", skin.Centered(18, FontStyle.Bold));
-            string action = data.SecondsSinceJump < .6f ? "점프!" : motion.Crouch ? "숙이기" : data.SecondsSinceKneeStep < .7f ? "무릎·팔 당기기" : null;
+            string action = data.SecondsSinceJump < .6f ? "점프!" : motion.Crouch ? "숙이기" : data.SecondsSinceKneeStep < .7f ? "무릎이나 팔 당기기" : null;
             if (action == null) return;
             var badge = new Rect(area.xMax - 158, area.y + 8, 150, 34);
             skin.Card(badge, Palette.A(Palette.Gold, .9f));

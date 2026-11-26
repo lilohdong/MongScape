@@ -31,8 +31,8 @@ namespace Mongscape.Bootstrap
             Tutorial.MyPose = TrackedFrame; Tutorial.MyBaseline = () => Pose.Baseline; Tutorial.Tuning = () => Pose.Tuning;
             Tutorial.StepsPerMinute = () => Pose.StepsPerMinute; Tutorial.PaceScale = () => pace.Scale;
             Tutorial.RunCadence = Settings != null ? Settings.Motion.RunCadence : 100f;
-            Tutorial.SyncMs = () => userSettings != null ? userSettings.SyncOffsetMs : 0;
-            Tutorial.SaveSync = ms => { if (userSettings == null) return; userSettings.SyncOffsetMs = ms; UserSettingsStore.Save(userSettings); };
+            Tutorial.SyncMs = () => userSettings != null ? Mathf.RoundToInt(userSettings.ZooSyncSeconds(Pose.UsesCamera) * 1000f) : 0;
+            Tutorial.SaveSync = ms => { if (userSettings == null) return; userSettings.SyncOffsetMs = ms; userSettings.SyncMeasured = true; UserSettingsStore.Save(userSettings); };
             Tutorial.Demo = gameObject.AddComponent<TutorialDemo>(); Tutorial.Demo.Configure(MonkeyPrefab);
             Tutorial.Configure(Session, Map, () => Pose.Status == PoseStatus.Tracking || Pose.Status == PoseStatus.Off || Pose.Status == PoseStatus.NoCamera || Pose.Status == PoseStatus.NoModel,
                 RestartTutorial, FinishTutorial, () => !hud.Hidden && !hud.Loading && !hud.Revealing && RunCalibration == RunCalibrationState.None);

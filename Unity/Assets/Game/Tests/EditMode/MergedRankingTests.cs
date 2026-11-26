@@ -28,6 +28,22 @@ namespace Mongscape.Tests
             Assert.IsTrue(rows[0].Member); Assert.IsFalse(rows[1].Member);
         }
 
+        [Test] public void AGuestNameHasOneRowAndTheRunJustFinishedStays()
+        {
+            var mineRun = Guest("A", 300);
+            var local = new List<RankingEntry> { Guest("A", 800), Guest("B", 500), Guest("A", 400), mineRun, Guest("B", 200), Guest("A", 100) };
+            var rows = RankingBoard.Combined(local, Server(null), mineRun, out var mine);
+            CollectionAssert.AreEqual(new[] { 800, 500, 300 }, rows.ConvertAll(r => r.Score), "The best per name, and this run beside it");
+            CollectionAssert.AreEqual(new[] { 1, 2, 3 }, rows.ConvertAll(r => r.Rank));
+            Assert.AreSame(rows[2], mine);
+            // A run that is the name's best (or ties it) stands for the name alone.
+            var best = Guest("A", 800);
+            var alone = RankingBoard.BestPerName(new List<RankingEntry> { Guest("A", 800), best, Guest("A", 50) }, best);
+            CollectionAssert.AreEqual(new[] { best }, alone);
+            // Offline the same member also has one row.
+            Assert.AreEqual(1, RankingBoard.BestPerName(new List<RankingEntry> { Member("M", 9), Member("M", 3) }, null).Count);
+        }
+
         [Test] public void AMemberRunStillUploadingReplacesThatMembersOlderServerRow()
         {
             var run = Member("Me", 950);

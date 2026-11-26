@@ -274,7 +274,7 @@ namespace Mongscape.Presentation
             if (session.Invincible && (state == GameFlowState.Running || state == GameFlowState.Caught) && Event.current.type == EventType.Repaint)
             {
                 skin.Card(new Rect(16, 684, 220, 26), new Color(0, 0, 0, .55f));
-                GUI.color = Palette.Gold; GUI.Label(new Rect(16, 684, 220, 26), "무적 모드 켜짐 (F9) · F7 잡히기", skin.Centered(14, FontStyle.Bold)); GUI.color = Color.white;
+                GUI.color = Palette.Gold; GUI.Label(new Rect(16, 684, 220, 26), "무적 모드 켜짐 (F9)  F7 잡히기", skin.Centered(14, FontStyle.Bold)); GUI.color = Color.white;
             }
             // Joint recording (F6, Editor and development builds): a red note at the top of every screen while it runs.
             if (Data != null && Data.PoseRecording && Event.current.type == EventType.Repaint)

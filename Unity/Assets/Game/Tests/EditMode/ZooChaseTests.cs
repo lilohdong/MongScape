@@ -105,6 +105,15 @@ namespace Mongscape.Tests
             var late = Started(); late.SyncOffset = .12f; Run(late, 4.5f + .3f);
             Assert.AreEqual(0, late.Input(ZooNoteKind.Jump), "The sync offset shifts the window for a late camera");
         }
+        [Test] public void TheZooJudgesWithTheMeasuredSyncElseTheCameraDelay()
+        {
+            var settings = new UserSettings();
+            Assert.AreEqual(.12f, settings.ZooSyncSeconds(true), 1e-6, "Not measured yet");
+            Assert.AreEqual(0f, settings.ZooSyncSeconds(false), "The keyboard has no camera delay");
+            settings.SyncOffsetMs = 210; Assert.AreEqual(.21f, settings.ZooSyncSeconds(true), 1e-6); Assert.AreEqual(0f, settings.ZooSyncSeconds(false));
+            settings.SyncOffsetMs = 0; settings.SyncMeasured = true; Assert.AreEqual(0f, settings.ZooSyncSeconds(true), "A measured 0 ms counts");
+        }
+
         [Test] public void AMissedJumpBringsTheLionMostAndAHitPushesItBack()
         {
             var c = Started(); Run(c, 5f);

@@ -372,9 +372,9 @@ namespace Mongscape.PoseInference
             double span = now - statsSince;
             if (span < .5) return;
             string latency = latencySamples > 0 ? (latencySum / latencySamples * 1000).ToString("0") + "ms" : "-";
-            Diagnostics = (tracking ? "이어서 추적" : "사람 찾기") + " · 어깨 " + shoulderQuality.ToString("0.00") + " · 검출 " + lastDetectorScore.ToString("0.00")
-                + " · 추론 " + (published / span).ToString("0") + "fps / 카메라 " + (cameraFrames / span).ToString("0") + "fps"
-                + " · 지연 " + latency + " · 동시 " + mostInFlight + "/" + slots.Length + " · 재검출 " + detections + " · 놓침 " + lostTracks;
+            Diagnostics = (tracking ? "이어서 추적" : "사람 찾기") + "  어깨 " + shoulderQuality.ToString("0.00") + "  검출 " + lastDetectorScore.ToString("0.00")
+                + "  추론 " + (published / span).ToString("0") + "fps / 카메라 " + (cameraFrames / span).ToString("0") + "fps"
+                + "  지연 " + latency + "  동시 " + mostInFlight + "/" + slots.Length + "  재검출 " + detections + "  놓침 " + lostTracks;
             published = detections = lostTracks = cameraFrames = latencySamples = mostInFlight = 0; latencySum = 0; statsSince = now;
         }
 

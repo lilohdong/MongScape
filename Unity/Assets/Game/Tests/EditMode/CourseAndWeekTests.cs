@@ -13,7 +13,7 @@ namespace Mongscape.Tests
         [Test] public void EachCourseHasItsMixAndLabels()
         {
             Assert.AreEqual(ExerciseKind.Strength, MapCourse.KindOf(0)); Assert.AreEqual(ExerciseKind.Cardio, MapCourse.KindOf(-1)); Assert.AreEqual(ExerciseKind.Balance, MapCourse.KindOf(1));
-            Assert.AreEqual("감옥 · 근력 코스", MapCourse.Course(0)); Assert.AreEqual("●●○", MapCourse.DotText(ExerciseKind.Balance));
+            Assert.AreEqual("감옥  근력 코스", MapCourse.Course(0)); Assert.AreEqual("●●○", MapCourse.DotText(ExerciseKind.Balance));
             var prison = MapCourse.Mix(ExerciseKind.Strength);
             Assert.AreEqual(.5f, prison.Factor(HazardAction.Jump)); Assert.AreEqual(1.5f, prison.Factor(HazardAction.Crouch)); Assert.AreEqual(.5f, prison.Factor(HazardAction.Dodge));
             var zoo = MapCourse.Mix(ExerciseKind.Cardio); Assert.AreEqual(1.5f, zoo.Factor(HazardAction.Jump)); Assert.AreEqual(1.5f, zoo.Factor(HazardAction.Dodge));

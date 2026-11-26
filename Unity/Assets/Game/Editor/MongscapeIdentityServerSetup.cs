@@ -74,7 +74,7 @@ namespace Mongscape.Editor
             EditorGUILayout.LabelField("Used in Play mode and copied next to Mongscape.exe on every build.", EditorStyles.wordWrappedLabel);
             EditorGUILayout.Space();
             url = EditorGUILayout.TextField("Server URL", url);
-            EditorGUILayout.LabelField("예: https://faces.your-domain.com · 로컬 Docker는 http://127.0.0.1:8765", EditorStyles.miniLabel);
+            EditorGUILayout.LabelField("예: https://faces.your-domain.com, 로컬 Docker는 http://127.0.0.1:8765", EditorStyles.miniLabel);
             string variable = Environment.GetEnvironmentVariable("MONGSCAPE_IDENTITY_URL");
             if (!string.IsNullOrWhiteSpace(variable))
                 EditorGUILayout.HelpBox("MONGSCAPE_IDENTITY_URL (" + variable + ") is set for this editor and takes priority over this file.", MessageType.Warning);

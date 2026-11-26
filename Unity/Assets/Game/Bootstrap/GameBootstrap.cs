@@ -172,9 +172,9 @@ namespace Mongscape.Bootstrap
             overlay = gameObject.AddComponent<PerformanceOverlay>();
             // Pose diagnostics are a development tool (Editor and development builds); release builds never show them.
             // They also show the cadence and the jump line in use (body units), for checking the step and jump tuning live.
-            overlay.PoseLine = () => Pose.UsesCamera && BuildInfo.DevelopmentTools ? Pose.Diagnostics + " · 분당 " + Mathf.RoundToInt(Pose.StepsPerMinute) + "걸음 " + Cadence.Korean(Pose.CadenceStage)
-                + " · 들썩임 " + Pose.Bounce.ToString("0.00") + " 점프선 " + Pose.JumpThreshold.ToString("0.00") : "";
-            overlay.QualityLine = () => "화질 " + userSettings.Preset + " · 렌더 " + Mathf.RoundToInt((effectiveGraphics?.RenderScale ?? userSettings.RenderScale) * 100) + "% · 그림자 " + (effectiveGraphics?.Shadows ?? userSettings.Shadows) + (userSettings.AutoPerformance ? " · 자동 " + adaptive.Level : "") + (userSettings.FrameCap > 0 ? " · 상한 " + userSettings.FrameCap : "");
+            overlay.PoseLine = () => Pose.UsesCamera && BuildInfo.DevelopmentTools ? Pose.Diagnostics + "  분당 " + Mathf.RoundToInt(Pose.StepsPerMinute) + "걸음 " + Cadence.Korean(Pose.CadenceStage)
+                + "  들썩임 " + Pose.Bounce.ToString("0.00") + " 점프선 " + Pose.JumpThreshold.ToString("0.00") : "";
+            overlay.QualityLine = () => "화질 " + userSettings.Preset + "  렌더 " + Mathf.RoundToInt((effectiveGraphics?.RenderScale ?? userSettings.RenderScale) * 100) + "%  그림자 " + (effectiveGraphics?.Shadows ?? userSettings.Shadows) + (userSettings.AutoPerformance ? "  자동 " + adaptive.Level : "") + (userSettings.FrameCap > 0 ? "  상한 " + userSettings.FrameCap : "");
             var window = new GameObject("SettingsWindow"); window.transform.SetParent(transform, false);
             settingsWindow = window.AddComponent<SettingsWindow>();
             settingsWindow.Configure(this);
@@ -387,7 +387,7 @@ namespace Mongscape.Bootstrap
                 Session.HidePose = hideBody && Pose.Reading.Crouch; Session.HideDepth = hideBody ? Pose.Reading.CrouchDepth : -1f;
                 // The zoo song sets the speed and the lion follows the running beat (plan 1-2b); keyboard: notes only.
                 bool tracking = cadenceRun && Pose.UsesCamera && Pose.Tracking;
-                zoo.SyncOffset = Pose.UsesCamera ? .12f : 0f;
+                zoo.SyncOffset = userSettings.ZooSyncSeconds(Pose.UsesCamera);
                 zoo.Tick(dt, tracking ? Pose.StepsPerMinute < MapCourse.TargetCadence(course, Settings != null ? Settings.Motion : null) : (bool?)null);
                 float previousZ = Session.Runner.Z;
                 Session.Tick(dt); Results.Race.Update(Session.Score.Score); Map.Tick(Session.Runner.Z); Hero.Apply(Session.Runner); Map.Evaluate(previousZ);

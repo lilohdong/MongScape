@@ -63,7 +63,7 @@ namespace Mongscape.Presentation
                 .Append("   최대 ").Append((worst * 1000).ToString("0.0")).Append("ms");
             if (mainThread.Valid && mainThread.Count > 0) line.Append("\nCPU 메인 ").Append((Average(mainThread) * 1e-6).ToString("0.0")).Append("ms");
             if (batches.Valid) line.Append("   배치 ").Append(batches.LastValue).Append("   SetPass ").Append(setPass.LastValue).Append("   삼각형 ").Append((triangles.LastValue / 1000f).ToString("0")).Append("k");
-            line.Append("\n메모리 ").Append((GC.GetTotalMemory(false) / 1048576f).ToString("0")).Append("MB (관리) · ")
+            line.Append("\n메모리 ").Append((GC.GetTotalMemory(false) / 1048576f).ToString("0")).Append("MB (관리)  ")
                 .Append((UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong() / 1048576f).ToString("0")).Append("MB (전체)");
             string quality = QualityLine?.Invoke(); if (!string.IsNullOrEmpty(quality)) line.Append('\n').Append(quality);
             string pose = PoseLine?.Invoke(); if (!string.IsNullOrEmpty(pose)) line.Append("\n포즈 ").Append(pose);

@@ -134,7 +134,7 @@ namespace Mongscape.Infrastructure
         public void Delete(string token,Action<AccountReply> done)
         {
             faceCalls++;
-            Post("/delete","{}",token,reply=>{faceCalls--;if(reply.ok)Message="얼굴과 프로필·기록을 삭제했습니다.";done?.Invoke(reply);});
+            Post("/delete","{}",token,reply=>{faceCalls--;if(reply.ok)Message="얼굴과 프로필과 기록을 삭제했습니다.";done?.Invoke(reply);});
         }
         private void Face(string path,string json,Action<AccountReply> done)
         {
