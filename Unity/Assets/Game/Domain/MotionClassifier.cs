@@ -1,0 +1,460 @@
+using System;
+
+namespace Mongscape.Domain
+{
+    // Turns pose frames into game intent for one play style.
+    // Lanes follow body position (left zone / centre / right zone) with hysteresis, so two lanes is simply a bigger step
+    // and returning to the centre returns the runner. Jump is an edge; crouch and high knee are held states.
+    // Full body: on foot the zone is where the hips stand (side step); in the cart it is how far the shoulders tilt over the hips.
+    public sealed class MotionClassifier
+    {
+        private readonly MotionTuning tuning;
+        private readonly float[] px = new float[PoseFrame.Count], py = new float[PoseFrame.Count], vis = new float[PoseFrame.Count];
+        private bool smoothed;
+        private PlayStyle style = PlayStyle.FullBody;
+        // Riding the cart, and whether the zone must be re-read at once because the measure just changed.
+        private bool cart, cartChanged;
+        // Baseline (calibrated standing pose).
+        private bool calibrated;
+        private int samples;
+        private float bCx, bSy, bHy, bScale, bKneeL, bKneeR, bAnkle, bNose, bTilt, bRoll;
+        private float sumCx, sumSy, sumHy, sumScale, sumKneeL, sumKneeR, sumAnkle, sumNose, sumTilt, sumRoll;
+        private int ankleSamples, noseSamples, kneeSamples;
+        // Tracking state.
+        private double lostSince = -1, crouchPendingSince = -1, crouchSince = -10, landingUntil, lastKneeStep = -10, lastStep = -10, lastJump = -10, lastLaneChange = -10, pumpUntil;
+        private bool airborne, hopping, handsUp, duckOnLoss;
+        // Full body: which knee crossed the lift line last (-1 left, 1 right, 0 none) and which knees are above it now.
+        private int kneeSide;
+        private bool kneeUpL, kneeUpR;
+        private const double KneeStepActiveSeconds = .7;
+        // Previous full-body frame, for the rise speed of shoulders and hips.
+        private double lastTrackTime = -1;
+        private float lastSy, lastHy;
+        // How far the last tracked frame was toward a duck (1 = threshold); a loss after a dip counts as ducking.
+        private float dropRatio;
+        private double actionLockUntil, laneCandidateSince;
+        private int laneCandidate;
+        private bool Locked(double now) => now < actionLockUntil;
+        private bool ActionSeen(int i) => vis[i] >= tuning.ActionVisibility;
+        private void Lock(double now, double seconds) { if (now + seconds > actionLockUntil) actionLockUntil = now + seconds; }
+        private int stepSign, pumpSign;
+        // Step times for the cadence: enough slots for 3 s of the fastest sprint (about 240 steps a minute).
+        private readonly double[] stepTimes = new double[16];
+        private int stepIndex;
+        // Running bounce: the highest hip rise since the last step, and its running average over the steps (body units).
+        private float stepPeakRise, bounce;
+        private bool stepPeakValid, jumpedSinceStep;
+        // Full body: how far the hips and the shoulders went up and down since the last knee swap (body units). A step of
+        // running in place moves the whole body; knees bent in turn or heels raised while standing do not (QA 2026-11-25).
+        private float bodyRise, bobLow, bobHigh;
+        private bool bobValid, bodyRiseValid;
+        // Calibration: when moving last restarted it, and the latest frame time.
+        private double calibrationBrokeAt = -10, lastFrameTime;
+        public PoseStatus Status { get; private set; } = PoseStatus.Searching;
+        public bool Calibrated => calibrated;
+        // The calibrated standing pose in PoseFrame units (X as a share of the picture width at this aspect), for the
+        // tutorial's joint comparison; not valid before calibration.
+        public PoseBaseline Baseline(float aspect)
+        {
+            if (!calibrated || aspect <= 0) return default;
+            float knee = float.IsNaN(bKneeL) ? float.NaN : (bKneeL + bKneeR) * .5f;
+            return new PoseBaseline(style, bCx / aspect, bSy, bHy, bScale, knee, bNose, aspect);
+        }
+        // Full body calibration is waiting because a knee is out of view.
+        public bool KneesMissing { get; private set; }
+        public float CalibrationProgress => calibrated ? 1f : Math.Min(1f, samples / (float)Math.Max(1, tuning.CalibrationFrames));
+        public readonly MotionReading Reading = new MotionReading();
+        // Steps a minute from the alternating knees (arm swings for the upper body) over the last 3 s; jumps do not count.
+        public float StepsPerMinute { get; private set; }
+        public CadenceStage CadenceStage => Cadence.Stage(StepsPerMinute, tuning);
+        // Every step counted since the classifier was made (never reset, so a recalibration does not lose the run's tally).
+        public int StepCount { get; private set; }
+        // The player's running bounce (hip rise per step, body units) and the jump line in use right now.
+        public float Bounce => bounce;
+        public float JumpThreshold => JumpLine(lastFrameTime);
+        // Calibration just restarted because the player moved (for "움직이지 마세요").
+        public bool CalibrationMoving => !calibrated && lastFrameTime - calibrationBrokeAt < .5;
+        public PlayStyle Style => style;
+        public MotionClassifier(MotionTuning motionTuning) { tuning = motionTuning ?? new MotionTuning(); }
+        public void SetStyle(PlayStyle next) { style = next; Recalibrate(); }
+        // Boarding or leaving the cart switches the full body from side steps to leaning (and back).
+        public void SetCart(bool riding) { if (riding == cart) return; cart = riding; cartChanged = true; }
+        // On (or right before) a stair chunk: only knee steps matter there (stairs carry no hazards), so the jump reading is off.
+        // Hopping high knees and stepping toward or away from the camera move the hips in the image and used to read as
+        // "airborne", which blocked every knee step.
+        private bool stairs;
+        public void SetStairs(bool on) { stairs = on; if (on) airborne = hopping = false; }
+        // A duck row is just ahead: a jump there would run into it, so the jump line rises (JumpDuckFactor).
+        private bool duckAhead;
+        public void SetDuckAhead(bool on) { duckAhead = on; }
+        public void Recalibrate()
+        {
+            calibrated = false; samples = 0; smoothed = false; Reading.Clear(); airborne = hopping = handsUp = duckOnLoss = false; jumpBigDone = kneeBigDone = laneBigDone = pullUp = pullDownBig = false; dropRatio = 0; actionLockUntil = 0; laneCandidate = 0;
+            crouchPendingSince = -1; crouchSince = -10; lastTrackTime = -1; laneLastTime = -1; lastKneeStep = -10; kneeSide = 0; kneeUpL = kneeUpR = false; pumpUntil = 0; stepSign = pumpSign = 0; StepsPerMinute = 0;
+            Array.Clear(stepTimes, 0, stepTimes.Length); stepIndex = 0; lastStep = -10; bounce = 0; stepPeakValid = jumpedSinceStep = bobValid = bodyRiseValid = false; calibrationBrokeAt = -10;
+            Status = PoseStatus.Calibrating;
+        }
+
+        public MotionReading Update(PoseFrame frame)
+        {
+            Reading.JumpEdge = false; Reading.KneeStep = false; Reading.BigJump = Reading.BigKnee = Reading.BigLane = false;
+            double now = frame.Time; lastFrameTime = now;
+            if (!frame.HasPose || !Smooth(frame) || !RequiredVisible())
+            {
+                laneLastTime = -1;
+                if (lostSince < 0) { lostSince = now; duckOnLoss = calibrated && Status == PoseStatus.Tracking && dropRatio > .5f; }
+                double lost = now - lostSince;
+                if (calibrated && lost <= tuning.LostGraceSeconds && !duckOnLoss) return Reading;
+                if (calibrated && duckOnLoss && lost <= tuning.DuckHoldSeconds) { Reading.Crouch = true; Reading.Active = true; Status = PoseStatus.Tracking; return Reading; }
+                if (now - lostSince > tuning.LostSeconds && calibrated) Recalibrate();
+                Status = PoseStatus.Searching; Reading.Crouch = Reading.Active = false; crouchPendingSince = -1; kneeSide = 0; kneeUpL = kneeUpR = false;
+                return Reading;
+            }
+            // Landmarks right after re-acquiring the body jump around; ignore actions for a moment.
+            if (lostSince >= 0 && calibrated) Lock(now, tuning.ReacquireLockSeconds);
+            lostSince = -1;
+            if (!calibrated) { Calibrate(frame.Aspect, now); return Reading; }
+            Status = PoseStatus.Tracking;
+            if (style == PlayStyle.UpperBody) TrackUpper(frame.Aspect, now); else TrackFull(frame.Aspect, now);
+            UpdateCadence(now);
+            Reading.Active = now - lastStep < .8 || now - lastJump < 1 || Reading.Crouch || now - lastKneeStep < KneeStepActiveSeconds || now - lastLaneChange < 1 || now < pumpUntil;
+            return Reading;
+        }
+
+        private bool Smooth(PoseFrame frame)
+        {
+            float a = smoothed ? Clamp(tuning.Smoothing, .05f, 1f) : 1f;
+            for (int i = 0; i < PoseFrame.Count; i++)
+            {
+                var p = frame.Points[i];
+                if (float.IsNaN(p.X) || float.IsNaN(p.Y) || float.IsInfinity(p.X) || float.IsInfinity(p.Y)) return false;
+                // Faint joints keep their last position instead of jumping to a guess.
+                if (!smoothed || p.Visibility >= MinVisibility * .6f) { px[i] += (p.X * frame.Aspect - px[i]) * a; py[i] += (p.Y - py[i]) * a; }
+                vis[i] = p.Visibility;
+            }
+            smoothed = true; return true;
+        }
+        private float MinVisibility => style == PlayStyle.UpperBody ? tuning.UpperMinVisibility : tuning.MinVisibility;
+        private bool Seen(int i) => vis[i] >= MinVisibility;
+        private bool RequiredVisible() => style == PlayStyle.UpperBody
+            ? Seen(PoseJoint.LeftShoulder) && Seen(PoseJoint.RightShoulder)
+            : Seen(PoseJoint.LeftShoulder) && Seen(PoseJoint.RightShoulder) && Seen(PoseJoint.LeftHip) && Seen(PoseJoint.RightHip);
+
+        private float ShoulderX => (px[PoseJoint.LeftShoulder] + px[PoseJoint.RightShoulder]) * .5f;
+        private float ShoulderY => (py[PoseJoint.LeftShoulder] + py[PoseJoint.RightShoulder]) * .5f;
+        private float HipX => (px[PoseJoint.LeftHip] + px[PoseJoint.RightHip]) * .5f;
+        private float HipY => (py[PoseJoint.LeftHip] + py[PoseJoint.RightHip]) * .5f;
+        private float ShoulderWidth => Distance(PoseJoint.LeftShoulder, PoseJoint.RightShoulder);
+        private float Torso => (float)Math.Sqrt((ShoulderX - HipX) * (ShoulderX - HipX) + (ShoulderY - HipY) * (ShoulderY - HipY));
+        private float Distance(int a, int b) => (float)Math.Sqrt((px[a] - px[b]) * (px[a] - px[b]) + (py[a] - py[b]) * (py[a] - py[b]));
+        // The full body follows where the hips stand: stepping into the side zone changes lane, leaning the shoulders
+        // alone does not. The upper body only has the shoulders.
+        private float CentreX => style == PlayStyle.UpperBody ? ShoulderX : HipX;
+        // Sideways offset of the shoulders over the hips (raw, divide by the body scale): the cart lean.
+        private float Tilt => ShoulderX - HipX;
+        private float CurrentScale => style == PlayStyle.UpperBody ? ShoulderWidth : Torso;
+        // Shoulder line tilt in degrees, positive when the shoulder further along +X is lower (a lean toward +X).
+        // The slope does not depend on which shoulder is which, so a mirrored camera reads the same.
+        private float Roll
+        {
+            get
+            {
+                float dx = px[PoseJoint.RightShoulder] - px[PoseJoint.LeftShoulder];
+                if (Math.Abs(dx) < 1e-4f) return 0f;
+                return (float)(Math.Atan((py[PoseJoint.RightShoulder] - py[PoseJoint.LeftShoulder]) / dx) * 180 / Math.PI);
+            }
+        }
+        private bool KneesSeen => Seen(PoseJoint.LeftKnee) && Seen(PoseJoint.RightKnee);
+        private bool AnklesSeen => Seen(PoseJoint.LeftAnkle) && Seen(PoseJoint.RightAnkle);
+        private float AnkleY => (py[PoseJoint.LeftAnkle] + py[PoseJoint.RightAnkle]) * .5f;
+        private float KneeDrop(int knee, int hip) => py[knee] - py[hip];
+
+        private void Calibrate(float aspect, double now)
+        {
+            Status = PoseStatus.Calibrating;
+            float scale = CurrentScale;
+            if (scale < .02f) { samples = 0; return; }
+            // Full body play reads knees (high knee, crouch); a calibration without both knees in view does not count.
+            KneesMissing = style == PlayStyle.FullBody && !KneesSeen;
+            if (KneesMissing) { samples = 0; return; }
+            // Restart when the player is still moving: the baseline must be a calm standing pose.
+            if (samples > 0)
+            {
+                int before = samples;
+                float meanX = sumCx / samples, meanY = sumSy / samples, meanScale = sumScale / samples;
+                if (Math.Abs(CentreX - meanX) > tuning.CalibrationStillness * meanScale || Math.Abs(ShoulderY - meanY) > tuning.CalibrationStillness * meanScale) samples = 0;
+                // The full body's centre is the hips only; a shoulder sway must also restart, or it becomes the cart's "upright" lean.
+                else if (style != PlayStyle.UpperBody && Math.Abs(Tilt / scale - sumTilt / samples) > tuning.CalibrationStillness) samples = 0;
+                // The upper body's lean is also the shoulder tilt: a rocking shoulder line restarts too.
+                else if (style == PlayStyle.UpperBody && Math.Abs(Roll - sumRoll / samples) > tuning.UpperLeanEnterDegrees * .5f) samples = 0;
+                if (samples == 0 && before > 0) calibrationBrokeAt = now;
+            }
+            if (samples == 0) { sumCx = sumSy = sumHy = sumScale = sumKneeL = sumKneeR = sumAnkle = sumNose = sumTilt = sumRoll = 0; ankleSamples = noseSamples = kneeSamples = 0; }
+            samples++;
+            sumCx += CentreX; sumSy += ShoulderY; sumScale += scale;
+            // Standing straight is rarely exactly upright to the camera; the cart lean is measured from this posture.
+            if (style != PlayStyle.UpperBody) { sumHy += HipY; sumTilt += Tilt / scale; } else sumRoll += Roll;
+            if (KneesSeen && style != PlayStyle.UpperBody) { sumKneeL += KneeDrop(PoseJoint.LeftKnee, PoseJoint.LeftHip); sumKneeR += KneeDrop(PoseJoint.RightKnee, PoseJoint.RightHip); kneeSamples++; }
+            if (AnklesSeen && style != PlayStyle.UpperBody) { sumAnkle += AnkleY; ankleSamples++; }
+            if (Seen(PoseJoint.Nose)) { sumNose += py[PoseJoint.Nose]; noseSamples++; }
+            if (samples < tuning.CalibrationFrames) return;
+            bCx = sumCx / samples; bSy = sumSy / samples; bHy = sumHy / samples; bScale = sumScale / samples; bTilt = sumTilt / samples; bRoll = sumRoll / samples;
+            bKneeL = kneeSamples > 0 ? sumKneeL / kneeSamples : float.NaN; bKneeR = kneeSamples > 0 ? sumKneeR / kneeSamples : float.NaN;
+            bAnkle = ankleSamples > 0 ? sumAnkle / ankleSamples : float.NaN; bNose = noseSamples > 0 ? sumNose / noseSamples : float.NaN;
+            calibrated = true; Reading.Clear(); Status = PoseStatus.Tracking;
+        }
+
+        private float Scale() => Clamp(CurrentScale, bScale * .6f, bScale * 1.6f);
+
+        // Sideways speed of the lane offset (body units per second), for reading the lane slightly ahead.
+        private float laneSpeed, laneLastOffset;
+        private double laneLastTime = -1;
+        private float LaneLead(float offset, double now)
+        {
+            double dt = now - laneLastTime;
+            if (laneLastTime < 0 || dt <= 0 || dt > .25) laneSpeed = 0;
+            else laneSpeed += ((float)((offset - laneLastOffset) / dt) - laneSpeed) * .5f;
+            laneLastTime = now; laneLastOffset = offset;
+            return Clamp(laneSpeed * tuning.LanePredictSeconds, -tuning.LanePredictMax, tuning.LanePredictMax);
+        }
+
+        private void UpdateLane(float offset, float enter, float exit, double now, bool locked)
+        {
+            offset += LaneLead(offset, now);
+            int lane = Reading.Lane;
+            if (lane == 0) { if (offset < -enter) lane = -1; else if (offset > enter) lane = 1; }
+            else if (lane < 0) { if (offset > -exit) lane = offset > enter ? 1 : 0; }
+            else if (offset < exit) lane = offset < -enter ? -1 : 0;
+            // While locked, or until the new zone has held for a moment, the lane does not change.
+            if (locked || lane == Reading.Lane) { laneCandidate = Reading.Lane; return; }
+            if (lane != laneCandidate) { laneCandidate = lane; laneCandidateSince = now; return; }
+            if (now - laneCandidateSince < tuning.LaneHoldSeconds) return;
+            Reading.Lane = lane; lastLaneChange = now; laneBigDone = false;
+        }
+
+        private void TrackFull(float aspect, double now)
+        {
+            float scale = Scale();
+            // On foot: where the hips stand. In the cart: how far the shoulders tilt over the hips; stepping aside does nothing.
+            float offset = cart ? Tilt / scale - bTilt : (CentreX - bCx) / scale;
+            float enter = cart ? tuning.CartLeanEnter : tuning.LaneEnter, exit = cart ? tuning.CartLeanExit : tuning.LaneExit;
+            float drop = (ShoulderY - bSy) / scale, hipRise = (bHy - HipY) / scale, shoulderRise = (bSy - ShoulderY) / scale;
+            // Rise speed of the slower of shoulders and hips, in body units per second.
+            double dt = now - lastTrackTime;
+            float riseSpeed = lastTrackTime >= 0 && dt > 0 && dt < .2 ? Math.Min(lastSy - ShoulderY, lastHy - HipY) / scale / (float)dt : 0f;
+            lastTrackTime = now; lastSy = ShoulderY; lastHy = HipY;
+            dropRatio = drop / tuning.CrouchDrop;
+            // A fresh crouch may be a jump wind-up; it keeps the lane until the cancel window has passed.
+            bool windUp = now - crouchSince < tuning.CrouchJumpCancelSeconds;
+            // A dip moves the shoulders; it must not read as a sideways step.
+            bool laneLocked = Locked(now) || airborne || Reading.Crouch || windUp || dropRatio > .6f;
+            // Boarding or leaving: read the zone afresh, the other measure's zone means nothing here.
+            // Mid-jump or crouching the body is not settled, so it starts from the centre and the usual hold applies from there.
+            if (cartChanged) { cartChanged = false; laneLastTime = -1; Reading.Lane = laneCandidate = !laneLocked && Math.Abs(offset) > enter ? Math.Sign(offset) : 0; }
+            UpdateLane(offset, enter, exit, now, laneLocked);
+            bool feetUp = !AnklesSeen || float.IsNaN(bAnkle) || (bAnkle - AnkleY) / scale > tuning.JumpRise * .5f;
+            // Running in place bounces the hips; while running the jump line sits well above the player's own bounce.
+            float jumpLine = JumpLine(now);
+            // A jump lifts both knees together; a running step has one knee up.
+            bool kneesLevel = !KneesSeen || !ActionSeen(PoseJoint.LeftKnee) || !ActionSeen(PoseJoint.RightKnee) || float.IsNaN(bKneeL)
+                || Math.Abs(KneeLift(PoseJoint.LeftKnee, PoseJoint.LeftHip, bKneeL, scale) - KneeLift(PoseJoint.RightKnee, PoseJoint.RightHip, bKneeR, scale)) <= tuning.JumpKneeSymmetry;
+            bool up = hipRise > jumpLine && shoulderRise > jumpLine * .8f && feetUp && kneesLevel;
+            // The body's rise: hips and shoulders together, lightly filtered so joint jitter does not read as a bounce.
+            bodyRise = bodyRiseValid ? bodyRise + ((hipRise + shoulderRise) * .5f - bodyRise) * .5f : (hipRise + shoulderRise) * .5f; bodyRiseValid = true;
+            if (!bobValid) { bobLow = bobHigh = bodyRise; bobValid = true; }
+            else { bobLow = Math.Min(bobLow, bodyRise); bobHigh = Math.Max(bobHigh, bodyRise); }
+            if (airborne) jumpedSinceStep = true;
+            else { stepPeakRise = stepPeakValid ? Math.Max(stepPeakRise, hipRise) : hipRise; stepPeakValid = true; }
+            // Jump wins over a crouch that only just confirmed: the dip was the take-off. No refractory lock.
+            if (up && Reading.Crouch && windUp) Reading.Crouch = false;
+            if (stairs) up = false;
+            if (up && !airborne && now - lastJump > .25 && !Locked(now) && !Reading.Crouch)
+            {
+                Reading.JumpEdge = true; lastJump = now;
+                // A dip right before take-off is part of the jump, not a slide.
+                if (!Reading.Crouch) crouchPendingSince = -1;
+            }
+            if (up) airborne = true;
+            else if (airborne && hipRise < tuning.JumpRise * .4f) { airborne = false; landingUntil = now + tuning.LandingGraceSeconds; }
+            // A low hop never reaches the jump line; a fast rise still earns the landing grace once the hips settle.
+            if (riseSpeed > tuning.JumpAttemptSpeed) hopping = true;
+            else if (hopping && hipRise < tuning.JumpRise * .4f) { hopping = false; landingUntil = Math.Max(landingUntil, now + tuning.LandingGraceSeconds); }
+            UpdateCrouch(drop > tuning.CrouchDrop && !airborne && now >= landingUntil, drop < tuning.CrouchDrop * .65f, now, tuning.CrouchConfirmSeconds, tuning.CrouchJumpCancelSeconds);
+            // Big: a half squat (knee angle, or the hips well down when the ankles are out of view).
+            Reading.CrouchDeep = Reading.Crouch && (KneeAngle() <= tuning.DeepKneeAngle || (bHy - HipY) / scale <= -tuning.DeepHipDrop);
+            // Big: hips and shoulders both over the jump line for a moment after take-off.
+            if (!airborne) jumpBigDone = false;
+            else if (!jumpBigDone && now - lastJump >= tuning.BigJumpAirSeconds && hipRise > jumpLine && shoulderRise > jumpLine) { jumpBigDone = true; Reading.BigJump = true; }
+            // Big: the hips and the shoulders both moved a shoulder width or more (a side step, not a lean); on foot only.
+            if (!cart && Reading.Lane != 0 && !laneBigDone && now - lastLaneChange < .5)
+            {
+                float width = ShoulderWidth * tuning.BigSideStepWidths;
+                if (Math.Abs(HipX - bCx) >= width && Math.Abs(ShoulderX - bCx - bTilt * scale) >= width) { laneBigDone = true; Reading.BigLane = true; }
+            }
+            // High knee: one knee rises toward its hip; squats and tucks move both knees, so require asymmetry.
+            if (KneesSeen && ActionSeen(PoseJoint.LeftKnee) && ActionSeen(PoseJoint.RightKnee) && !float.IsNaN(bKneeL))
+            {
+                float liftL = KneeLift(PoseJoint.LeftKnee, PoseJoint.LeftHip, bKneeL, scale);
+                float liftR = KneeLift(PoseJoint.RightKnee, PoseJoint.RightHip, bKneeR, scale);
+                float diff = liftL - liftR;
+                // A knee step is the rising edge of a knee crossing the lift line on the other side from the last one.
+                bool upL = !airborne && liftL > tuning.HighKneeLift && diff > tuning.HighKneeLift * .7f;
+                bool upR = !airborne && liftR > tuning.HighKneeLift && -diff > tuning.HighKneeLift * .7f;
+                if (upL && !kneeUpL && kneeSide != -1) { kneeSide = -1; EmitKneeStep(now); kneeBigDone = false; }
+                if (upR && !kneeUpR && kneeSide != 1) { kneeSide = 1; EmitKneeStep(now); kneeBigDone = false; }
+                // Big: the stepping knee comes up to hip height.
+                float stepping = kneeSide < 0 ? liftL : liftR, thigh = (kneeSide < 0 ? bKneeL : bKneeR) / scale;
+                if (kneeSide != 0 && !kneeBigDone && now - lastKneeStep < KneeStepActiveSeconds && (kneeSide < 0 ? upL : upR) && stepping >= thigh * tuning.BigKneeHipRatio) { kneeBigDone = true; Reading.BigKnee = true; }
+                kneeUpL = upL; kneeUpR = upR;
+                // Alternating small lifts are running in place. Knees moving in the air are not steps, and neither are knees
+                // swapping while the hips and shoulders stay level (bent knees or raised heels standing still). On the stairs
+                // a slow knee raise barely moves the body, so there the knees alone count.
+                int sign = Math.Abs(diff) > tuning.StepLift ? Math.Sign(diff) : 0;
+                if (sign != 0 && sign != stepSign)
+                {
+                    bool bounced = stairs || bobHigh - bobLow >= tuning.StepBob;
+                    if (stepSign != 0 && !airborne && bounced) { RegisterStep(now); LearnBounce(); }
+                    stepSign = sign; bobValid = false;
+                }
+            }
+            if (Reading.Lane == 0 && !airborne && !Reading.Crouch && now - lastKneeStep >= KneeStepActiveSeconds && Math.Abs(offset) < exit * .5f) Drift();
+        }
+
+        private void EmitKneeStep(double now) { Reading.KneeStep = true; lastKneeStep = now; }
+        private bool jumpBigDone, kneeBigDone, laneBigDone, pullUp, pullDownBig;
+        // Inner knee angle in degrees from hip-knee-ankle (the lower of both legs); 180 when the legs are not all in view.
+        private float KneeAngle()
+        {
+            if (!AnklesSeen || !KneesSeen) return 180f;
+            return Math.Min(Angle(PoseJoint.LeftHip, PoseJoint.LeftKnee, PoseJoint.LeftAnkle), Angle(PoseJoint.RightHip, PoseJoint.RightKnee, PoseJoint.RightAnkle));
+        }
+        private float Angle(int a, int b, int c)
+        {
+            float ax = px[a] - px[b], ay = py[a] - py[b], cx = px[c] - px[b], cy = py[c] - py[b];
+            float la = (float)Math.Sqrt(ax * ax + ay * ay), lc = (float)Math.Sqrt(cx * cx + cy * cy);
+            if (la < 1e-5f || lc < 1e-5f) return 180f;
+            double cos = Math.Max(-1, Math.Min(1, (ax * cx + ay * cy) / (la * lc)));
+            return (float)(Math.Acos(cos) * 180 / Math.PI);
+        }
+        // An arm is straight when shoulder to wrist is nearly the length of upper arm plus forearm; true when the elbow is not seen.
+        private bool Straight(int shoulder, int elbow, int wrist)
+            => !Seen(elbow) || Distance(shoulder, wrist) >= tuning.UpperStraightArm * (Distance(shoulder, elbow) + Distance(elbow, wrist));
+        private float KneeLift(int knee, int hip, float baseline, float scale) => (baseline - KneeDrop(knee, hip)) / scale;
+        // Running: a step within the last 0.8 s. Standing still the jump line is JumpRise.
+        private float JumpLine(double now) => (now - lastStep < .8 ? Math.Max(tuning.JumpRise, bounce * tuning.JumpBounceFactor) : tuning.JumpRise) * (duckAhead ? tuning.JumpDuckFactor : 1f);
+        // Each step closes one bounce: its highest hip rise feeds the running average. A step with a jump in it is not a bounce,
+        // and a rise of more than three jump lines is a glitch, not running.
+        private void LearnBounce()
+        {
+            if (stepPeakValid && !jumpedSinceStep && stepPeakRise < tuning.JumpRise * 3)
+                bounce += (Math.Max(0f, stepPeakRise) - bounce) * tuning.BounceFollow;
+            stepPeakValid = jumpedSinceStep = false;
+        }
+
+        private void TrackUpper(float aspect, double now)
+        {
+            // The upper body leans the same way on foot and in the cart.
+            cartChanged = false;
+            // Leaning toward the camera widens the shoulders; the calibrated width keeps the lane scale steady.
+            float scale = bScale;
+            float offset = (CentreX - bCx) / scale;
+            float drop = (ShoulderY - bSy) / scale;
+            float noseDrop = Seen(PoseJoint.Nose) && !float.IsNaN(bNose) ? (py[PoseJoint.Nose] - bNose) / scale : 0f;
+            bool noseDuck = noseDrop > tuning.UpperCrouchDrop * 1.3f;
+            dropRatio = Math.Max(drop / tuning.UpperCrouchDrop, noseDrop / (tuning.UpperCrouchDrop * 1.3f));
+            bool ducking = Reading.Crouch || crouchPendingSince >= 0 || dropRatio > .5f;
+            if (ducking) Lock(now, tuning.RefractorySeconds);
+            bool wristsSeen = ActionSeen(PoseJoint.LeftWrist) && ActionSeen(PoseJoint.RightWrist);
+            // A sideways lean tilts the shoulder line too, and the tilt needs far less movement than shifting the shoulders
+            // across. Raising a hand or a big arm pump lifts one shoulder, so the tilt is ignored then.
+            bool handRising = ActionSeen(PoseJoint.LeftWrist) && py[PoseJoint.LeftWrist] < ShoulderY || ActionSeen(PoseJoint.RightWrist) && py[PoseJoint.RightWrist] < ShoulderY;
+            bool bigPump = wristsSeen && Math.Abs(py[PoseJoint.LeftWrist] - py[PoseJoint.RightWrist]) / scale > tuning.ArmPumpAmplitude;
+            float tilt = handRising || bigPump ? 0f : (Roll - bRoll) * tuning.UpperLaneEnter / Math.Max(.1f, tuning.UpperLeanEnterDegrees);
+            float lean = Math.Abs(tilt) > Math.Abs(offset) ? tilt : offset;
+            UpdateLane(lean, tuning.UpperLaneEnter, tuning.UpperLaneExit, now, Locked(now));
+            // Big lean: the shoulder line tilts 20 degrees or more (or the shoulders shift half again past the lane line).
+            if (Reading.Lane != 0 && !laneBigDone && now - lastLaneChange < .5 && (Math.Abs(Roll - bRoll) >= tuning.UpperBigLeanDegrees || Math.Abs(offset) >= tuning.UpperLaneEnter * 1.5f)) { laneBigDone = true; Reading.BigLane = true; }
+            // Hands must rise above the calibrated head height; the live nose drops when ducking and would fake a jump.
+            float head = !float.IsNaN(bNose) ? bNose : bSy - bScale;
+            bool hands = wristsSeen && py[PoseJoint.LeftWrist] < head - tuning.UpperHandsAboveNose * scale && py[PoseJoint.RightWrist] < head - tuning.UpperHandsAboveNose * scale;
+            // On the stairs the hands over the head are the pull-down exercise, not a jump.
+            if (hands && !handsUp && now - lastJump > .25 && !Locked(now) && !stairs) { Reading.JumpEdge = true; lastJump = now; crouchPendingSince = -1; }
+            // Big jump: both arms straight up.
+            if (hands && !jumpBigDone && now - lastJump < .6 && Straight(PoseJoint.LeftShoulder, PoseJoint.LeftElbow, PoseJoint.LeftWrist) && Straight(PoseJoint.RightShoulder, PoseJoint.RightElbow, PoseJoint.RightWrist)) { jumpBigDone = true; Reading.BigJump = true; }
+            if (hands) handsUp = true;
+            else if (!wristsSeen || py[PoseJoint.LeftWrist] > ShoulderY || py[PoseJoint.RightWrist] > ShoulderY) { handsUp = false; jumpBigDone = false; }
+            // Stair exercise (pull-down): hands over the head is one step, pulled down below the nose the next; below the shoulders is big.
+            if (stairs && wristsSeen)
+            {
+                bool belowHead = py[PoseJoint.LeftWrist] > head && py[PoseJoint.RightWrist] > head;
+                // Each way is also a step of the cadence: on the stairs the pull-down replaces the arm swing (QA 2026-11-25 H2).
+                if (hands && !pullUp) { pullUp = true; pullDownBig = false; EmitKneeStep(now); RegisterStep(now); }
+                else if (pullUp && belowHead) { pullUp = false; pullDownBig = true; EmitKneeStep(now); RegisterStep(now); }
+                if (pullDownBig && py[PoseJoint.LeftWrist] > ShoulderY && py[PoseJoint.RightWrist] > ShoulderY) { pullDownBig = false; Reading.BigKnee = true; }
+            }
+            else pullUp = pullDownBig = false;
+            UpdateCrouch((drop > tuning.UpperCrouchDrop || noseDuck) && !handsUp, drop < tuning.UpperCrouchDrop * .65f && !noseDuck, now, tuning.UpperCrouchConfirmSeconds, 0f);
+            // Deep lean forward: the shoulders down by a head (calibrated nose to shoulder line).
+            float headSize = !float.IsNaN(bNose) ? bSy - bNose : bScale * .8f;
+            Reading.CrouchDeep = Reading.Crouch && headSize > 0 && ShoulderY - bSy >= headSize;
+            // Alternating arm swings are the steps (running in place); the stair exercise is the pull-down above, so they never overlap.
+            // A swing moves the whole arm: wrists flicked with the elbows still are not steps (QA 2026-11-25).
+            if (wristsSeen && !handsUp)
+            {
+                float diff = (py[PoseJoint.LeftWrist] - py[PoseJoint.RightWrist]) / scale;
+                bool elbowsSeen = ActionSeen(PoseJoint.LeftElbow) && ActionSeen(PoseJoint.RightElbow);
+                float elbowDiff = elbowsSeen ? (py[PoseJoint.LeftElbow] - py[PoseJoint.RightElbow]) / scale : diff;
+                bool wholeArm = Math.Sign(elbowDiff) == Math.Sign(diff) && Math.Abs(elbowDiff) >= tuning.ArmSwingElbow;
+                int sign = Math.Abs(diff) > tuning.ArmSwingAmplitude && wholeArm ? Math.Sign(diff) : 0;
+                if (sign != 0 && sign != pumpSign)
+                {
+                    if (pumpSign != 0) { RegisterStep(now); pumpUntil = now + .8; }
+                    pumpSign = sign;
+                }
+            }
+            if (Reading.Lane == 0 && !handsUp && !Reading.Crouch && Math.Abs(lean) < tuning.UpperLaneExit * .5f) Drift();
+        }
+
+        // A crouch released within cancelSeconds of confirming ends without the refractory lock, so the jump it led into can count.
+        private void UpdateCrouch(bool down, bool released, double now, float confirmSeconds, float cancelSeconds)
+        {
+            if (Reading.Crouch) { if (released) { Reading.Crouch = false; if (now - crouchSince >= cancelSeconds) Lock(now, tuning.RefractorySeconds); } return; }
+            if (!down) { crouchPendingSince = -1; return; }
+            if (crouchPendingSince < 0) crouchPendingSince = now;
+            if (now - crouchPendingSince >= confirmSeconds) { Reading.Crouch = true; crouchPendingSince = -1; crouchSince = now; }
+        }
+
+        // Slowly follow a player who drifts while standing still, so the centre zone stays centred.
+        private void Drift()
+        {
+            float d = tuning.BaselineDrift;
+            // Only the measure in use follows the player: a long lean on foot must not move the cart's upright.
+            if (style != PlayStyle.UpperBody && cart) bTilt += (Tilt / Scale() - bTilt) * d * .5f;
+            else bCx += (CentreX - bCx) * d * .5f;
+            if (style == PlayStyle.UpperBody) bRoll += (Roll - bRoll) * d * .5f;
+            bSy += (ShoulderY - bSy) * d; bScale += (CurrentScale - bScale) * d;
+            if (style != PlayStyle.UpperBody) bHy += (HipY - bHy) * d;
+            if (AnklesSeen && !float.IsNaN(bAnkle)) bAnkle += (AnkleY - bAnkle) * d;
+            if (Seen(PoseJoint.Nose) && !float.IsNaN(bNose)) bNose += (py[PoseJoint.Nose] - bNose) * d;
+        }
+
+        private const double StopSeconds = 1.2;
+        private void RegisterStep(double now) { lastStep = now; StepCount++; stepTimes[stepIndex] = now; stepIndex = (stepIndex + 1) % stepTimes.Length; }
+        // Average over the last 3 s: the step intervals inside the window, so a steady pace reads its true rate. After the
+        // last step the rate falls off smoothly (the open interval up to now also counts) until the steps leave the window.
+        private void UpdateCadence(double now)
+        {
+            int count = 0; double first = double.MaxValue, last = double.MinValue;
+            foreach (double t in stepTimes)
+            {
+                if (t <= 0 || now - t >= Cadence.WindowSeconds || t > now) continue;
+                count++; if (t < first) first = t; if (t > last) last = t;
+            }
+            // No step for StopSeconds: standing (slower than 50 a minute is not walking in place).
+            if (count < 2 || last <= first || now - last > StopSeconds) { StepsPerMinute = 0; return; }
+            double rate = (count - 1) / (last - first), open = count / Math.Max(now - first, 1e-3);
+            StepsPerMinute = (float)(60 * Math.Min(rate, open));
+        }
+        private static float Clamp(float v, float min, float max) => v < min ? min : v > max ? max : v;
+    }
+}

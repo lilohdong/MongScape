@@ -1,0 +1,978 @@
+using Mongscape.Application;
+using System.Collections;
+using Mongscape.Content;
+using Mongscape.Domain;
+using Mongscape.Infrastructure;
+using Mongscape.Presentation;
+using Mongscape.Presentation.Map;
+using UnityEngine;
+using UnityEngine.Timeline;
+
+namespace Mongscape.Bootstrap
+{
+    public sealed class GameBootstrap : MonoBehaviour, IHudData, ISettingsHost, IIdentityData
+    {
+        public GameSettings Settings;
+        public MongscapeMapChunk[] ChunkPrefabs;
+        public GameObject MonkeyPrefab, PolicePrefab, CartPrefab, PickaxePrefab, IdeaPrefab, DustPrefab, HitPrefab;
+        public FirstPersonCameraRig CameraRig;
+        public Camera OutputCamera;
+        public TimelineAsset IntroTimeline;
+        public GameObject HandsPrefab;
+        public Texture2D TitleLogo;
+        public Texture2D LoadingImage;
+        public GameObject CartRidePrefab;
+        public bool StartSetupOpen=>hud!=null&&hud.SetupOpen;
+        public bool IsLoading=>hud!=null&&hud.Loading;
+        public bool IsRevealing=>hud!=null&&hud.Revealing;
+        public RunSession Session { get; private set; }
+        public ChunkSpawner Map { get; private set; }
+        public IntroSequenceDirector Intro { get; private set; }
+        public PoseTracker Pose { get; private set; }
+        public PlayerProgressStore Store { get; private set; }
+        public RunnerView Hero { get; private set; }
+        private RunnerView guard;
+        private KeyboardGameInput keyboard;
+        private PoseGameInput poseInput;
+        private InputRouter router;
+        private HUDPresenter hud;
+        private GameAudio audioPlayer;
+        private readonly StairCameraFx stairFx = new StairCameraFx();
+        public StairCameraFx StairFx => stairFx;
+        private float caughtTime, runFade, runStartedAt = -10, caughtAt = -10;
+        private ParticleSystem dust, hit;
+        private bool previousStumble;
+        // Counts steps, jumps, crouches, knee steps and lane changes of the run for the result report.
+        private readonly MoveTally moveTally = new MoveTally();
+        // Cadence -> runner speed and police (exercise plan 4); on for camera runs with the setup option on.
+        private readonly CadencePace pace = new CadencePace();
+        private bool cadenceRun;
+        // The running ranking strip (exercise plan 10-2): this week's board of the play style, loaded once per run.
+        private readonly RankRace race = new RankRace();
+        // Big movements (exercise plan 6).
+        private int seenBigJumps, seenBigKnees, seenBigLanes;
+        private bool wasDeep;
+        private double bigUntil = -10, deepSince = -10;
+        // Exercise plan 8: active seconds per course this run (for the weekly balance) and the streak coins of the last run.
+        private readonly double[] kindSeconds = new double[4];
+        private int lastStreakCoins;
+        private int raceTicket;
+        // The account (member or guest) is the only source of the current player.
+        public AccountSession Account { get; } = new AccountSession();
+        // Run settings of the current or next run, taken from the account.
+        // Runs started from the setup screen are recorded on the leaderboard.
+        private PlayerProfile player = new PlayerProfile();
+        private IAccountGateway gateway;
+        private AccountRunUploader runs;
+        private Texture2D portrait;
+        private string shownAccount = "";
+        // Account server state for the login gate, and the face capture (the webcam, or a fake in tests).
+        private string serverProblem = "";
+        private int serverTicket;
+        private bool serverChecking;
+        private System.Action<System.Action<string[]>> captureFaces;
+        // A member call answered 401: that token expired on the server. The member is signed out here (no /logout) and the
+        // login gate opens with the notice; during a run (and its result) this waits until the menu is back.
+        public const string ExpiredNotice = "로그인이 만료되었어요. 다시 로그인해 주세요.";
+        private string expiredToken, loginNotice = "";
+        private bool playerRun, bannerSounded, goSounded, lastNewBest;
+        private RankingEntry lastEntry;
+        private int lastBestScore = -1;
+        // The member's /stats (best score per play style) and the totals read after the last run was saved.
+        private StatsReply memberStats, lastStats;
+        private string memberStatsId = "";
+        private bool lastStatsFailed;
+        private int lastTodayRank;
+        private UserSettings userSettings, settingsDefaults;
+        private GraphicsSettingsApplier graphics;
+        private SettingsWindow settingsWindow;
+        private PerformanceOverlay overlay;
+        private int lastRank;
+        private LocalProfileClient identity;
+        private FaceAvatarView faceAvatar;
+        public PoliceCaptureSequence Capture { get; private set; }
+        public PolicePursuitCue PursuitCue { get; private set; }
+        private float guardDistance=15;
+        private bool automated;
+        private readonly AdaptivePerformance adaptive = new AdaptivePerformance();
+        private UserSettings effectiveGraphics;
+        private bool menuCamera;
+        private PlayStyle cameraBeforeMenu;
+        // Whether any webcam is plugged in; re-read every few seconds outside runs (never during play, enumeration can stall a frame).
+        private bool cameraDetected, wasMenu;
+        private double nextCameraScan;
+        // Tutorial lessons on the ordinary run; offered once per session on "게임 시작".
+        public TutorialDirector Tutorial { get; private set; }
+        private bool tutorialOffered;
+        private void Awake()
+        {
+            var flags=System.Environment.GetCommandLineArgs();
+            automated=System.Array.IndexOf(flags,"--mongscape-smoke")>=0||System.Array.IndexOf(flags,"--mongscape-uicapture")>=0
+                ||System.Array.IndexOf(flags,"--mongscape-review")>=0||System.Array.IndexOf(flags,"--mongscape-tests")>=0
+                ||System.Array.IndexOf(flags,"--mongscape-capture")>=0||System.Array.IndexOf(flags,"--mongscape-recording")>=0
+                ||System.Array.IndexOf(flags,"--mongscape-exercise-review")>=0;
+            Session = new RunSession(Settings != null ? JsonUtility.FromJson<RunConfig>(JsonUtility.ToJson(Settings.Run)) : new RunConfig());
+            if (ChunkPrefabs == null || ChunkPrefabs.Length < 5 || CameraRig == null || OutputCamera == null)
+            { Debug.LogError("GameScene requires content references. Run Mongscape/Build GameScene."); enabled = false; return; }
+            keyboard = new KeyboardGameInput(); poseInput = new PoseGameInput(); router = new InputRouter(Session, keyboard, poseInput);
+            Pose = new PoseTracker(poseInput, Settings != null ? Settings.Camera : null, Settings != null ? Settings.Motion : null, () => Session.Runner.Lane, () => Session.Runner.Riding&&!(RouteSurface.ActivePlan?.ForkWindow(Session.Runner.Z)??false), () => Session.Runner.Riding, OnOrBeforeStairs);
+            Store = new PlayerProgressStore(DataRoot());
+            player = Account.Profile.Clone();
+            Hero = CreateActor("CHR_Monkey_Prisoner", MonkeyPrefab);
+            guard = CreateActor("CHR_Police_Officer", PolicePrefab);
+            Capture=gameObject.AddComponent<PoliceCaptureSequence>();Capture.Configure(Hero,guard);
+            PursuitCue=gameObject.AddComponent<PolicePursuitCue>();PursuitCue.Configure(Session);
+            identity=gameObject.AddComponent<LocalProfileClient>(); faceAvatar=Hero.gameObject.AddComponent<FaceAvatarView>();
+            gateway=new ExpiryWatchingGateway(identity,SessionExpired); runs=new AccountRunUploader(Account,gateway);
+            captureFaces=done=>identity.CaptureFaces(Pose.CameraTexture,done);
+            Account.Changed+=AccountChanged;
+            gameObject.AddComponent<CartRideView>().Configure(Session,Hero,CartRidePrefab);
+            gameObject.AddComponent<PowerUpAuraView>().Configure(Session,Hero);
+            OutputCamera.GetComponent<CinematicFocus>()?.Configure(Session,Hero);
+            var mapRoot = new GameObject("ChunkPool"); mapRoot.transform.SetParent(transform, false);
+            Map = new ChunkSpawner(ChunkPrefabs, mapRoot.transform, Session, Settings != null ? Settings.Render : new RenderBudget());
+            Map.Decorator = new TutorialLayout(new RuntimeContent(mapRoot.transform, RunItems, Settings != null ? Settings.ItemChancePerChunk : .35f), Session);
+            // Right before a duck row (about 1.2 s ahead) the jump line rises, so a running bounce cannot jump into the bar.
+            Pose.DuckAhead = () => Session.Flow.State == GameFlowState.Running && !Session.Runner.Riding
+                && Map.ActionAhead(HazardAction.Crouch, Session.Runner.Z, Mathf.Max(6f, Session.CurrentSpeed * 1.2f));
+            CameraRig.Configure(OutputCamera);
+            if(OutputCamera.GetComponent<GameViewport>()==null) OutputCamera.gameObject.AddComponent<GameViewport>();
+            if (HandsPrefab != null)
+            {
+                var hands = Instantiate(HandsPrefab, OutputCamera.transform);
+                hands.GetComponent<FirstPersonHands>().Configure(Session);
+            }
+            var cart = CreateProp("PROP_MineCart", CartPrefab, transform);
+            var tool = CreateProp("PROP_Pickaxe", PickaxePrefab, Hero.ToolAnchor);
+            tool.transform.localPosition = Hero.Humanoid ? Vector3.zero : new Vector3(.05f, -.35f, .35f);
+            if(Hero.Humanoid) { tool.transform.localRotation=Quaternion.Euler(0,0,-90); tool.transform.localScale=Vector3.one*.75f; }
+            var bulb = CreateProp("VFX_LightBulb_Idea", IdeaPrefab, Hero.transform); bulb.transform.localPosition = new Vector3(0, 2.4f, 0);
+            if(Hero.Humanoid) bulb.transform.localScale=Vector3.one*.65f;
+            dust = CreateProp("VFX_Dust_Run", DustPrefab, Hero.transform).GetComponentInChildren<ParticleSystem>();
+            hit = CreateProp("VFX_Hit_Stumble", HitPrefab, Hero.transform).GetComponentInChildren<ParticleSystem>();
+            var cartAudio = cart.GetComponent<AudioSource>();
+            Intro = gameObject.AddComponent<IntroSequenceDirector>();
+            Intro.Configure(Session, Hero, guard, CameraRig, cart.transform, tool.transform, bulb, cartAudio, IntroTimeline);
+            hud = gameObject.AddComponent<HUDPresenter>();
+            hud.Map=Map; hud.Data=this; hud.PoliceAlert=()=>PursuitCue.Visible;
+            hud.Configure(Session, RetrySamePlayer);
+            hud.TitleLogo = TitleLogo;
+            hud.LoadingImage=LoadingImage; hud.BeginRun=StartPlayerRun; hud.PauseRun=TogglePause; hud.ToMenu=ExitToMenu;
+            hud.TextInput=KeyboardGameInput.SetTextInput; hud.Quit=QuitGame;
+            hud.StartTutorial=StartTutorial; hud.OfferTutorial=OfferTutorial;
+            Tutorial=gameObject.AddComponent<TutorialDirector>();
+            Tutorial.Framed=()=>Pose.Framing==FramingIssue.Ok;
+            Tutorial.NoCamera=()=>Pose.Status==PoseStatus.Off||Pose.Status==PoseStatus.NoCamera||Pose.Status==PoseStatus.NoModel;
+            Tutorial.MyPose=()=>Pose.UsesCamera&&Pose.Tracking?Pose.LastFrame:null; Tutorial.MyBaseline=()=>Pose.Baseline; Tutorial.Tuning=()=>Pose.Tuning;
+            Tutorial.StepsPerMinute=()=>Pose.StepsPerMinute; Tutorial.PaceScale=()=>pace.Scale; Tutorial.PacePressure=()=>pace.Pressure; Tutorial.Tracking=()=>Pose.Tracking;
+            Tutorial.RunCadence=Settings!=null?Settings.Motion.RunCadence:100f;
+            Tutorial.Demo=gameObject.AddComponent<TutorialDemo>(); Tutorial.Demo.Configure(MonkeyPrefab);
+            Tutorial.Configure(Session,Map,()=>Pose.Status==PoseStatus.Tracking||Pose.Status==PoseStatus.Off||Pose.Status==PoseStatus.NoCamera||Pose.Status==PoseStatus.NoModel,
+                RestartTutorial,FinishTutorial,()=>!hud.Hidden&&!hud.Loading&&!hud.Revealing&&RunCalibration==RunCalibrationState.None);
+            audioPlayer = gameObject.AddComponent<GameAudio>();
+            audioPlayer.Configure(Session, Settings != null ? Settings.MusicVolume : .35f, Settings != null ? Settings.EffectsVolume : .7f);
+            hud.RankCracked = audioPlayer.Crack;
+            SetupSettings();
+            if(automated)player.Style=PlayStyle.Keyboard;
+            Session.Flow.Changed += StateChanged;
+            Session.Flow.Transition(GameFlowState.TitleIdle);
+        }
+        private void SetupSettings()
+        {
+            settingsDefaults = new UserSettings
+            {
+                MusicVolume = Settings != null ? Settings.MusicVolume : .35f, EffectsVolume = Settings != null ? Settings.EffectsVolume : .7f,
+                LiteLandmarkModel = Settings != null && !Settings.Camera.FullLandmarkModel, CameraDevice = Settings != null ? Settings.Camera.DeviceName : "",
+            };
+            settingsDefaults.ApplyPreset(QualityPreset.Balanced);
+            userSettings = UserSettingsStore.Load(settingsDefaults);
+            graphics = new GraphicsSettingsApplier();
+            overlay = gameObject.AddComponent<PerformanceOverlay>();
+            // Pose diagnostics are a development tool (Editor and development builds); release builds never show them.
+            // They also show the cadence and the jump line in use (body units), for checking the step and jump tuning live.
+            overlay.PoseLine = () => Pose.UsesCamera && BuildInfo.DevelopmentTools ? Pose.Diagnostics + " · 분당 " + Mathf.RoundToInt(Pose.StepsPerMinute) + "걸음 " + Cadence.Korean(Pose.CadenceStage)
+                + " · 들썩임 " + Pose.Bounce.ToString("0.00") + " 점프선 " + Pose.JumpThreshold.ToString("0.00") : "";
+            overlay.QualityLine = () => "화질 " + userSettings.Preset + " · 렌더 " + Mathf.RoundToInt((effectiveGraphics?.RenderScale ?? userSettings.RenderScale) * 100) + "% · 그림자 " + (effectiveGraphics?.Shadows ?? userSettings.Shadows) + (userSettings.AutoPerformance ? " · 자동 " + adaptive.Level : "") + (userSettings.FrameCap > 0 ? " · 상한 " + userSettings.FrameCap : "");
+            var window = new GameObject("SettingsWindow"); window.transform.SetParent(transform, false);
+            settingsWindow = window.AddComponent<SettingsWindow>();
+            settingsWindow.Configure(this);
+            settingsWindow.Closed += () => hud.Hidden = false;
+            hud.OpenSettings = OpenSettings;
+            ApplySettings(false);
+        }
+        public void OpenSettings()
+        {
+            if (settingsWindow == null || settingsWindow.IsOpen || hud.Loading) return;
+            if (Session.Flow.State == GameFlowState.Running && !Session.Paused) TogglePause();
+            hud.Hidden = true; settingsWindow.Open();
+        }
+        public void ApplySettings(bool save)
+        {
+            adaptive.Reset();
+            effectiveGraphics=userSettings.Clone();
+            graphics?.Apply(effectiveGraphics);
+            if (Map != null) Map.DetailScale = userSettings.DetailDistance;
+            audioPlayer?.SetVolumes(userSettings.MusicVolume, userSettings.EffectsVolume);
+            Pose.Configure(userSettings.CameraDevice, userSettings.LiteLandmarkModel, userSettings.LaneSensitivity);
+            Pose.SetInferenceRate(30);
+            if (overlay != null) overlay.Visible = userSettings.PerformanceOverlay;
+            HazardMarker.ThickOutline = userSettings.ColorBlind;
+            if (hud != null && hud.RunModel != null) hud.RunModel.CameraEnabled = userSettings.InGameCamera;
+            if (save) UserSettingsStore.Save(userSettings);
+        }
+        private RunnerView CreateActor(string id, GameObject prefab)
+        {
+            var root = new GameObject(id); root.transform.SetParent(transform, false);
+            var visual = CreateProp("VisualRoot", prefab, root.transform);
+            var view = root.AddComponent<RunnerView>(); view.Configure(visual); return view;
+        }
+        private static GameObject CreateProp(string id, GameObject prefab, Transform parent)
+        {
+            GameObject result = prefab != null ? Instantiate(prefab, parent) : GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            result.name = id; result.transform.SetParent(parent, false);
+            if (prefab == null) { var collider = result.GetComponent<Collider>(); if (collider != null) collider.enabled = false; }
+            return result;
+        }
+        public void StartIntro()
+        {
+            if (Session.Flow.Transition(GameFlowState.IntroTimeline)) Intro.Begin();
+        }
+        public bool MenuOpen=>hud!=null&&hud.MenuOpen;
+        public void OpenMainMenu()
+        {
+            if(Session.Flow.State!=GameFlowState.TitleIdle||hud.Loading) return;
+            hud.OpenMainMenu();
+        }
+        // After the title: face login, sign-up or guest play.
+        public void OpenLogin()
+        {
+            if(Session.Flow.State!=GameFlowState.TitleIdle||hud.Loading) return;
+            loginNotice=""; hud.OpenLogin();
+        }
+        // Straight to the run setup (tests).
+        public void OpenStartSetup()
+        {
+            if(Session.Flow.State!=GameFlowState.TitleIdle||hud.Loading) return;
+            hud.OpenSetup();
+        }
+        // Direct start (tests, tools): keeps the current play style and does not enter the leaderboard.
+        public void BeginRun(string weight)
+        {
+            if(Session.Flow.State!=GameFlowState.TitleIdle||hud.Loading||!Session.Workout.SetWeight(weight)) return;
+            menuCamera=false;
+            playerRun=false; cadenceRun=false; race.Clear(); raceTicket++; Session.Workout.Met=PlayStyleInfo.Met(player.Style);Session.Workout.StyleScale=IntensityMet.Scale(player.Style);
+            Session.Workout.CadenceCounts=true;
+            StartCoroutine(PrepareRun(723));
+        }
+        // Start from the setup screen: the run is recorded on the leaderboard, and the chosen play style
+        // becomes the account's default.
+        public void StartPlayerRun(PlayerProfile profile)
+        {
+            if(profile==null||Session.Flow.State!=GameFlowState.TitleIdle||hud.Loading) return;
+            // A weight outside 10-350 kg (an old profile) never blocks the run: it counts as the 65 kg default.
+            if(!Session.Workout.SetWeight(profile.Weight)) Session.Workout.SetWeight("");
+            // No camera: a body style falls back to the keyboard for this run, and the saved default is left alone.
+            if(!PlayableStyle(profile.Style)){profile.Style=PlayStyle.Keyboard;}
+            else if(profile.Style!=Account.Settings.Style){var saved=Account.Settings;saved.Style=profile.Style;SaveSettings(saved);}
+            player=profile; playerRun=true; KeyboardGameInput.SetTextInput(false);
+            // The best to beat is read before the run (and before its save).
+            RefreshMemberStats();
+            Session.Workout.Met=PlayStyleInfo.Met(profile.Style);Session.Workout.StyleScale=IntensityMet.Scale(profile.Style);
+            Session.Workout.SetGoal(profile.CalorieGoal);
+            cadenceRun = PlayStyleInfo.UsesCamera(profile.Style) && userSettings.CadenceSpeed;
+            // Cadence off: stepping in place earns no calories, only jumps, crouches, knee raises and lane changes do.
+            Session.Workout.CadenceCounts = userSettings.CadenceSpeed;
+            LoadRace(profile.Style);
+            menuCamera=false; Pose.SetStyle(profile.Style);
+            StartCoroutine(PrepareRun(Settings != null && Settings.Run.RandomizeLayout ? Random.Range(1, int.MaxValue) : 723));
+        }
+        // Tutorial (main menu, after sign-up or the "게임 시작" offer): the same scene and map on a fixed lesson course.
+        // It never reaches the result screen, so nothing goes to the ranking, coins or calories.
+        public void StartTutorial()
+        {
+            if(Session.Flow.State!=GameFlowState.TitleIdle||hud.Loading) return;
+            tutorialOffered=true; playerRun=false; KeyboardGameInput.SetTextInput(false);
+            if(!PlayableStyle(player.Style)) player.Style=PlayStyle.Keyboard;
+            Session.Workout.SetWeight(""); Session.Workout.Met=PlayStyleInfo.Met(player.Style);Session.Workout.StyleScale=IntensityMet.Scale(player.Style);
+            menuCamera=false; Pose.SetStyle(player.Style);
+            cadenceRun=PlayStyleInfo.UsesCamera(player.Style)&&userSettings.CadenceSpeed; race.Clear(); raceTicket++; Session.Workout.CadenceCounts=userSettings.CadenceSpeed;
+            Session.IsTutorial=true; Tutorial.Begin(player.Style,Session.Config.ExtendedRoutes,userSettings.CadenceSpeed,tutorialShort); tutorialShort=false;
+            StartCoroutine(PrepareRun(TutorialCourse.Seed));
+        }
+        // Members who have not finished it and every guest are offered it once per session.
+        private bool OfferTutorial()
+        {
+            if(TutorialScript.ShouldOffer(Account.IsMember,Account.TutorialDone,tutorialOffered)){tutorialOffered=true;tutorialShort=false;return true;}
+            // Members who finished the earlier tutorial: the short version of what this update changed, offered once on this PC.
+            bool seen=Account.IsMember&&userSettings.UpdatedTutorialSeen.Contains(Account.Id);
+            if(!TutorialScript.ShouldOfferUpdate(Account.IsMember,Account.TutorialDone,seen,tutorialOffered)) return false;
+            tutorialOffered=true; tutorialShort=true; userSettings.UpdatedTutorialSeen.Add(Account.Id); UserSettingsStore.Save(userSettings); return true;
+        }
+        // The next tutorial start is the short update version (set by the offer, cleared when the tutorial begins).
+        private bool tutorialShort;
+        // After a mistake: a fresh course, started at the given route z in front of the step.
+        private void RestartTutorial(float z)
+        {
+            RouteSurface.UsePlan(TutorialCourse.Plan(Session.Config));
+            Session.Reset(); Session.Runner.SetStartZ(z); keyboard.Clear(); poseInput.Clear(); Pose.ResetCommands();
+            Map.Reset(); Map.Tick(z); Map.AnimateGates(z);
+            stairFx.Reset(); guardDistance=15; previousStumble=false; Hero.Apply(Session.Runner); CameraRig.Takeover(Hero.Head);
+        }
+        // A member's profile remembers the finished tutorial; then back to the main menu.
+        private void FinishTutorial()
+        {
+            if(Account.IsMember)
+            {
+                string id=Account.Id; Account.SetTutorialDone(true);
+                gateway.UpdateProfile(Account.Token,new AccountProfileUpdate{TutorialDone=true},reply=>{ if(reply!=null&&reply.HasProfile&&reply.profile.id==id&&reply.profile.tutorial_done) Account.Apply(reply.profile); });
+            }
+            ExitToMenu();
+        }
+        private IEnumerator PrepareRun(int seed)
+        {
+            Session.Flow.Transition(GameFlowState.LoadingIntro);
+            hud.BeginLoading(); hud.LoadingProgress=.12f;
+            // Every run calibrates again: the player stands still during loading, and the countdown waits for it (WaitForCalibration).
+            Pose.Recalibrate(); runCalibrated = false; calibrationDoneAt = -1;
+            yield return new WaitForSecondsRealtime(.25f);
+            RouteSurface.UsePlan(Session.IsTutorial?TutorialCourse.Plan(Session.Config):new RoutePlan(Session.Config, seed));
+            Session.Reset(); moveTally.Reset(); pace.Reset(); ResetBigMoves(); System.Array.Clear(kindSeconds, 0, 4); keyboard.Clear(); poseInput.Clear(); hud.LoadingProgress=.42f;
+            yield return new WaitForSecondsRealtime(.25f);
+            Map.Reset(seed); Map.AnimateGates(Session.Runner.Z); hud.LoadingProgress=.78f;
+            yield return new WaitForSecondsRealtime(.25f);
+            Intro.PrepareGameplay(); hud.LoadingProgress=1;
+            yield return new WaitForSecondsRealtime(.25f);
+            Session.Flow.Transition(GameFlowState.Running); hud.EndLoading();
+        }
+        public void TogglePause()
+        {
+            if(Session.Flow.State!=GameFlowState.Running) return;
+            Session.Paused=!Session.Paused; Time.timeScale=Session.Paused?0:1;
+            keyboard.Clear(); poseInput.Clear();
+        }
+        private void UpdateAdaptive(bool live)
+        {
+            if(automated || !userSettings.AutoPerformance)return;
+            if(!adaptive.Tick(Time.unscaledDeltaTime,live && !hud.Revealing && UnityEngine.Application.isFocused,userSettings.FrameCap))return;
+            adaptive.Apply(userSettings,effectiveGraphics);graphics.Apply(effectiveGraphics);
+            Map.DetailScale=effectiveGraphics.DetailDistance;
+            // Rate changes reuse the loaded model and do not restart the camera or invalidate calibration.
+            Pose.SetInferenceRate(adaptive.Level>=2?20:30);
+        }
+        private void UpdateMenuCamera(bool menu)
+        {
+            bool accountCamera=Session.Flow.State==GameFlowState.TitleIdle&&hud.AccountPageOpen;
+            // Every menu screen shows the webcam when one is plugged in, keyboard players included; hand pointing still follows the setting.
+            bool handCamera=userSettings.HandMenus&&PlayStyleInfo.UsesCamera(player.Style);
+            GesturePointer.Enabled=userSettings.HandMenus&&(handCamera||accountCamera);
+            // A keyboard run's pause stays without the camera: opening it on every pause and closing it on resume hitches play.
+            // The login, sign-up and face capture pages open it even before the device list shows one (some drivers list it late).
+            bool keyboardPause=Session.Paused&&!PlayStyleInfo.UsesCamera(player.Style);
+            bool needsCamera=!automated && menu && (accountCamera || cameraDetected && !keyboardPause);
+            if(needsCamera && (!Pose.UsesCamera||accountCamera&&Pose.Style!=PlayStyle.UpperBody))
+            {if(!menuCamera)cameraBeforeMenu=Pose.Style;menuCamera=true;Pose.SetStyle(PlayStyle.UpperBody);}
+            else if(menuCamera && !needsCamera){menuCamera=false;Pose.SetStyle(cameraBeforeMenu);}
+        }
+        private void Update()
+        {
+            double now = Time.realtimeSinceStartupAsDouble;
+            bool live = Session.Flow.State == GameFlowState.Running && !Session.Paused && !hud.Loading;
+            bool menu=(Session.Flow.State==GameFlowState.TitleIdle || Session.Flow.State==GameFlowState.Result || Session.Paused || settingsWindow.IsOpen) && !hud.Loading && !hud.Revealing;
+            // Re-read the device list on entering a menu, then every 5 s on calm menu screens only (not during play, pause, loading or reveal).
+            bool calmMenu=menu&&!Session.Paused;
+            if(menu&&!wasMenu || calmMenu&&now>=nextCameraScan){nextCameraScan=now+5;cameraDetected=!automated&&WebCamTexture.devices.Length>0;}
+            wasMenu=menu;
+            UpdateMenuCamera(menu);
+            UpdateAdaptive(live);
+            Pose.Tick(now, live);
+            // The calibration panel takes no hand pointing: the player stands still and it closes by itself.
+            // Not gated on calibration: logging out switches to the upper-body camera, which restarts calibration, and a player
+            // reaching for a button never stands still long enough to finish it (the pointer checks pose freshness itself).
+            GesturePointer.Feed(Pose.LastFrame,menu&&GesturePointer.Enabled&&Pose.CameraLive&&!hud.CalibrationOpen,now);
+            OperatorKeys();
+            if (ExpiryPending && Session.Flow.State == GameFlowState.TitleIdle && !hud.Loading) ApplyExpiry();
+            TickInput();
+            if (Session.Flow.State == GameFlowState.Caught && Time.timeScale < 1 && Time.realtimeSinceStartup - caughtAt > .7f) Time.timeScale = 1;
+            if(Session.Paused||hud.Loading||hud.Revealing) return;
+            float dt = Mathf.Min(Time.deltaTime, .1f);
+            Intro.Tick(dt);
+            if (Session.Flow.State == GameFlowState.IntroTimeline) hud.Fade = Mathf.Clamp01(1 - Intro.Elapsed * 3f);
+            if (Session.Flow.State == GameFlowState.Running)
+            {
+                if (WaitForCalibration()) return;
+                StartBannerSounds();
+                Tutorial.Tick(Time.realtimeSinceStartup);
+                // The finished tutorial has already gone back to the menu (Retry); nothing of the run may follow this frame.
+                if (Session.Flow.State != GameFlowState.Running) return;
+                // The cadence sets the pace on foot; below the target for 3 s the police close in (never a capture by itself).
+                var course = MapCourse.KindAt(RouteSurface.ActivePlan, RouteSurface.SequenceAt(Session.Runner.Z));
+                // Out of view the pace holds (speed, lag and police stay as they were); on the stairs it rests (QA 2026-11-25 M6, H2).
+                pace.Tick(dt, cadenceRun && !Session.Runner.Riding, Pose.StepsPerMinute,
+                    Settings != null ? Settings.Motion : null, MapCourse.TargetCadence(course, Settings != null ? Settings.Motion : null),
+                    Pose.UsesCamera && Pose.Tracking, OnOrBeforeStairs());
+                Session.CadenceScale = pace.Scale; Session.PacePressure = pace.Pressure;
+                TickBigMoves();
+                float previousZ = Session.Runner.Z;
+                Session.Tick(dt); race.Update(Session.Score.Score); Map.Tick(Session.Runner.Z); Hero.Apply(Session.Runner); Map.Evaluate(previousZ);
+                Map.AnimateGates(Session.Runner.Z);
+                // Intensity MET of this moment from the cadence; no grace period after the last step (standing counts nothing).
+                double clock=Time.realtimeSinceStartupAsDouble;
+                int activity=clock-Pose.LastJumpTime<.65?1:Pose.Reading.Crouch?2:clock-Pose.LastKneeStepTime<.7?3:Pose.Reading.Lane!=0?4:0;
+                bool tracked=Pose.UsesCamera&&Pose.Tracking;
+                if(tracked) moveTally.Observe(clock,Pose.StepCount,Pose.LastJumpTime,Pose.Reading.Crouch,Pose.LastKneeStepTime,Pose.Reading.Lane,Session.Workout);
+                double activeBefore=Session.Workout.ActiveSeconds;
+                Session.Workout.TickIntensity(dt,Session.Flow.State==GameFlowState.Running,tracked,Pose.CadenceStage,moveTally.Moving(clock),clock<bigUntil,activity);
+                kindSeconds[(int)course]+=Session.Workout.ActiveSeconds-activeBefore;
+                runFade += dt; hud.Fade = Mathf.Clamp01(runFade * 2f);
+                if (dust != null && !dust.isPlaying) dust.Play();
+                if (Session.Runner.Stumbling && !previousStumble && hit != null) hit.Play();
+                previousStumble = Session.Runner.Stumbling;
+                if (Session.Flow.State == GameFlowState.Running)
+                {
+                    float distance=Session.Runner.Slowing&&Session.SlipStrikes>0||Session.SlipPursuit?1.8f:Mathf.Lerp(15,1.8f,Session.PolicePressure);
+                    guardDistance=Mathf.MoveTowards(guardDistance,distance,dt*18);
+                    guard.Pose(new Vector3(Session.Runner.X, 0, Session.Runner.Z-guardDistance), !Session.Runner.Riding);
+                    guard.Play("AN_Guard_ChaseRun");
+                }
+            }
+            if (Session.Flow.State == GameFlowState.Caught)
+            {
+                caughtTime += Time.unscaledDeltaTime;
+                if(Session.Reason==CaptureReason.BrokenRail)
+                {
+                    guard.SetVisible(false);
+                    if(caughtTime>=1.6f)Session.Flow.Transition(GameFlowState.Result);
+                }
+                else
+                {
+                    Capture.Tick(Time.unscaledDeltaTime);
+                    if(Capture.Complete)Session.Flow.Transition(GameFlowState.Result);
+                }
+            }
+        }
+        // Camera play never starts a run before its own calibration: the calibration screen (CalibrationPanel.DrawRun) shows the
+        // camera while the player is found and measured, then "보정 완료" for a second, then the countdown begins.
+        // A missing camera or model does not hold the run.
+        private bool runCalibrated = true;
+        private float calibrationDoneAt = -1;
+        private const float CalibrationDoneSeconds = 1f;
+        private bool WaitForCalibration()
+        {
+            if (runCalibrated) return false;
+            var status = Pose.Status;
+            bool measuring = Pose.UsesCamera && (status == PoseStatus.Starting || status == PoseStatus.Searching || status == PoseStatus.Calibrating);
+            runStartedAt = Time.realtimeSinceStartup;
+            if (measuring) { calibrationDoneAt = -1; return true; }
+            if (Pose.UsesCamera && status == PoseStatus.Tracking)
+            {
+                if (calibrationDoneAt < 0) calibrationDoneAt = Time.realtimeSinceStartup;
+                if (Time.realtimeSinceStartup - calibrationDoneAt < CalibrationDoneSeconds) return true;
+            }
+            runCalibrated = true; calibrationDoneAt = -1; bannerSounded = goSounded = false; Pose.ResetCommands();
+            return false;
+        }
+        private RunCalibrationState RunCalibration => runCalibrated || Session.Flow.State != GameFlowState.Running || hud.Loading ? RunCalibrationState.None
+            : calibrationDoneAt >= 0 ? RunCalibrationState.Done : RunCalibrationState.Measuring;
+        private void StartBannerSounds()
+        {
+            float banner = StartBanner;
+            if (banner <= 0) return;
+            if (!bannerSounded) { bannerSounded = true; audioPlayer.Countdown(false); }
+            if (!goSounded && banner <= 1f && Pose.Status != PoseStatus.Calibrating) { goSounded = true; audioPlayer.Countdown(true); }
+        }
+        private void OperatorKeys()
+        {
+            if (KeyboardGameInput.SettingsPressed) { if (settingsWindow != null && settingsWindow.IsOpen) settingsWindow.Close(true); else OpenSettings(); }
+            if (KeyboardGameInput.OverlayPressed) { userSettings.PerformanceOverlay = !userSettings.PerformanceOverlay; ApplySettings(true); }
+            if (settingsWindow != null && settingsWindow.IsOpen) return;
+            if (KeyboardGameInput.RecalibratePressed && !hud.MenuOpen) Pose.Recalibrate();
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            // F6: record the camera's joint coordinates for the recognition scorecard (never images).
+            if (KeyboardGameInput.PoseRecordPressed) TogglePoseRecording();
+            // Demo invincibility: the HUD shows a small "무적 모드 켜짐" note in the bottom-left corner while it is on; the log records each switch.
+            if (KeyboardGameInput.InvinciblePressed) { Session.Invincible = !Session.Invincible; Debug.Log("Invincible " + (Session.Invincible ? "on" : "off")); }
+            // F7: the operator ends the run as a capture now (invincible or not), so a demo run can be closed into the results.
+            if (KeyboardGameInput.ForceCatchPressed && Session.ForceCatch()) Debug.Log("Run ended by the operator (F7).");
+#endif
+        }
+        internal HUDPresenter Hud => hud;
+        internal RankRace Race => race;
+        // Recordings go to <persistent data>/PoseRecordings; copy them (with filled-in labels) to Tools/QA/PoseRecordings/team.
+        public static string PoseRecordingFolder => System.IO.Path.Combine(UnityEngine.Application.persistentDataPath, "PoseRecordings");
+        private void TogglePoseRecording()
+        {
+            if (Pose.Recording) { string path = Pose.StopRecording(); Debug.Log("Pose recording saved: " + path + " (" + Pose.RecordedFrames + " frames)"); return; }
+            if (!BuildInfo.DevelopmentTools || !Pose.UsesCamera) return;
+            string name = Pose.StartRecording(PoseRecordingFolder);
+            if (name != null) Debug.Log("Pose recording started: " + name);
+        }
+        // Development builds can keep player data in another folder (--mongscape-data <dir>) for captures and tests.
+        // On foot on a stair chunk, or within 3 m of one (people start lifting their knees a little early).
+        private bool OnOrBeforeStairs()
+        {
+            var runner = Session.Runner; if (runner.Riding) return false;
+            return RouteSurface.IsStair(RouteSurface.TypeAt(RouteSurface.SequenceAt(runner.Z)))
+                || RouteSurface.IsStair(RouteSurface.TypeAt(RouteSurface.SequenceAt(runner.Z + 3f)));
+        }
+        private static string DataRoot()
+        {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            var args = System.Environment.GetCommandLineArgs(); int at = System.Array.IndexOf(args, "--mongscape-data");
+            if (at >= 0 && at + 1 < args.Length) return args[at + 1];
+#endif
+            return null;
+        }
+        public void TickInput()
+        {
+            keyboard.Poll();
+            if(hud.Loading||hud.Revealing||(settingsWindow!=null&&settingsWindow.IsOpen)){keyboard.Clear();poseInput.Clear();return;}
+            router.Tick();
+            if (Session.Flow.State == GameFlowState.TitleIdle && !hud.BlocksStart && KeyboardGameInput.StartPressed) OpenLogin();
+        }
+        private void LateUpdate()
+        {
+            if (Session != null && (Session.Flow.State == GameFlowState.Running || Session.Flow.State == GameFlowState.Caught))
+            {
+                if(Session.Flow.State==GameFlowState.Caught&&Session.Reason!=CaptureReason.BrokenRail)CameraRig.FollowCapture(Hero.transform.position,Time.unscaledDeltaTime,Capture.ProneBlend);
+                else if(Session.Runner.Riding)CameraRig.FollowCart(Hero.Head,Time.deltaTime,-Session.Runner.CartLean*12);
+                else
+                {
+                    stairFx.Tick(Time.deltaTime,StairCameraFx.OnStairChunk(Session.Runner),Session.Runner.KneeSteps);
+                    if(stairFx.Stepped&&audioPlayer!=null)audioPlayer.Footstep();
+                    CameraRig.Follow(Hero.Head,Session.Runner.Crouching,Time.deltaTime,Session.Runner.Slowing?Mathf.Sin(Time.time*12)*2:0,stairFx.Pitch,stairFx.Bob);
+                }
+            }
+        }
+        private void StateChanged(GameFlowState state)
+        {
+            if (state == GameFlowState.Running) { runFade = 0; poseInput.Clear(); Pose.ResetCommands(); runStartedAt = Time.realtimeSinceStartup; bannerSounded = goSounded = false; }
+            if (state == GameFlowState.Caught)
+            {
+                caughtTime = 0; guard.Play("AN_Guard_Catch"); Hero.Play("AN_Monkey_Caught");
+                if(Session.Reason!=CaptureReason.BrokenRail)
+                {
+                    Capture.Begin();
+                }
+                if (dust != null) dust.Stop();
+                // A short slow motion and red flash make the capture readable.
+                caughtAt = Time.realtimeSinceStartup; Time.timeScale = .35f;
+            }
+            if (state == GameFlowState.Result)
+            {
+                Time.timeScale = 1;
+                var args=System.Environment.GetCommandLineArgs();
+                bool tooling=System.Array.IndexOf(args,"--mongscape-capture")>=0||System.Array.IndexOf(args,"--mongscape-smoke")>=0
+                    ||System.Array.IndexOf(args,"--mongscape-review")>=0||System.Array.IndexOf(args,"--mongscape-tests")>=0
+                    ||System.Array.IndexOf(args,"--mongscape-uicapture")>=0;
+                lastEntry=null; lastStreakCoins=0; lastRank=lastTodayRank=0; lastBestScore=-1; lastNewBest=false; lastStats=null; lastStatsFailed=false;
+                if(!tooling&&playerRun) RecordFinishedRun();
+            }
+        }
+        // The run that just ended goes on this PC's ranking; a member's run is also saved on the account server,
+        // which credits the coins. Guests collect no coins.
+        public void RecordFinishedRun()
+        {
+            if(Session.IsTutorial) return;
+            var now=System.DateTime.Now;
+            string name=Account.Nickname;
+            var mode=player.Style;
+            lastEntry=new RankingEntry{Name=name,Score=Session.Score.Score,Distance=Session.Score.Distance,Coins=Session.Score.Coins,
+                Style=PlayStyleInfo.Label(mode),Mode=(int)mode,Kcal=PlayStyleInfo.UsesCamera(mode)?Session.Workout.EstimatedKcal:0,
+                Ticks=now.Ticks,AccountId=Account.IsMember?Account.Id:"",ScoreVersion=RunScore.Version};
+            lastStats=null; lastStatsFailed=false;
+            // Personal best per play style: a member's from /stats read before this save; none for guests.
+            int previousBest=!Account.IsMember?-1:MemberBest(mode);
+            lastNewBest=previousBest>=0&&lastEntry.Score>previousBest; lastBestScore=previousBest>0?previousBest:-1;
+            lastRank=Store.Record(lastEntry,Session.Workout.EstimatedKcal);
+            // Weekly goal and streak: camera runs only. The streak is this PC's; a member's weekly minutes also go to the
+            // server with the run (moderate_seconds). Members get the streak coins with this run.
+            lastStreakCoins=PlayStyleInfo.UsesCamera(mode)?Store.RecordExercise(ExerciseOwner,System.DateTime.UtcNow,Session.Workout.ActiveSeconds,Session.Workout.ModerateSeconds,kindSeconds):0;
+            if(!Account.IsMember)lastStreakCoins=0;
+            lastTodayRank=Store.Board.RankOf(lastEntry,true,mode);
+            if(!Account.IsMember) return;
+            // The result screen shows the member's totals once the server has this run.
+            string id=Account.Id;
+            var record=AccountRun.Create(Session,mode,Session.Score.Coins+lastStreakCoins);
+            runs.Save(record,saved=>
+            {
+                if(!saved){if(Account.Id==id)lastStatsFailed=true;return;}
+                RefreshMemberStats(reply=>{if(Account.Id!=id)return;lastStats=reply!=null&&reply.ok?reply:null;lastStatsFailed=lastStats==null;});
+            });
+        }
+        private string ExerciseOwner => Account.IsMember ? Account.Id : "";
+        private void ResetBigMoves()
+        {
+            seenBigJumps = Pose.BigJumps; seenBigKnees = Pose.BigKnees; seenBigLanes = Pose.BigLanes;
+            wasDeep = false; bigUntil = -10; deepSince = -10;
+        }
+        // Each new big movement gets its in-game effect once (a coin when the matching hazard is close) and counts +1 MET for a
+        // second. Keyboard play never has big movements.
+        private void TickBigMoves()
+        {
+            double clock = Time.realtimeSinceStartupAsDouble;
+            bool camera = Pose.UsesCamera && Pose.Tracking;
+            var reading = Pose.Reading;
+            bool bigJump = Pose.BigJumps > seenBigJumps, bigKnee = Pose.BigKnees > seenBigKnees, bigLane = Pose.BigLanes > seenBigLanes;
+            seenBigJumps = Pose.BigJumps; seenBigKnees = Pose.BigKnees; seenBigLanes = Pose.BigLanes;
+            bool deep = camera && reading.CrouchDeep, deepStart = deep && !wasDeep;
+            wasDeep = deep;
+            if (!camera) return;
+            if (bigJump && Session.Big(RunSession.BigMove.Jump)) bigUntil = clock + 1;
+            // Held deep is resting after a moment: no longer sliding on, no +1 MET (QA 2026-11-25).
+            if (deepStart) deepSince = clock;
+            if (deep && MoveTally.Fresh(deepSince, clock)) { Session.Runner.DeepSlide(); bigUntil = System.Math.Max(bigUntil, clock + .3); }
+            if (deepStart && Session.Big(RunSession.BigMove.Crouch)) bigUntil = clock + 1;
+            if (bigKnee && Session.Big(RunSession.BigMove.Knee)) bigUntil = clock + 1;
+            if (bigLane && Session.Big(RunSession.BigMove.Lane)) bigUntil = clock + 1;
+        }
+        // The ranking strip's rows: this week's member board (best per member, without the player's own row) and this PC's guest
+        // runs of the week, one row per name (its best), or with "내 기록만" only the member's own runs on this PC. Guests have no
+        // "내 기록만" (every guest on a PC shares one empty id). The live score is the HUD's (QA 2026-11-25 M4, L5).
+        private void LoadRace(PlayStyle mode)
+        {
+            race.Clear(); int mine = ++raceTicket;
+            var now = System.DateTime.Now; var weekStart = now.Date.AddDays(-(((int)now.DayOfWeek + 6) % 7));
+            string me = Account.IsMember ? Account.Id : "";
+            bool onlyMine = userSettings.RankStripMine && Account.IsMember;
+            var rows = RankRace.LocalRows(Store.Board.View(false, now, mode), weekStart, onlyMine, me);
+            race.Load(rows);
+            if (onlyMine || gateway == null) return;
+            System.Action<LeaderboardReply> loaded = reply =>
+            {
+                if (mine != raceTicket || reply == null || !reply.ok || reply.entries == null) return;
+                int own = reply.me != null ? reply.me.rank : 0;
+                foreach (var e in reply.entries) if (e != null && e.rank != own) rows.Add(new RankRace.Row(e.name, e.score));
+                // Loaded again before the run starts moving; the strip only shows once the run is under way.
+                race.Load(rows);
+            };
+            string token = Account.IsMember ? Account.Token : "";
+            gateway.WeekLeaderboard(token, mode, loaded);
+        }
+        // The member's best score for one play style from the last /stats; -1 when it is not known.
+        private int MemberBest(PlayStyle mode)
+        {
+            var stats=memberStats;
+            return Account.IsMember&&stats!=null&&memberStatsId==Account.Id&&stats.best_score!=null&&stats.best_score.Length>(int)mode?stats.best_score[(int)mode]:-1;
+        }
+        // Reads /stats for the signed-in member and keeps it for the HUD best and the next result.
+        private void RefreshMemberStats(System.Action<StatsReply> done=null)
+        {
+            if(!Account.IsMember||string.IsNullOrEmpty(Account.Token)){done?.Invoke(null);return;}
+            string id=Account.Id;
+            gateway.Stats(Account.Token,reply=>
+            {
+                if(reply!=null&&reply.ok&&Account.IsMember&&Account.Id==id)
+                {
+                    memberStats=reply;memberStatsId=id;
+                    // The weekly goal bar follows the server's sum over every PC of the member.
+                    Store.Exercise.SyncWeek(id,System.DateTime.UtcNow,reply.week_moderate_seconds);
+                }
+                done?.Invoke(reply);
+            });
+        }
+        public void Retry()
+        {
+            if (!Session.Flow.Transition(GameFlowState.Retry)) return;
+            Capture.ResetSequence();
+            guardDistance=15; Session.IsTutorial=false; Tutorial.End();
+            Session.Reset(); keyboard.Clear(); poseInput.Clear(); Map.Reset(); Intro.ResetSequence();
+            Time.timeScale=1; hud.CloseSetup();
+            if (dust != null) dust.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            if (hit != null) hit.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            previousStumble = false; runFade = caughtTime = 0; hud.Fade = 1;
+            Session.Flow.Transition(GameFlowState.TitleIdle);
+        }
+        // "다시 하기": the same player runs again with the same settings.
+        public void RetrySamePlayer()
+        {
+            bool again = playerRun; var profile = player;
+            Retry();
+            // An expired member goes to the login gate (next frame) instead of another run.
+            if (again && !ExpiryPending) StartPlayerRun(profile);
+        }
+        // "메인으로" from the result or pause screen; a paused run ends without a record.
+        public void ExitToMenu()
+        {
+            if (Session.Paused) { Session.Paused = false; Time.timeScale = 1; }
+            playerRun = false;
+            Retry();
+            player = Account.Profile.Clone();
+            OpenMainMenu();
+        }
+        private void QuitGame()
+        {
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            UnityEngine.Application.Quit();
+#endif
+        }
+        // Members are signed out when the game closes; the request is not awaited.
+        private void OnApplicationQuit() { if(Account.IsMember&&!string.IsNullOrEmpty(Account.Token)) gateway?.Logout(Account.Token,null); }
+        private void OnDestroy() { GesturePointer.Reset(); Time.timeScale=1; graphics?.Dispose(); Pose?.Dispose(); RouteSurface.UsePlan(null); KeyboardGameInput.SetTextInput(false); ClearPortrait(); }
+
+        // Tests and tools: another account server (or a fake), another PC store and a face capture without a webcam. Call on the title screen.
+        public void UseAccountServices(IAccountGateway accountGateway, PlayerProgressStore store = null, System.Action<System.Action<string[]>> faces = null)
+        {
+            if (accountGateway != null) { gateway = new ExpiryWatchingGateway(accountGateway, SessionExpired); runs.Gateway = gateway; serverTicket++; serverChecking = false; serverProblem = ""; }
+            if (store != null) Store = store;
+            if (faces != null) captureFaces = faces;
+        }
+        // Items placed on the map: what the member unlocked (none for guests).
+        public System.Collections.Generic.List<ItemKind> RunItems()
+        {
+            if (Session != null && Session.IsTutorial) return new System.Collections.Generic.List<ItemKind>();
+            return Account.RunItems();
+        }
+        // Guests keep settings in session memory; a member's settings also go to the server.
+        private void SaveSettings(AccountSettings settings)
+        {
+            Account.UpdateSettings(settings);
+            if (!Account.IsMember) return;
+            string id = Account.Id;
+            gateway.UpdateProfile(Account.Token, AccountProfileUpdate.From(Account.Settings), reply => { if (reply.HasProfile && reply.profile.id == id) Account.Apply(reply.profile); });
+        }
+
+        // IHudData
+        PlayerProfile IHudData.Player => player;
+        PlayerProfile IHudData.SavedProfile => Account.Profile;
+        Texture IHudData.CameraTexture => Pose.CameraTexture;
+        // Listed, or already delivering frames (a camera the driver listed late still counts).
+        bool IHudData.CameraDetected => cameraDetected || Pose.CameraTexture != null && Pose.CameraTexture.width > 16;
+        bool IHudData.BodyStylesAllowed => automated || userSettings == null || ((IHudData)this).CameraDetected;
+        // Body styles need a connected camera, except in automated test/tool runs.
+        private bool PlayableStyle(PlayStyle style)
+        {
+            if(!PlayStyleInfo.UsesCamera(style)) return true;
+            if(!cameraDetected&&!automated) cameraDetected=WebCamTexture.devices.Length>0;
+            return ((IHudData)this).BodyStylesAllowed;
+        }
+        PoseFrame IHudData.PoseFrame => Pose.LastFrame;
+        PoseStatus IHudData.PoseStatus => Pose.Status;
+        string IHudData.PoseMessage => Pose.Message;
+        string IHudData.PoseDiagnostics => BuildInfo.DevelopmentTools && userSettings != null && userSettings.PoseDiagnostics ? Pose.Diagnostics : "";
+        MotionReading IHudData.Motion => Pose.Reading;
+        float IHudData.SecondsSinceJump => (float)(Time.realtimeSinceStartupAsDouble - Pose.LastJumpTime);
+        float IHudData.SecondsSinceKneeStep => (float)(Time.realtimeSinceStartupAsDouble - Pose.LastKneeStepTime);
+        float IHudData.CalibrationProgress => Pose.CalibrationProgress;
+        bool IHudData.PoseKneesMissing => Pose.KneesMissing;
+        float IHudData.StepsPerMinute => Pose.StepsPerMinute;
+        CadenceStage IHudData.Cadence => Pose.CadenceStage;
+        bool IHudData.PoseCalibrationMoving => Pose.CalibrationMoving;
+        FramingIssue IHudData.PoseFraming => Pose.Framing;
+        RunCalibrationState IHudData.RunCalibration => RunCalibration;
+        bool IHudData.TutorialRun => Session.IsTutorial;
+        bool IHudData.PoseRecording => Pose.Recording;
+        bool IHudData.BodyActive => Pose.Tracking && Pose.Reading.Active;
+        PlayerWallet IHudData.Wallet => Account.Wallet;
+        Leaderboard IHudData.Board => Store.Board;
+        PlayerStats IHudData.Stats => Store.Stats;
+        RankingEntry IHudData.LastEntry => lastEntry;
+        // A guest's run was recorded as "게스트" and can still be named on the result screen.
+        bool IHudData.CanNameLastRun => lastEntry != null && !Account.IsMember && string.IsNullOrEmpty(lastEntry.AccountId);
+        bool IHudData.NameLastRun(string name) => ((IHudData)this).CanNameLastRun && AccountSession.NicknameProblem(name) == null && Store.Rename(lastEntry, name);
+        int IHudData.LastRank => lastRank;
+        int IHudData.LastTodayRank => lastTodayRank;
+        bool IHudData.LastNewBest => lastNewBest;
+        int IHudData.LastBestScore => lastBestScore;
+        StatsReply IHudData.LastStats => lastStats;
+        bool IHudData.LastStatsFailed => lastStatsFailed;
+        int IHudData.BestScore => MemberBest(player.Style);
+        bool IHudData.RunSaveFailed => runs != null && runs.LastFailed;
+        public float StartBanner => Session.Flow.State == GameFlowState.Running ? Mathf.Max(0, 2.2f - (Time.realtimeSinceStartup - runStartedAt)) : 0;
+        float IHudData.CaughtFlash => Session.Flow.State == GameFlowState.Caught ? Mathf.Clamp01(1 - (Time.realtimeSinceStartup - caughtAt) / .6f) : 0;
+        void IHudData.PreviewStyle(PlayStyle style) { menuCamera=false; player.Style = style; Pose.SetStyle(style); }
+        // Members buy on the server and take its balance and unlocked items; guests have no coins.
+        void IHudData.Unlock(ItemKind kind, System.Action<bool, string> done)
+        {
+            if (!Account.IsMember) { done?.Invoke(false, "회원가입하면 코인을 모아 아이템을 해금할 수 있어요"); return; }
+            string id = Account.Id;
+            gateway.Buy(Account.Token, kind, reply =>
+            {
+                if (reply != null && reply.HasProfile && reply.profile.id == id && Account.Apply(reply.profile)) { done?.Invoke(true, ""); return; }
+                NoteServer(reply);
+                string reason = reply == null || !string.IsNullOrEmpty(reply.message) || reply.status == 0 ? ServerReason(reply)
+                    : reply.status == 409 ? "이미 해금한 아이템입니다." : "코인이 부족합니다.";
+                done?.Invoke(false, reason);
+            });
+        }
+        // The member's nickname stays the server's; a guest's name lives in session memory only.
+        void IHudData.SaveProfile(PlayerProfile profile)
+        {
+            if (profile == null) return;
+            if (!Account.IsMember) Account.SetNickname(profile.Name);
+            SaveSettings(AccountSession.SettingsOf(profile));
+            player=Account.Profile.Clone();
+        }
+        void IHudData.Recalibrate() => Pose.Recalibrate();
+        bool IHudData.CadenceSpeed => userSettings == null || userSettings.CadenceSpeed;
+        void IHudData.SetCadenceSpeed(bool on) { if (userSettings == null || userSettings.CadenceSpeed == on) return; userSettings.CadenceSpeed = on; UserSettingsStore.Save(userSettings); }
+        RankRace IHudData.Race => Session.IsTutorial || !playerRun ? null : race;
+        bool IHudData.HazardNear => Session.Flow.State == GameFlowState.Running && Map.HazardAhead(Session.Runner.Z, Mathf.Max(8f, Session.CurrentSpeed * 1.2f));
+        float IHudData.PacePressure => Session.PacePressure;
+        // Guests on one PC share an empty owner id, so a guest sees no course tip, no streak, and the minutes of this run only
+        // instead of the PC's week (QA 2026-11-25 L3).
+        ExerciseKind IHudData.Recommended => Account.IsMember ? Store.Exercise.Recommend(ExerciseOwner, System.DateTime.UtcNow) : ExerciseKind.Warmup;
+        double IHudData.WeekMinutes => Account.IsMember ? Store.Exercise.WeekModerateMinutes(ExerciseOwner, System.DateTime.UtcNow) : Session.Workout.ModerateSeconds / 60;
+        int IHudData.Streak => Account.IsMember ? Store.Exercise.Streak(ExerciseOwner, System.DateTime.UtcNow) : 0;
+        int IHudData.LastStreakCoins => lastStreakCoins;
+        bool IHudData.JointCompareOpen => Tutorial != null && Tutorial.ComparingJoints;
+
+        // A new member (or back to a guest) replaces the player and the face badge; coin or setting updates do not.
+        private void AccountChanged()
+        {
+            string id = Account.IsMember ? Account.Id : "";
+            if (id == shownAccount) return;
+            shownAccount = id; tutorialOffered = false;
+            if (!Account.IsMember) ClearPortrait();
+            faceAvatar.Apply(portrait);
+            // The HUD best and the next result compare with this member's /stats.
+            memberStats = null; memberStatsId = "";
+            if (Account.IsMember && gateway != null) RefreshMemberStats();
+            player = Account.Profile.Clone();
+        }
+        private void SignedInReply(AccountReply reply)
+        {
+            if (reply == null || !reply.HasProfile) return;
+            ClearPortrait();
+            // The face crop only exists in this reply; it becomes the badge and is never stored.
+            if (!string.IsNullOrEmpty(reply.avatar))
+            {
+                portrait = new Texture2D(2, 2, TextureFormat.RGB24, false);
+                try { if (!portrait.LoadImage(System.Convert.FromBase64String(reply.avatar))) ClearPortrait(); } catch { ClearPortrait(); }
+            }
+            shownAccount = ""; loginNotice = ""; expiredToken = null;
+            Account.SignInMember(reply.profile, reply.token);
+        }
+        private void ClearPortrait() { if (portrait != null) Destroy(portrait); portrait = null; }
+        // Back to a guest at once; /logout is sent without waiting.
+        private void SignOutMember()
+        {
+            if (!Account.IsMember) return;
+            string token = Account.Token;
+            Account.SignOut();
+            if (!string.IsNullOrEmpty(token)) gateway.Logout(token, null);
+        }
+        // Only the signed-in member's own token counts; a late 401 for an earlier member is ignored.
+        private void SessionExpired(string token)
+        {
+            if (!Account.IsMember || token != Account.Token) return;
+            expiredToken = token;
+            if (Session.Flow.State == GameFlowState.TitleIdle && !hud.Loading) ApplyExpiry();
+        }
+        private bool ExpiryPending => expiredToken != null && Account.IsMember && expiredToken == Account.Token;
+        private void ApplyExpiry()
+        {
+            bool expired = ExpiryPending; expiredToken = null;
+            if (!expired) return;
+            Account.SignOut(); loginNotice = ExpiredNotice;
+            if (settingsWindow != null && settingsWindow.IsOpen) settingsWindow.Close(true);
+            hud.OpenLogin();
+        }
+
+        // Local or central voluntary identity UI
+        public bool IdentityBusy=>identity.Busy;
+        public bool SignedIn=>Account.IsMember;
+        public string IdentityMessage=>identity.Message;
+        public Texture Portrait=>portrait;
+        public bool ServerChecking=>serverChecking;
+        public string ServerProblem=>serverProblem;
+        public string LoginNotice=>loginNotice;
+        // Asked each time the login gate opens; until the server answers, face login and sign-up wait. Only the latest answer counts.
+        public void CheckServer()
+        {
+            int mine=++serverTicket; serverChecking=true;
+            gateway.Health(reply=>{ if(mine!=serverTicket)return; serverChecking=false; serverProblem=reply!=null&&reply.ok?"":ServerReason(reply); });
+        }
+        public void CheckNickname(string name,System.Action<bool,string> done)
+        {
+            string problem=AccountSession.NicknameProblem(name);
+            if(problem!=null){done?.Invoke(false,problem);return;}
+            gateway.NameCheck(name.Trim(),reply=>
+            {
+                if(reply==null||!reply.ok){NoteServer(reply);done?.Invoke(false,ServerReason(reply));return;}
+                done?.Invoke(reply.available,reply.available?"":string.IsNullOrEmpty(reply.message)?"사용할 수 없는 닉네임입니다.":reply.message);
+            });
+        }
+        public void FaceLogin(System.Action<bool> done)
+        {
+            if (IdentityBusy || Account.IsMember) return;
+            captureFaces(images => gateway.Login(images, reply => FaceReply(reply, done)));
+        }
+        // Sign-up: the nickname and settings chosen in the sign-up steps, not the guest's.
+        public void FaceEnroll(string nickname, AccountSettings settings, System.Action<bool> done)
+        {
+            if (IdentityBusy || Account.IsMember || AccountSession.NicknameProblem(nickname) != null) return;
+            settings ??= new AccountSettings();
+            captureFaces(images => gateway.Enroll(new AccountEnrollment { name = nickname.Trim(), consent = true, images = images, weight = settings.Weight, style = (int)settings.Style, goal = settings.Goal }, reply => FaceReply(reply, done)));
+        }
+        private void FaceReply(AccountReply reply, System.Action<bool> done)
+        {
+            NoteServer(reply); SignedInReply(reply);
+            done?.Invoke(reply != null && reply.HasProfile && Account.IsMember);
+        }
+        // A request that could not reach the server disables face login and sign-up on the gate until the next check.
+        // An expired member token (401) is handled for every call by ExpiryWatchingGateway (SessionExpired).
+        private void NoteServer(AccountResult reply) { if (reply != null && !reply.ok && reply.status == 0) serverProblem = ServerReason(reply); }
+        private static string ServerReason(AccountResult reply) => reply != null && !string.IsNullOrEmpty(reply.message) ? reply.message : "얼굴 서버에 연결할 수 없습니다.";
+        public void FaceLogout(bool delete)
+        {
+            if (IdentityBusy || !Account.IsMember) return;
+            if (!delete) { SignOutMember(); return; }
+            DeleteAccount(null);
+        }
+        // 내 정보: nickname and settings in one /profile/update; the session changes only after the server accepted them.
+        public void SaveMemberProfile(string nickname, AccountSettings settings, System.Action<bool,string> done)
+        {
+            if (!Account.IsMember) { done?.Invoke(false, "회원만 저장할 수 있습니다."); return; }
+            string problem = AccountSession.NicknameProblem(nickname);
+            if (problem != null) { done?.Invoke(false, problem); return; }
+            var update = AccountProfileUpdate.From(settings ?? Account.Settings);
+            string name = nickname.Trim(), id = Account.Id;
+            if (name != Account.Nickname) update.Name = name;
+            gateway.UpdateProfile(Account.Token, update, reply =>
+            {
+                if (reply != null && reply.HasProfile && reply.profile.id == id && Account.Apply(reply.profile))
+                {
+                    player = Account.Profile.Clone();
+                    done?.Invoke(true, ""); return;
+                }
+                NoteServer(reply);
+                done?.Invoke(false, reply != null && reply.status == 409 && string.IsNullOrEmpty(reply.message) ? "이미 사용 중인 닉네임입니다." : ServerReason(reply));
+            });
+        }
+        // Server totals for 내 정보; null when there is no member or no token.
+        public void MemberStats(System.Action<StatsReply> done)
+        {
+            if (!Account.IsMember || string.IsNullOrEmpty(Account.Token)) { done?.Invoke(null); return; }
+            gateway.Stats(Account.Token, done);
+        }
+        // 회원 랭킹 for anyone; a member's token adds their own row ("me").
+        public void MemberLeaderboard(PlayStyle mode, bool today, System.Action<LeaderboardReply> done)
+        {
+            if (gateway == null) { done?.Invoke(new LeaderboardReply { message = "서버에 연결할 수 없어요" }); return; }
+            gateway.Leaderboard(Account.IsMember ? Account.Token : "", mode, today, done);
+        }
+        // Account deletion (face, profile and runs on the server, and the member's rows on this PC's ranking); the player becomes a guest.
+        public void DeleteAccount(System.Action<bool,string> done)
+        {
+            if (IdentityBusy || !Account.IsMember) { done?.Invoke(false, "회원만 탈퇴할 수 있습니다."); return; }
+            string id = Account.Id;
+            gateway.Delete(Account.Token, reply =>
+            {
+                bool ok = reply != null && reply.ok;
+                if (ok) { Store.RemoveAccount(id); if (Account.IsMember && Account.Id == id) Account.SignOut(); }
+                else NoteServer(reply);
+                done?.Invoke(ok, ok ? "" : ServerReason(reply));
+            });
+        }
+
+        // ISettingsHost
+        UserSettings ISettingsHost.Settings => userSettings;
+        UserSettings ISettingsHost.Defaults => settingsDefaults;
+        System.Collections.Generic.IReadOnlyList<string> ISettingsHost.CameraDevices => PoseTracker.CameraDevices();
+        IHudData ISettingsHost.Hud => this;
+        void ISettingsHost.RefreshCamera() => Pose.RefreshCamera();
+        bool ISettingsHost.MemberSignedIn => Account.IsMember;
+    }
+}

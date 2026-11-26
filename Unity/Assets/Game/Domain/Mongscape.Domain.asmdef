@@ -1,0 +1,8 @@
+{
+  "name": "Mongscape.Domain",
+  "autoReferenced": true,
+  "references": [
+    "Mongscape.LegacyCore"
+  ],
+  "noEngineReferences": true
+}

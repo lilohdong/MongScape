@@ -1,0 +1,6 @@
+{
+  "name": "Mongscape.EditModeTests",
+  "references": ["Mongscape.Domain", "Mongscape.Application", "Mongscape.Infrastructure", "Mongscape.Presentation"],
+  "includePlatforms": ["Editor"],
+  "optionalUnityReferences": ["TestAssemblies"]
+}

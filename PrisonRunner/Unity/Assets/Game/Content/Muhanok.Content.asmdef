@@ -1,8 +1,0 @@
-{
-  "name": "Muhanok.Content",
-  "autoReferenced": true,
-  "references": [
-    "Muhanok.Domain"
-  ],
-  "noEngineReferences": false
-}
