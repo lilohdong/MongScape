@@ -154,8 +154,8 @@ namespace Mongscape.Presentation
         }
         VisualElement Overlay(string title, out VisualElement body, out UiButton close, string closeText, Action onClose)
         {
-            var o = new VisualElement(); UiTokens.Fill(o); o.style.backgroundColor = UiTokens.A(UiTokens.Deep, .8f);
-            var p = Panel(260, 90, 1400, 900); o.Add(p);
+            var o = new VisualElement(); UiTokens.Fill(o); o.style.backgroundColor = UiTokens.A(UiTokens.Deep, .9f);
+            var p = Panel(260, 90, 1400, 900); p.style.backgroundColor = UiTokens.Panel; o.Add(p);
             var t = UiTokens.Label(title, 88, UiTokens.Accent); UiTokens.Absolute(t, 60, 30, 1280, 120); p.Add(t);
             body = UiTokens.Box(60, 170, 1280, 560); p.Add(body);
             close = new UiButton(closeText, true, onClose); UiTokens.Absolute(close, 1400 - 60 - 300, 900 - 50 - 120, 300, 120); p.Add(close);
@@ -257,6 +257,7 @@ namespace Mongscape.Presentation
             else Pair(left, "키보드", "운동 제외");
             Section(right, "동작 횟수");
             if (camera) foreach (var row in WorkoutReport.Moves(workout)) Pair(right, row.Key, row.Value);
+            else Pair(right, "키보드", "운동 제외");
             Section(left, "구한 원숭이");
             var monkeys = new VisualElement(); monkeys.style.flexDirection = FlexDirection.Row; monkeys.style.alignItems = Align.Center; monkeys.style.height = 80;
             int n = session?.Score.Coins ?? 0;

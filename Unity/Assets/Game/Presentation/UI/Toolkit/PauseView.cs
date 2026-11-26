@@ -11,6 +11,7 @@ namespace Mongscape.Presentation
         public readonly UiRoot Root;
         public readonly GestureButtons Gestures;
         public Action Resume, Recalibrate, Main;
+        UiButton resume, again, main;
         public PauseView(GameObject host)
         {
             Root = new UiRoot(host, "Pause", 7);
@@ -19,10 +20,10 @@ namespace Mongscape.Presentation
             var dim = new VisualElement { pickingMode = PickingMode.Ignore }; UiTokens.Fill(dim); dim.style.backgroundColor = UiTokens.A(UiTokens.Deep, .7f);
             frame.Add(dim);
             frame.Add(UiIcons.Make(960 - 70, 140, 140, UiIcons.PauseBars(UiTokens.Accent)));
-            var resume = Gestures.Add(new UiButton("계속", true, () => Resume?.Invoke(), 64, Play_Icon));
-            var again = Gestures.Add(new UiButton("보정 다시", false, () => Recalibrate?.Invoke(), 64, Camera_Icon));
-            var main = Gestures.Add(new UiButton("메인", false, () => Main?.Invoke(), 64, Home_Icon));
-            UiTokens.Absolute(resume, 150, 470, 480, 200); UiTokens.Absolute(again, 720, 470, 480, 200); UiTokens.Absolute(main, 1290, 470, 480, 200);
+            resume = Gestures.Add(new UiButton("계속", true, () => Resume?.Invoke(), 64, Play_Icon));
+            again = Gestures.Add(new UiButton("보정 다시", false, () => Recalibrate?.Invoke(), 64, Camera_Icon));
+            main = Gestures.Add(new UiButton("메인", false, () => Main?.Invoke(), 64, Home_Icon));
+            Place(true);
             frame.Add(resume); frame.Add(again); frame.Add(main);
             // Not a button: no border, deep 50%.
             var band = UiTokens.Box(600, 790, 720, 180); band.style.backgroundColor = UiTokens.A(UiTokens.Deep, .5f); UiTokens.Radius(band, 36);
@@ -42,6 +43,16 @@ namespace Mongscape.Presentation
             band.Add(UiIcons.Make(560, 40, 100, UiIcons.PauseBars(UiTokens.Accent)));
             frame.Add(band);
             Root.Visible = false;
+        }
+        bool withCalibrate;
+        // 보정 다시 only for camera runs; a keyboard run gets two buttons.
+        public void Place(bool calibrate)
+        {
+            if (calibrate == withCalibrate && resume.style.width.value.value > 0) return;
+            withCalibrate = calibrate;
+            UiTokens.Show(again, calibrate);
+            if (calibrate) { UiTokens.Absolute(resume, 150, 470, 480, 200); UiTokens.Absolute(again, 720, 470, 480, 200); UiTokens.Absolute(main, 1290, 470, 480, 200); }
+            else { UiTokens.Absolute(resume, 960 - 45 - 520, 470, 520, 200); UiTokens.Absolute(main, 960 + 45, 470, 520, 200); }
         }
         public static void Play_Icon(Painter2D p, Rect r) => UiIcons.Polygon(p, UiTokens.Panel, new Vector2(r.x + r.width * .25f, r.y + r.height * .18f), new Vector2(r.xMax - r.width * .15f, r.center.y), new Vector2(r.x + r.width * .25f, r.yMax - r.height * .18f));
         public static void Camera_Icon(Painter2D p, Rect r)

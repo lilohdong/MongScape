@@ -185,7 +185,7 @@ namespace Mongscape.Presentation
                 && !(Data != null && Data.RunCalibration != RunCalibrationState.None && session.Flow.State == GameFlowState.Running);
             runView.Root.Visible = showRun;
             pauseView.Root.Visible = inRun && session.Paused && !Hidden && !Loading && !Revealing;
-            if (pauseView.Root.Visible) pauseView.Root.Layout();
+            if (pauseView.Root.Visible) { pauseView.Root.Layout(); pauseView.Place(PlayStyleInfo.UsesCamera(Data?.Player?.Style ?? PlayStyle.Keyboard)); }
             if (session == null || Hidden || Loading || Revealing) return;
             if (inRun)
                 runModel.Tick(session, Map, Data?.Player?.Style ?? PlayStyle.Keyboard, Data?.PoseStatus ?? PoseStatus.Off, PoliceAlert?.Invoke() ?? false, Time.unscaledTime);

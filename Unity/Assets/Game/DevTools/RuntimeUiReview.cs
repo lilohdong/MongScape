@@ -42,7 +42,7 @@ namespace Mongscape.DevTools
             var hud = game.Hud; var data = (IHudData)game;
             // --mongscape-uicapture-quick: only the run, pause and result (no settings window or face login, which list or open cameras).
             bool quick = Array.IndexOf(Environment.GetCommandLineArgs(), "--mongscape-uicapture-quick") >= 0;
-            if (quick) { game.UseAccountServices(new ReviewAccountGateway()); Seed(data); goto run; }
+            if (quick) { game.UseAccountServices(new ReviewAccountGateway()); Seed(data, false); goto run; }
             // One look at the login gate with the configured face server (connected or not), read-only: nothing is sent but /health.
             game.OpenLogin();
             float checkStarted = Time.realtimeSinceStartup;
@@ -137,13 +137,14 @@ namespace Mongscape.DevTools
             while (shielded) { if (game.Session.Flow.State == GameFlowState.Running) game.Session.Items.Activate(ItemKind.Shield); yield return null; }
         }
         // A profile, runs from today and yesterday, and a member with coins and one unlocked item.
-        private void Seed(IHudData data)
+        private void Seed(IHudData data, bool member = true)
         {
             data.SaveProfile(new PlayerProfile { Name = "탈옥왕", Weight = "65", Style = PlayStyle.Keyboard,CalorieGoal=180 });
             var today = DateTime.Now; var yesterday = today.AddDays(-1);
             float[] todayRuns = { 2310, 1530, 980, 640, 455 }, earlier = { 1820, 1240 };
             for (int i = 0; i < todayRuns.Length; i++) game.Store.Record(new RankingEntry { Name = "탈옥왕", Distance = todayRuns[i], Score = (int)todayRuns[i], ScoreVersion = RunScore.Version, Style = "키보드", Ticks = today.AddMinutes(-i * 7).Ticks }, todayRuns[i] / 25);
             for (int i = 0; i < earlier.Length; i++) game.Store.Record(new RankingEntry { Name = "탈옥왕", Distance = earlier[i], Score = (int)earlier[i] + 300, ScoreVersion = RunScore.Version, Style = "전신", Ticks = yesterday.AddMinutes(-i * 9).Ticks }, earlier[i] / 18);
+            if (!member) return;
             // This synthetic token only reaches ReviewAccountGateway; it also exercises member stats panels.
             game.Account.SignInMember(new AccountProfile { id = "ui-review", name = "탈옥왕", weight = 65, style = (int)PlayStyle.Keyboard, goal = 180, coins = 18, unlocked = new[] { 11, 12, 21, 41, 71 } }, "synthetic-ui-review");
         }
@@ -176,7 +177,7 @@ namespace Mongscape.DevTools
             public void UpdateProfile(string token,AccountProfileUpdate update,Action<AccountReply> done)=>done?.Invoke(Reply());
             public void SaveRun(string token,AccountRun run,Action<AccountReply> done)=>done?.Invoke(new AccountReply{ok=true,coins=profile.coins});
             public void UnlockTrait(string token,TraitId trait,int level,Action<AccountReply> done)=>done?.Invoke(Reply());
-            public void Leaderboard(string token,PlayStyle mode,bool today,Action<LeaderboardReply> done)=>done?.Invoke(new LeaderboardReply{ok=true});
+            public void Leaderboard(string token,PlayStyle mode,bool today,Action<LeaderboardReply> done)=>done?.Invoke(new LeaderboardReply{ok=true,entries=new[]{new LeaderboardRow{rank=1,name="줄타기",score=1650,distance=1120},new LeaderboardRow{rank=2,name="꼬리털",score=1020,distance=990},new LeaderboardRow{rank=3,name="수레꾼",score=610,distance=540},new LeaderboardRow{rank=4,name="원숭이7",score=40,distance=40}}});
             public void Stats(string token,Action<StatsReply> done)=>done?.Invoke(new StatsReply{ok=true,today_kcal=52.1,total_kcal=310,best_score=new[]{900,800,640}});
             public void Logout(string token,Action<AccountReply> done)=>done?.Invoke(new AccountReply{ok=true});
             public void Delete(string token,Action<AccountReply> done)=>done?.Invoke(new AccountReply{ok=true});
