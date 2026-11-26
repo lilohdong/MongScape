@@ -186,9 +186,9 @@ namespace Muhanok.Tests
             w.TickActivity(60,true,true,true,1);Assert.Greater(w.EstimatedKcal,before);Assert.AreEqual(120,w.ActiveSeconds);
             Assert.AreEqual(1.5,w.GoalKcal);Assert.AreEqual(1,w.GoalProgress);
         }
-        [Test] public void ExtendedChallengeBuildsWithinALapAndKeepsRestAndPauseRules()
+        [Test] public void ExtendedSpeedCurveRampsOnFootAndInTheCartWithoutLapSteps()
         {
-            var config=new RunConfig{IntervalMode=true,ExtendedRoutes=true,SprintSpeed=6,MaxSprintSpeed=12,RestSpeed=5,MaxRestSpeed=7};
+            var config=new RunConfig{SpeedCurve=true,ExtendedRoutes=true,RunSpeedStart=6,RunSpeedMax=12,CartSpeedStart=5,CartSpeedMax=7};
             var plan=new RoutePlan(config,1);RouteSurface.UsePlan(plan);
             try
             {
@@ -212,14 +212,6 @@ namespace Muhanok.Tests
             Assert.IsFalse(d.Tick("start",1.3,true));d.Tick(null,1.4,false);
             Assert.IsFalse(d.Tick("start",1.5,true));Assert.IsFalse(d.Tick("start",1.6,false));
             Assert.IsFalse(d.Tick("start",2,true));for(int i=1;i<12;i++)Assert.IsFalse(d.Tick("start",2+i*.1,true));Assert.IsTrue(d.Tick("start",3.21,true));
-        }
-        [Test] public void FiveSuccessfulMovesEarnComboAndRetryClearsIt()
-        {
-            var run=new RunSession(new RunConfig());
-            for(int i=0;i<5;i++)run.RecordDodge();
-            Assert.AreEqual(5,run.DodgeStreak);Assert.AreEqual(5,run.BestDodgeStreak);
-            Assert.AreEqual(0,run.Score.Score,"Combos are recorded but do not score");
-            run.Reset();Assert.AreEqual(0,run.DodgeStreak);Assert.AreEqual(0,run.BestDodgeStreak);
         }
         [Test] public void ActivitiesSumToTotalAndDoNotCountIdleKeyboardOrPause()
         {

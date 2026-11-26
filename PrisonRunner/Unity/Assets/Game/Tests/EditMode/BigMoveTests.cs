@@ -129,22 +129,5 @@ namespace Muhanok.Tests
             CollectionAssert.AreEqual(new[] { 1, 1, 1, 0 }, run.BigMoves);
         }
 
-        [Test] public void TheCoachEncouragesWithoutGradesAndKeepsQuiet()
-        {
-            var coach = new Coach();
-            Assert.AreEqual(CoachLine.PraiseHigh, coach.Tick(0, .1f, new Coach.Input { BigJump = true }));
-            Assert.AreEqual(CoachLine.None, coach.Tick(1, .1f, new Coach.Input { BigLane = true }), "One line at a time, and a gap after it");
-            Assert.AreEqual(CoachLine.PaceUp, coach.Tick(3, .1f, new Coach.Input { Lagging = true }), "A slow pace may interrupt the gap");
-            CoachLine knees = CoachLine.None;
-            for (int i = 0; i < 3; i++) knees = coach.Tick(20 + i, .1f, new Coach.Input { OnStairs = true, KneeStep = true });
-            Assert.AreEqual(CoachLine.KneesHigher, knees, "Three low knee steps on the stairs");
-            coach.Tick(40, .1f, new Coach.Input { CrouchStart = true }); coach.Tick(40.5f, .1f, new Coach.Input { CrouchEnd = true });
-            coach.Tick(41, .1f, new Coach.Input { CrouchStart = true });
-            Assert.AreEqual(CoachLine.DuckDeeper, coach.Tick(41.5f, .1f, new Coach.Input { CrouchEnd = true }));
-            foreach (CoachLine line in Enum.GetValues(typeof(CoachLine)))
-                foreach (var style in new[] { PlayStyle.FullBody, PlayStyle.UpperBody })
-                { string text = Coach.Text(line, style); StringAssert.DoesNotContain("완벽", text); StringAssert.DoesNotContain("콤보", text); }
-            Assert.AreEqual("팔을 어깨 아래까지 당겨요!", Coach.Text(CoachLine.KneesHigher, PlayStyle.UpperBody));
-        }
     }
 }

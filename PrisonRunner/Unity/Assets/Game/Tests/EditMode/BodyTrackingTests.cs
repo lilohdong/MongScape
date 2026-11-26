@@ -363,37 +363,6 @@ namespace Muhanok.Tests
             for (int i = 0; i < 2; i++) runner.Tick(.05f, 0);
             Assert.Greater(runner.Y, .3f, "The jump pressed just before landing must start on landing");
         }
-        [Test] public void IntervalRouteKeepsAuthoredFirstLapThenAlternatesRestAndSprint()
-        {
-            var config = new RunConfig { ExtendedRoutes = false, IntervalMode = true };
-            var plan = new RoutePlan(config, 5);
-            for (int i = 0; i < RoutePlan.AuthoredLap.Length; i++) Assert.AreEqual(RoutePlan.AuthoredLap[i], plan.TypeAt(i));
-            int seq = RoutePlan.AuthoredLap.Length; Assert.AreEqual(0, plan.TypeAt(seq));
-            int rest = 0; while (plan.TypeAt(seq + 1 + rest) == 1 || plan.TypeAt(seq + 1 + rest) == 2) rest++;
-            Assert.AreEqual((int)Math.Round(config.RestSeconds * config.RestSpeed / RouteSurface.Length), rest);
-            for (int i = 0; i < 80; i++)
-            {
-                int a = plan.TypeAt(i), b = plan.TypeAt(i + 1);
-                Assert.AreEqual(plan.BaseHeight(i) + RouteSurface.Rise(a), plan.BaseHeight(i + 1), .001f, "Height break between " + a + " and " + b);
-                int same = 0; for (int j = i; j < i + 6; j++) if (plan.TypeAt(j) == a) same++;
-                Assert.LessOrEqual(same, 3, "More copies of type " + a + " than the chunk pool keeps warm");
-            }
-            Assert.AreEqual(1, plan.CycleAt(seq));
-        }
-        [Test] public void IntervalSpeedRestsInTheCartAndRisesEachSprint()
-        {
-            var config = new RunConfig { ExtendedRoutes = false, IntervalMode = true };
-            try
-            {
-                RouteSurface.UsePlan(new RoutePlan(config, 1));
-                var run = new RunSession(config);
-                run.Flow.Transition(GameFlowState.TitleIdle); run.Flow.Transition(GameFlowState.LoadingIntro); run.Flow.Transition(GameFlowState.Running);
-                Assert.AreEqual(config.SprintSpeed, run.TargetSpeed, .001f);
-                run.Runner.SetStartZ(30); Assert.IsTrue(run.Resting); Assert.AreEqual(config.RestSpeed, run.TargetSpeed, .001f);
-                run.Runner.SetStartZ(RoutePlan.AuthoredLap.Length * RouteSurface.Length + 1); Assert.AreEqual(config.SprintSpeed + config.SprintSpeedStep, run.TargetSpeed, .001f);
-            }
-            finally { RouteSurface.UsePlan(null); }
-        }
         [Test] public void ItemsDoubleCoinsShieldOneHitAndExpire()
         {
             var run = new RunSession(new RunConfig());

@@ -82,9 +82,11 @@ namespace Muhanok.Presentation
             if (session == null) return;
             var state = session.Flow.State;
             bool running = state == GameFlowState.Running && !session.Paused;
-            // Sprint: fast and full; rest (cart): slow and soft; menus: calm.
-            tempo = running ? (session.Resting ? 92f : 128f + 4f * Math.Min(6, session.IntervalCycle)) : 84f;
-            energy = running ? (session.Resting ? .35f : 1f) : .3f;
+            // On foot: fast and full, a little faster each lap; the cart: slow and soft; menus: calm.
+            bool cart = session.Runner.Riding;
+            int lap = RouteSurface.CycleAt(RouteSurface.SequenceAt(session.Runner.Z));
+            tempo = running ? (cart ? 92f : 128f + 4f * Math.Min(6, lap)) : 84f;
+            energy = running ? (cart ? .35f : 1f) : .3f;
             float target = state == GameFlowState.Result || state == GameFlowState.Caught ? .25f : running ? 1f : .6f;
             level = Mathf.MoveTowards(level, target, Time.unscaledDeltaTime);
             music.volume = musicVolume;

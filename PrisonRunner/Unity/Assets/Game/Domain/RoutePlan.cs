@@ -3,8 +3,7 @@ using System.Collections.Generic;
 
 namespace Muhanok.Domain
 {
-    // Chunk order for one run. The first lap keeps the authored order; later laps form intervals:
-    // a mine-cart rest followed by a sprint whose length follows the configured sprint time.
+    // Chunk order for one run: the extended route (with forks), or the authored lap repeated.
     // Height rules: 0-3 ground, 7 climbs, 4/5/6 stay up, 11 descends, 12 ground, 15 (prison exit) stays up.
     public sealed class RoutePlan
     {
@@ -16,7 +15,6 @@ namespace Muhanok.Domain
         private readonly Random random;
         private readonly RunConfig config;
         private readonly int seed;
-        private readonly bool interval;
         private int cycle;
         // Leading laps without a cart fork (the tutorial's warm-up lap).
         private readonly int plainLaps;
@@ -167,13 +165,13 @@ namespace Muhanok.Domain
         public RoutePlan(RunConfig tuning, int seed)
         {
             this.seed = seed;
-            config = tuning; interval = tuning != null && tuning.IntervalMode; random = new Random(seed);
+            config = tuning; random = new Random(seed);
             Append(Extended ? ExtendedLap(0) : AuthoredLap);
         }
         private RoutePlan(RunConfig tuning, int seed, int[] warmup)
         {
             this.seed = seed;
-            config = tuning; interval = tuning != null && tuning.IntervalMode; random = new Random(seed); plainLaps = 1;
+            config = tuning; random = new Random(seed); plainLaps = 1;
             Append(warmup);
         }
         // Tutorial: a fixed warm-up lap without a fork, followed by the ordinary laps.
@@ -199,22 +197,7 @@ namespace Muhanok.Domain
         private void AppendLap()
         {
             if (Extended) { Append(ExtendedLap(0)); return; }
-            if (!interval) { Append(AuthoredLap); return; }
-            var lap = new List<int>(24) { 0 };
-            int rest = Math.Max(2, (int)Math.Round(config.RestSeconds * config.RestSpeed / RouteSurface.Length));
-            for (int i = 0; i < rest; i++) lap.Add(i % 2 == 0 ? 1 : 2);
-            float sprintSpeed = Math.Min(config.MaxSprintSpeed, config.SprintSpeed + config.SprintSpeedStep * cycle);
-            // Fixed sprint chunks: transition, stairs, checkpoint, descent and the next mine start.
-            int flexible = Math.Max(2, (int)Math.Round(config.SprintSeconds * sprintSpeed / RouteSurface.Length) - 5);
-            int zoo = Math.Min(3, Math.Max(1, flexible / 3));
-            int prison = Math.Max(1, flexible - zoo);
-            lap.Add(3); lap.Add(7);
-            // Alternate the two corridor variants so no type repeats more than the chunk pool holds.
-            int first = random.Next(2);
-            for (int i = 0; i < prison; i++) lap.Add(4 + (first + i) % 2);
-            lap.Add(6); lap.Add(11);
-            for (int i = 0; i < zoo; i++) lap.Add(12);
-            Append(lap);
+            Append(AuthoredLap);
         }
     }
 }

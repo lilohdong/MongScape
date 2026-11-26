@@ -53,21 +53,16 @@ namespace Muhanok.Tests
             Assert.IsTrue(model.ForkCommitted);StringAssert.Contains("코스",model.ForkCaption);
             run.Runner.SetStartZ(144);model.Tick(run,null,PlayStyle.Keyboard,PoseStatus.Off,false,3);Assert.IsFalse(model.ShowFork);
         }
-        [TestCase(true, true, true, true, true, true, HudNoticeKind.Tracking)]
-        [TestCase(false, true, true, true, true, true, HudNoticeKind.Obstacle)]
-        [TestCase(false, false, true, true, true, true, HudNoticeKind.Fork)]
-        [TestCase(false, false, false, true, true, true, HudNoticeKind.Police)]
-        [TestCase(false, false, false, false, true, true, HudNoticeKind.Combo)]
-        [TestCase(false, false, false, false, false, false, HudNoticeKind.None)]
-        public void OnlyTheMostUrgentNoticeWins(bool lost, bool obstacle, bool fork, bool police, bool combo, bool section, HudNoticeKind expected)
-            => Assert.AreEqual(expected, RunHudModel.SelectNotice(lost, obstacle, fork, police, combo, section));
-        [Test] public void BriefPoseLossDoesNotFlashAndRecoveryClearsWarning()
+        // v2: while running, only the tracking-lost line and the fork key line remain (no obstacle, police, combo or section text).
+        [TestCase(true, true, HudNoticeKind.Tracking)]
+        [TestCase(false, true, HudNoticeKind.Fork)]
+        [TestCase(false, false, HudNoticeKind.None)]
+        public void OnlyTrackingAndForkNoticesRemain(bool lost, bool fork, HudNoticeKind expected)
+            => Assert.AreEqual(expected, RunHudModel.SelectNotice(lost, fork));
+        [Test] public void PoliceAndObstaclesShowNoTextNotice()
         {
             var run = Running(); var model = new RunHudModel();
-            model.Tick(run, null, PlayStyle.FullBody, PoseStatus.Searching, false, 1);
-            model.Tick(run, null, PlayStyle.FullBody, PoseStatus.Searching, false, 1.5f); Assert.IsFalse(model.ShowPoseRecovery); Assert.IsTrue(model.ShowCamera);
-            model.Tick(run, null, PlayStyle.FullBody, PoseStatus.Searching, false, 1.8f); Assert.AreEqual(HudNoticeKind.Tracking, model.NoticeKind); Assert.IsTrue(model.ShowPoseRecovery);
-            model.Tick(run, null, PlayStyle.FullBody, PoseStatus.Tracking, false, 2); Assert.IsFalse(model.ShowPoseRecovery); Assert.IsNull(model.Notice); Assert.IsTrue(model.ShowCamera, "The small webcam corner stays while tracking normally.");
+            model.Tick(run, null, PlayStyle.Keyboard, PoseStatus.Off, true, 1); Assert.IsNull(model.Notice); Assert.IsTrue(model.ShowSiren);
         }
         // Style × setting × recognition: camera styles always show the corner webcam, switching to recovery after 0.75s of loss.
         [TestCase(PlayStyle.FullBody, true, PoseStatus.Tracking, true, false)]
@@ -96,24 +91,6 @@ namespace Muhanok.Tests
             var run = Running(); var model = new RunHudModel();
             model.Tick(run, null, PlayStyle.FullBody, PoseStatus.Tracking, false, 1); Assert.IsTrue(model.ShowCamera);
             run.Paused = true; model.Tick(run, null, PlayStyle.FullBody, PoseStatus.Tracking, false, 2); Assert.IsFalse(model.ShowCamera);
-        }
-        [Test] public void CueSearchIsBoundedAndPauseSkipsWork()
-        {
-            var run = Running(); var model = new RunHudModel();
-            for (int i = 0; i < 600; i++) model.Tick(run, null, PlayStyle.Keyboard, PoseStatus.Off, false, i / 60f);
-            Assert.That(model.CueScans, Is.InRange(85, 101), "Ten seconds at 60fps should need about 100 searches, not 600 or multiple OnGUI passes.");
-            int before = model.CueScans; run.Paused = true;
-            for (int i = 0; i < 60; i++) model.Tick(run, null, PlayStyle.Keyboard, PoseStatus.Off, false, 10 + i / 60f);
-            Assert.AreEqual(before, model.CueScans); Assert.IsNull(model.Notice);
-            run.Paused = false; model.Tick(run, null, PlayStyle.Keyboard, PoseStatus.Off, false, 11); Assert.AreEqual(before + 1, model.CueScans);
-        }
-        [Test] public void ComboAndPoliceMessagesExpireInsteadOfRemainingOnScreen()
-        {
-            var run = Running(); var model = new RunHudModel(); run.RecordDodge(); run.RecordDodge();
-            model.Tick(run, null, PlayStyle.Keyboard, PoseStatus.Off, false, 1); Assert.AreEqual(HudNoticeKind.Combo, model.NoticeKind);
-            model.Tick(run, null, PlayStyle.Keyboard, PoseStatus.Off, false, 2.2f); Assert.IsNull(model.Notice);
-            model.Tick(run, null, PlayStyle.Keyboard, PoseStatus.Off, true, 3); Assert.AreEqual(HudNoticeKind.Police, model.NoticeKind);
-            model.Tick(run, null, PlayStyle.Keyboard, PoseStatus.Off, true, 5.3f); Assert.IsNull(model.Notice);
         }
         [Test] public void SteadyHudSamplingDoesNotAllocateManagedMemory()
         {
