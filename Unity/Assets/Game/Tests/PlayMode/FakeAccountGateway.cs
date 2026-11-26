@@ -65,6 +65,7 @@ namespace Mongscape.Tests
                 if (update.Style.HasValue) Profile.style = (int)update.Style.Value;
                 if (update.Goal.HasValue) Profile.goal = update.Goal.Value;
                 if (update.TutorialDone.HasValue) Profile.tutorial_done = update.TutorialDone.Value;
+                if (update.TutorialChapter.HasValue) { Profile.tutorial_chapter = System.Math.Max(Profile.tutorial_chapter, update.TutorialChapter.Value); if (Profile.tutorial_chapter >= 1) Profile.tutorial_done = true; }
             }
             done?.Invoke(new AccountReply { ok = true, profile = Profile });
         }

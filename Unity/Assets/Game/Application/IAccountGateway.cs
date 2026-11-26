@@ -76,6 +76,8 @@ namespace Mongscape.Application
         public string id = "", name = "";
         public double weight = AccountSettings.DefaultWeight; public int style; public double goal = AccountSettings.DefaultGoal;
         public int coins; public int[] unlocked = new int[0]; public bool tutorial_done;
+        // Tutorial chapters done (0~3); chapter 1 done is the same as tutorial_done.
+        public int tutorial_chapter;
     }
 
     [Serializable] public sealed class TraitRow { public int id; public string key = ""; public int[] costs = new int[0]; }
@@ -171,7 +173,7 @@ namespace Mongscape.Application
     // /profile/update sends only the fields that are set.
     public sealed class AccountProfileUpdate
     {
-        public string Name; public double? Weight; public PlayStyle? Style; public double? Goal; public bool? TutorialDone;
+        public string Name; public double? Weight; public PlayStyle? Style; public double? Goal; public bool? TutorialDone; public int? TutorialChapter;
         public static AccountProfileUpdate From(AccountSettings settings) =>
             new AccountProfileUpdate { Weight = settings.Weight, Style = settings.Style, Goal = settings.Goal };
         public string ToJson()
@@ -182,6 +184,7 @@ namespace Mongscape.Application
             if (Style.HasValue) parts.Add("\"style\":" + (int)Style.Value);
             if (Goal.HasValue) parts.Add("\"goal\":" + Goal.Value.ToString("R", CultureInfo.InvariantCulture));
             if (TutorialDone.HasValue) parts.Add("\"tutorial_done\":" + (TutorialDone.Value ? "true" : "false"));
+            if (TutorialChapter.HasValue) parts.Add("\"tutorial_chapter\":" + TutorialChapter.Value);
             return "{" + string.Join(",", parts) + "}";
         }
         private static string Quote(string value)

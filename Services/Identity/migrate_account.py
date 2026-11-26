@@ -16,7 +16,8 @@ def drop_profile_avatar(store):
 PROFILE_COLUMNS=(('name_key',"TEXT NOT NULL DEFAULT ''"),('weight','DOUBLE PRECISION NOT NULL DEFAULT 65'),
     ('style','INTEGER NOT NULL DEFAULT 0'),('goal','DOUBLE PRECISION NOT NULL DEFAULT 50'),
     ('coins','INTEGER NOT NULL DEFAULT 0 CHECK (coins >= 0)'),('unlocked',"JSONB NOT NULL DEFAULT '[]'"),
-    ('tutorial_done','BOOLEAN NOT NULL DEFAULT FALSE'))
+    ('tutorial_done','BOOLEAN NOT NULL DEFAULT FALSE'),
+    ('tutorial_chapter','INTEGER NOT NULL DEFAULT 0 CHECK (tutorial_chapter BETWEEN 0 AND 3)')) # v4: the tutorial chapters done
 RUN_COLUMNS=(('mode','INTEGER'),('coins','INTEGER NOT NULL DEFAULT 0'),
     ('score_version','INTEGER NOT NULL DEFAULT 1'),('play_seconds','DOUBLE PRECISION NOT NULL DEFAULT 0'),
     ('moderate_seconds','DOUBLE PRECISION NOT NULL DEFAULT 0')) # v3: seconds at 5 MET or more, for the weekly goal
@@ -61,6 +62,12 @@ def add_run_columns(store):
     store.db.execute('CREATE INDEX runs_mode_score ON runs (mode, score DESC)')
     return True
 
+def backfill_tutorial_chapter(store):
+    """v4: members who finished the old tutorial have chapter 1 done."""
+    if not store.db.execute('SELECT 1 FROM profiles WHERE tutorial_done AND tutorial_chapter<1 LIMIT 1').fetchone():return False
+    store.db.execute('UPDATE profiles SET tutorial_chapter=1 WHERE tutorial_done AND tutorial_chapter<1')
+    return True
+
 def set_schema_version(store):
     if store.columns('schema_version') and store.db.execute('SELECT MAX(version) FROM schema_version').fetchone()[0]==SCHEMA_VERSION:return False
     store.db.execute('CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL)')
@@ -71,7 +78,7 @@ def set_schema_version(store):
 # Ordered steps; later schema changes append here and must also skip when already applied.
 STEPS=(('drop_profile_avatar',drop_profile_avatar),('add_profile_columns',add_profile_columns),
        ('fill_name_keys',fill_name_keys),('add_name_key_index',add_name_key_index),
-       ('add_run_columns',add_run_columns),('set_schema_version',set_schema_version))
+       ('add_run_columns',add_run_columns),('backfill_tutorial_chapter',backfill_tutorial_chapter),('set_schema_version',set_schema_version))
 
 def migrate(*,database_url=None):
     """Return the names of the steps applied; an empty list means the DB was already current."""

@@ -10,15 +10,16 @@ namespace Mongscape.Bootstrap
     {
         private bool tutorialOffered;
         private TutorialChapter tutorialChapter;
-        // Finished chapters are saved on this PC per owner (the member's account id, or "guest"); a member's finished basics
-        // also live on the account (tutorial_done), so a new PC knows them too.
+        // Finished chapters are saved on this PC per owner (the member's account id, or "guest") and on the member's account;
+        // a new PC reads them from the account.
         private string TutorialOwner => Account.IsMember ? Account.Id : TutorialProgress.GuestOwner;
         private int TutorialMask
         {
             get
             {
                 int mask = Store != null ? Store.TutorialChapters(TutorialOwner) : 0;
-                return Account.IsMember && Account.TutorialDone ? TutorialProgress.Complete(mask, TutorialChapter.Basics) : mask;
+                // A member's account carries the chapters done on any PC (chapter n done means 1..n are).
+                return Account.IsMember ? mask | ((1 << Account.TutorialChapters) - 1) : mask;
             }
         }
         private PoseFrame TrackedFrame() => Pose.UsesCamera && Pose.Tracking ? Pose.LastFrame : null;
@@ -75,7 +76,7 @@ namespace Mongscape.Bootstrap
         private void FinishTutorial()
         {
             Store.MarkTutorial(TutorialOwner, tutorialChapter);
-            if (tutorialChapter == TutorialChapter.Basics) Accounts.MarkTutorialDone();
+            Accounts.MarkTutorialChapter(tutorialChapter);
             ExitToMenu();
         }
     }
