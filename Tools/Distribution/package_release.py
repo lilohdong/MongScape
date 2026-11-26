@@ -52,9 +52,9 @@ def package():
         archive.writestr("처음읽기.txt", readme.encode("utf-8-sig"))
         archive.writestr("SHA256.json", json.dumps(manifest, indent=2))
     with zipfile.ZipFile(OUTPUT / "Mongscape-Planning-V13.zip", "w", zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
-        path = PROJECT / "docs/무한옥_화면별_게임기획서_V13.docx"
+        path = PROJECT / "docs/archive/무한옥_화면별_게임기획서_V13.docx"
         archive.write(path, path.name)
-        archive.write(PROJECT / "docs/SCREEN_PLAN_V13_QA.md", "SCREEN_PLAN_V13_QA.md")
+        archive.write(PROJECT / "docs/archive/SCREEN_PLAN_V13_QA.md", "SCREEN_PLAN_V13_QA.md")
         archive.writestr("처음읽기.txt", "최신 화면별 기획서는 V13입니다. 포함된 DOCX를 Word에서 여세요.\n게임 아트 V10과 문서 V13은 서로 다른 버전입니다.\n".encode("utf-8-sig"))
     for path in sorted(OUTPUT.glob("Mongscape-*.zip")):
         with zipfile.ZipFile(path) as archive:

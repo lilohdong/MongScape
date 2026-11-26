@@ -1,2 +1,23 @@
 # Shell scripts run inside Linux containers; keep LF on Windows checkouts.
 *.sh text eol=lf
+
+# Large binaries: new files go to Git LFS.
+*.docx filter=lfs diff=lfs merge=lfs -text
+*.blend filter=lfs diff=lfs merge=lfs -text
+*.onnx filter=lfs diff=lfs merge=lfs -text
+# Files committed before LFS stay in plain Git (history unchanged).
+References/Blender/ArtV2_Lion.blend -filter -diff -merge
+References/Blender/ArtV2_MonkeyMotions.blend -filter -diff -merge
+References/Blender/ArtV2_PrisonMine.blend -filter -diff -merge
+References/Blender/ArtV2_Signs.blend -filter -diff -merge
+References/Blender/ArtV2_TutorialDemo.blend -filter -diff -merge
+References/Blender/ArtV2_Zoo.blend -filter -diff -merge
+References/Blender/MineStair.blend -filter -diff -merge
+References/Blender/MuhanokCharacters.blend -filter -diff -merge
+References/Blender/MuhanokModules.blend -filter -diff -merge
+References/Blender/TrackHazardSign.blend -filter -diff -merge
+References/Blender/ZooStair.blend -filter -diff -merge
+Unity/Assets/Game/Content/Pose/Resources/MuhanokPose/pose_detection.onnx -filter -diff -merge
+Unity/Assets/Game/Content/Pose/Resources/MuhanokPose/pose_landmarks_detector_full.onnx -filter -diff -merge
+Unity/Assets/Game/Content/Pose/Resources/MuhanokPose/pose_landmarks_detector_lite.onnx -filter -diff -merge
+docs/archive/무한옥_화면별_게임기획서_V13.docx -filter -diff -merge

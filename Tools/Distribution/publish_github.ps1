@@ -20,7 +20,7 @@ try {
     if (-not $repository.permissions.admin) { throw 'Repository administrator permission is required for public visibility.' }
     $releases = Invoke-RestMethod -Uri ($api+'/releases?per_page=100') -Headers $headers
     if (@($releases | Where-Object tag_name -eq $tag).Count -gt 0) { throw 'Release tag already exists; inspect before updating.' }
-    $body = Get-Content -LiteralPath (Join-Path $project 'docs/PUBLIC_RELEASE.md') -Raw -Encoding utf8
+    $body = Get-Content -LiteralPath (Join-Path $project 'docs/archive/PUBLIC_RELEASE.md') -Raw -Encoding utf8
     $releaseRequest = @{ tag_name=$tag; target_commitish=$Commit; name=('Mongscape Windows 데모 · '+$tag); body=$body; draft=$true; prerelease=$false } | ConvertTo-Json
     $release = Invoke-RestMethod -Uri ($api+'/releases') -Headers $headers -Method Post -ContentType 'application/json; charset=utf-8' -Body ([Text.Encoding]::UTF8.GetBytes($releaseRequest))
     $uploadBase = $release.upload_url -replace '\{.*$', ''

@@ -9,11 +9,11 @@
 
 ## 먼저 읽을 문서
 
-- [문서 목록](docs/README.md), [진행 상태](docs/PROGRESS.md), [다음 계획](docs/DEVELOPMENT_PLAN.md)
+- [문서 목록](docs/README.md). 2차 기획과 구현 순서는 기획서(mongscape-v2) 9장, 10장을 따른다. 옛 계획과 보고서는 `docs/archive/`에 있다.
 - [아키텍처](docs/ARCHITECTURE.md), [아트 기준](docs/ART_DIRECTION.md)
 - 몸동작은 [BODY_TRACKING](docs/BODY_TRACKING.md), 얼굴 서버는 [Docker 안내](Services/Identity/README_DOCKER.md)
 
-최신 화면별 기획서는 `docs/무한옥_화면별_게임기획서_V13.docx`이며 이후 게임 구현과 구분한다. 이전 버전 문서·V10~V12 기획서·과거 캡처는 2026-10-27에 삭제했으며 Git 기록에서만 복원한다. 과거 기록의 숫자·통신 방식·미완료 상태를 현재 명세로 적용하지 않는다.
+최신 화면별 기획서는 `docs/archive/무한옥_화면별_게임기획서_V13.docx`이며 이후 게임 구현과 구분한다. 이전 버전 문서·V10~V12 기획서·과거 캡처는 2026-10-27에 삭제했으며 Git 기록에서만 복원한다. 과거 기록의 숫자·통신 방식·미완료 상태를 현재 명세로 적용하지 않는다.
 
 ## 개발 원칙
 

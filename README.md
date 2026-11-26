@@ -95,7 +95,7 @@ Unity 6000.3.10f1로 `Unity`를 열고 메뉴의 **Mongscape → Play GameScene*
 | [처음 실행하기](START_HERE.md) | 실행 순서, 조작, 서버 주소 |
 | [아키텍처](docs/ARCHITECTURE.md) | 계정, 몸동작, 저장 구조 |
 | [몸동작 안내](docs/BODY_TRACKING.md) | 손 메뉴와 보정 |
-| [진행 상태](docs/PROGRESS.md) | 검사한 것과 남은 일 |
+| [옛 문서](docs/archive/) | 1차 계획, 진행 기록, 보고서 |
 | [문서 목록](docs/README.md) | 전체 문서 |
 | [외부 리소스](THIRD_PARTY_NOTICES.md) | Kenney, Mixamo, 글꼴의 사용 조건 |
 

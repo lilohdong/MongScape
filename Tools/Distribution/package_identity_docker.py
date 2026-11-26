@@ -105,7 +105,7 @@ A/D 이동, C 갈림길 가운데, Space 점프, S 숙이기, W 하이니, F1 �
 
 회원 코인·해금·기록·통합 랭킹은 PostgreSQL 계정, 게스트 기록은 PC 랭킹입니다. 서버에 얼굴 사진을 저장하지 않으며 인식 특징값은 보관합니다. 기존 DB의 스키마 v2 이전·사진 삭제는 백업과 별도 확인이 필요하고 이번 로컬 통합에서 실행하지 않았습니다.
 
-현재 검사와 남은 범위는 docs/reports/PR20_LOCAL_MERGE_2026_10_29.md를 기준으로 합니다. 과거 SQLite 검사 결과를 현재 PostgreSQL 전용 서버의 새 검사로 해석하지 않습니다. 실제 Docker/Tailscale·외부 HTTPS·실물 웹캠·여러 PC와 하드웨어는 별도 확인입니다.
+현재 검사와 남은 범위는 docs/archive/reports/PR20_LOCAL_MERGE_2026_10_29.md를 기준으로 합니다. 과거 SQLite 검사 결과를 현재 PostgreSQL 전용 서버의 새 검사로 해석하지 않습니다. 실제 Docker/Tailscale·외부 HTTPS·실물 웹캠·여러 PC와 하드웨어는 별도 확인입니다.
 '''
     (OUTPUT/'배포_실행_안내.md').write_text(guide,encoding='utf-8')
 
