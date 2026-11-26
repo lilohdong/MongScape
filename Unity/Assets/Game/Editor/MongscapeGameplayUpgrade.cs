@@ -25,10 +25,8 @@ namespace Mongscape.Editor
                 }
                 finally { PrefabUtility.UnloadPrefabContents(root); }
             }
-            var settings=AssetDatabase.LoadAssetAtPath<GameSettings>("Assets/Game/Content/Data/GameSettings.asset");
-            settings.Run.SpeedRampDistance=120f;settings.Run.CartSpeed=settings.Run.BaseSpeed;EditorUtility.SetDirty(settings);
             AssetDatabase.SaveAssets();
-            Debug.Log("MUHANOK_GAMEPLAY_UPGRADE_PASS: every walking map has jump/slide; stair chunks carry no hazards; progressive walking/cart speed");
+            Debug.Log("MUHANOK_GAMEPLAY_UPGRADE_PASS: every walking map has jump/slide; stair chunks carry no hazards");
         }
 
         public static void Configure(GameObject root,int type)

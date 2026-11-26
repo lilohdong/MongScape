@@ -286,10 +286,26 @@ namespace Mongscape.Domain
         public int ShieldSaves {get;private set;}
         public bool SlipPursuit=>bananaCatchLeft>0;
         private bool Curve => Config.SpeedCurve && Config.ExtendedRoutes;
-        public float TargetSpeed => Curve ? CurveSpeed(Score.Distance, Runner.Riding) : Difficulty.Speed(Score.Distance, Config, Runner.Riding);
+        // Which map the runner is in (plan 3-3): the mine follows the distance curve, the zoo and the prison set their own speed.
+        public readonly SectionTracker Sections = new SectionTracker();
+        public SectionDef Section => Sections.Def;
+        public ChaserDef Chaser => Sections.Chaser;
+        // Speed of a map that does not follow the distance curve: the zoo sets it from the song, the prison from its set.
+        // Unset falls back to BaseSpeed. Cleared at every section boundary.
+        public float? SectionSpeed { get; set; }
+        private bool Smoothed => Curve || !Section.UsesDistanceCurve;
+        public float TargetSpeed => !Section.UsesDistanceCurve ? FixedSpeed : Curve ? CurveSpeed(Score.Distance, Runner.Riding) : Difficulty.Speed(Score.Distance, Config, Runner.Riding);
+        private float FixedSpeed => Math.Max(0f, SectionSpeed ?? Config.BaseSpeed);
+        // Hazard odds for a chunk starting at route position z: the distance curve in the mine, the starting odds elsewhere
+        // (the zoo and the prison place their own rows; whatever random rows remain must not get harder with distance).
+        public HazardOdds OddsAt(float z)
+        {
+            var def = SectionSpan.At(RouteSurface.ActivePlan, RouteSurface.SequenceAt(z)).Def;
+            return Difficulty.Odds(def.UsesDistanceCurve ? z : 0f, Config);
+        }
         public float CurrentSpeed => Flow.State == GameFlowState.Running && !Paused ? MoveSpeed * Runner.SpeedMultiplier * SpeedScale : 0f;
         // On foot the cadence sets the pace (CadencePace: 0.7 walking to 1.3 sprinting); the cart keeps its own speed.
-        private float MoveSpeed => (Curve ? smoothSpeed : TargetSpeed) * (Runner.Riding ? 1f : CadenceScale);
+        private float MoveSpeed => (Smoothed ? smoothSpeed : TargetSpeed) * (Runner.Riding ? 1f : CadenceScale);
         // Set each frame from CadencePace (1 for the keyboard, the option off, or the tutorial).
         public float CadenceScale { get; set; } = 1f;
         // How close the police come because the player is below the target cadence (0..CadencePace.MaxPressure).
@@ -300,7 +316,8 @@ namespace Mongscape.Domain
         // keep their time gap if the player speeds up before reaching them).
         public float PlannedSpeed(float distance)
         {
-            float speed = Curve ? CurveSpeed(distance, false) : Difficulty.Speed(distance, Config);
+            bool curveMap = SectionSpan.At(RouteSurface.ActivePlan, RouteSurface.SequenceAt(distance)).Def.UsesDistanceCurve;
+            float speed = !curveMap ? (Section.UsesDistanceCurve ? Config.BaseSpeed : FixedSpeed) : Curve ? CurveSpeed(distance, false) : Difficulty.Speed(distance, Config);
             return speed * Math.Min(CadencePace.Sprint, CadenceScale + .3f);
         }
         public CaptureReason Reason {get;private set;}
@@ -322,6 +339,9 @@ namespace Mongscape.Domain
             float z = Runner.Z;
             Runner.Tick(dt, MoveSpeed * SpeedScale);
             Score.Advance(Runner.Z - z);
+            var before = Sections.Current;
+            Sections.Update(RouteSurface.ActivePlan, Runner.Z);
+            if (!before.SameStay(Sections.Current)) SectionSpeed = null;
             // Stair chunks: a missed knee rhythm counts as a slip strike; in the tutorial it is a counted miss that restarts the step.
             int chunk = RouteSurface.SequenceAt(Runner.Z);
             bool onStair = RouteSurface.IsStair(RouteSurface.TypeAt(chunk));
@@ -405,6 +425,6 @@ namespace Mongscape.Domain
             BigMoves[(int)move]++;
             return true;
         }
-        public void Reset() { Array.Clear(BigMoves, 0, BigMoves.Length); BigCoins = 0; Runner.Reset(); Stair.Reset(); Chase.Reset(); Score.Reset(); Workout.Reset(); Items.Reset(); Paused=false; SpeedScale=1f; CadenceScale=1f; PacePressure=0f; clock = 0f; lastHit = -100f;SlipStrikes=0;lastStrike=0f;ShieldSaves=0;bananaCatchLeft=0;Reason=CaptureReason.Collision; smoothSpeed = TargetSpeed; }
+        public void Reset() { Array.Clear(BigMoves, 0, BigMoves.Length); BigCoins = 0; Runner.Reset(); Stair.Reset(); Chase.Reset(); Score.Reset(); Workout.Reset(); Items.Reset(); Paused=false; SpeedScale=1f; CadenceScale=1f; PacePressure=0f; clock = 0f; lastHit = -100f;SlipStrikes=0;lastStrike=0f;ShieldSaves=0;bananaCatchLeft=0;Reason=CaptureReason.Collision; Sections.Reset(); SectionSpeed = null; smoothSpeed = TargetSpeed; }
     }
 }
