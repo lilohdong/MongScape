@@ -19,7 +19,7 @@
 | `slip` | 바나나, 바닥에 미끄러짐 (계단 무릎 박자 놓침은 소리 없음) | Digital Audio / phaserDown1 | 0.75 |
 | `item` | 아이템 획득 | Digital Audio / powerUp7 | 0.80 |
 | `shield` | 보호막이 막아 줌 | Sci-Fi Sounds / forceField_000 | 0.60 |
-| `lion_roar` | 동물원 사자 포효 경고 (`ChaserCue`) | Kenney 아님: OpenGameArt "80 CC0 creature SFX #2" (rubberduck, CC0) / roar_04, 3반음 올림, 약한 포화, 0.81초 | 0.70 (제안) |
+| `lion_roar` | 동물원 사자 포효 경고 (`ChaserCue`) | Kenney 아님: OpenGameArt "80 CC0 creature SFX #2" (rubberduck, CC0) / roar_04, 3반음 올림, 약한 포화, 0.81초 | 0.60 (제안) |
 | `alarm_bell` | 감옥 탐조등 경보 (`ChaserCue`) | Kenney에 없어 `make_sfx.py`가 합성: 1.4 / 1.9 kHz 두 음을 4번 번갈아, 약 1초 | 0.45 (제안) |
 
 - 게임 이득은 효과음 음량 설정에 곱하는 값입니다(`GameAudio.cs` 상수). 파일은 모두 트루 피크 -1 dBTP 이하로 맞췄습니다(4배 오버샘플링, OGG 디코드 뒤에도 확인).
