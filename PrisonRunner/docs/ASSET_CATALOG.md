@@ -12,6 +12,7 @@
 | 얼굴 모델 | `Services/Identity/models/` | YuNet/SFace manifest·라이선스, 다운로드 SHA-256 |
 | 얼굴 특징값 | 등록 동의 뒤 연결된 서버 DB에 저장. 얼굴 사진은 서버에 저장하지 않고 로그인 응답으로만 전달 | 개인 데이터이므로 Git/배포 ZIP에 넣지 않음 |
 | 계단 청크 (광산/동물원) | 자체 Blender 절차 생성 `MineStair`/`ZooStair` (24m, 높이 0→+4.5m 스무스스텝, 청크당 메시 1·재질 4·삼각형 약 7~8k). 생성 스크립트 [make_mine_stair.py](../References/Blender/scripts/make_mine_stair.py), [make_zoo_stair.py](../References/Blender/scripts/make_zoo_stair.py), 공용 `stair_common.py`, 검증 `check_stair_fbx.py`. 원본 `References/Blender/MineStair.blend`·`ZooStair.blend`, FBX `Unity/Assets/External/Staging/Blender/` (아직 씬 미적용, 시각 메시만 - 충돌 제외) | 진입 y=0/출구 y=+4.5 경계, `RouteSurface.LocalHeight` 곡선과 디딤면 일치, 3레인 6.6m 폭, 인접 청크 벽·천장 높이 |
+| 2차 아트 (사자·구출·감옥·광산·동물원·간판·튜토리얼 시범) | 자체 Blender 생성. 스크립트 `Tools/AssetPipeline/build_art_*.py`(공용 `mong_art_common.py`), 원본 `References/Blender/ArtV2_*.blend`, FBX `Staging/Blender/Animals`(사자, Generic)·`Characters`(원숭이 `AN_Monkey_*` Humanoid)·`Models`(`MD_*`). Unity 설정·재질 연결·미리보기 씬은 `Mongscape/Art V2/Import Staging Assets`(`art_v2_assets.json`, `art_v2_palette.json`). 기준은 [아트 스타일 가이드](ART_STYLE_GUIDE.md) | 피벗·앞 방향(-Y Blender = +Z Unity), 몸통 뼈 이동 클립은 끝 위치를 코드가 옮김, 탐조등 Base 높이 4.2m |
 | 소리 | 실행 중 코드로 합성 | 실제 스피커와 프리셋별 동작 확인 |
 
 화면의 경찰은 자체 모델입니다. 과거 후보 상품의 취득 확인과 실제 파일 임포트를 혼동하지 않습니다. 새로운 구매나 다운로드를 수행한 목록이 아닙니다.
