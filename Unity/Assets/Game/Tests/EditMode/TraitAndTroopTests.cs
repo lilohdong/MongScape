@@ -118,6 +118,29 @@ namespace Mongscape.Tests
             Assert.IsFalse(Running(With((TraitId.Shield, 2))).Items.IsActive(ItemKind.Shield));
         }
 
+        [Test] public void SharpEarsCueThePoliceGaugeEarlier()
+        {
+            var plain = Running(); var eared = Running(With((TraitId.SharpEars, 2)));
+            Assert.AreEqual(RunSession.CueSeconds, plain.WarningCueSeconds, 1e-5); Assert.AreEqual(RunSession.CueSeconds + .6f, eared.WarningCueSeconds, 1e-5);
+            // The pace gauge left one second from full at its rise rate: inside the eared window, outside the plain one.
+            float pressure = 1f - CadencePace.PressureRise * 1f;
+            Assert.IsFalse(Soon(plain, pressure)); Assert.IsTrue(Soon(eared, pressure));
+        }
+        private static bool Soon(RunSession run, float pressure)
+        {
+            var pace = new CadencePace(); var field = typeof(CadencePace).GetProperty("Pressure");
+            field.SetValue(pace, pressure * .9f); run.ApplyPace(pace);
+            field.SetValue(pace, pressure); run.ApplyPace(pace);
+            return run.WarningSoon;
+        }
+
+        [Test] public void SharpEarsLengthenTheSearchlightApproach()
+        {
+            var course = new PrisonCourse { LeadBonus = .6f };
+            Assert.AreEqual(PrisonCourse.LeadSeconds + .6f, course.Lead, 1e-5);
+            Assert.AreEqual(course.Lead + course.HideSeconds, course.HoldSeconds, 1e-5);
+        }
+
         [Test] public void SweatAddsMonkeysForModerateTime()
         {
             var run = Running(With((TraitId.Sweat, 2)));

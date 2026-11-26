@@ -58,10 +58,13 @@ namespace Mongscape.Domain
         public float GapScale => StairGapScale(Visit);
         // Seconds since the runner stopped at the door (0 outside the hold).
         public float HoldClock { get; private set; }
-        public float HoldSeconds => LeadSeconds + HideSeconds;
+        // Sharp ears trait: the searchlight takes this much longer to come round before it sweeps (set from the run's traits).
+        public float LeadBonus { get; set; }
+        public float Lead => LeadSeconds + LeadBonus;
+        public float HoldSeconds => Lead + HideSeconds;
         // 0..1 over the light's sweep (0 before it reaches the door).
-        public float LightProgress => Phase == PrisonPhase.Hold ? Clamp01((HoldClock - LeadSeconds) / HideSeconds) : 0f;
-        public bool LightOn => Phase == PrisonPhase.Hold && HoldClock >= LeadSeconds;
+        public float LightProgress => Phase == PrisonPhase.Hold ? Clamp01((HoldClock - Lead) / HideSeconds) : 0f;
+        public bool LightOn => Phase == PrisonPhase.Hold && HoldClock >= Lead;
         public float LockGauge { get; private set; }
         // Dexterity trait: the lock gauge fills this much faster (.1 = 10%); set from the run's traits.
         public float LockBonus { get; set; }

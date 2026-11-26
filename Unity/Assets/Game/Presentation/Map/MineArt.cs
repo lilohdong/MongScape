@@ -9,6 +9,8 @@ namespace Mongscape.Presentation.Map
         public GameObject Monkey, WallLeft, WallRight;
         // WaveRight goes with the left wall (the hand nearer the runner), WaveLeft with the right wall.
         public RuntimeAnimatorController WaveLeft, WaveRight, RescuePop;
+        // The troop following the runner (MonkeyTroopView) loops this clip.
+        public AnimationClip Run;
         public GameObject SignMine, SignZoo, SignPrison, SignBlocked;
         public AudioClip Rescue, ForkBlocked;
 
