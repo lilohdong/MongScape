@@ -91,7 +91,7 @@ namespace Mongscape.Tests
                 }
                 Assert.AreEqual(created, game.Map.CreatedCount);
             }
-            for (int i = 0; i < 2; i++) { game.Session.Tick(.7f); game.Session.Hit(true); }
+            for (int i = 0; i < 2; i++) { game.Session.Tick(1.1f); game.Session.Hit(true); }
             game.Session.Tick(1.3f);
             Assert.AreEqual(GameFlowState.Caught, game.Session.Flow.State);
             yield return new WaitForSecondsRealtime(4.1f); Assert.AreEqual(GameFlowState.Result, game.Session.Flow.State);

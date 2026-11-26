@@ -90,7 +90,7 @@ namespace Mongscape.Tests
             Assert.IsTrue(run.Warn(WarningCause.Collision), "Nobody follows yet: the warning lands"); Assert.AreEqual(1, run.Warnings);
             run.Reset(); run.Rescue(RescueSource.MineWall, 2);
             Assert.IsFalse(run.Warn(WarningCause.Collision)); Assert.AreEqual(0, run.Warnings); Assert.AreEqual(1, run.Troop.Kept); Assert.AreEqual(1, run.LoyaltySaves);
-            Assert.IsTrue(run.Warn(WarningCause.Collision), "Once per run"); Assert.AreEqual(1, run.Troop.Kept);
+            run.Tick(1.1f); Assert.IsTrue(run.Warn(WarningCause.Collision), "Once per run"); Assert.AreEqual(1, run.Troop.Kept);
             Assert.AreEqual(1, run.MonkeysEarned, "The monkey taken away is not brought home");
         }
 
@@ -99,7 +99,7 @@ namespace Mongscape.Tests
             var run = Running(With((TraitId.Loyalty, 1))); run.Rescue(RescueSource.MineWall);
             run.Items.Activate(ItemKind.Shield);
             Assert.IsFalse(run.Warn(WarningCause.Banana)); Assert.AreEqual(1, run.ShieldSaves); Assert.AreEqual(1, run.Troop.Kept);
-            Assert.IsFalse(run.Warn(WarningCause.Banana)); Assert.AreEqual(0, run.Troop.Kept);
+            run.Tick(1.1f); Assert.IsFalse(run.Warn(WarningCause.Banana)); Assert.AreEqual(0, run.Troop.Kept);
         }
 
         [Test] public void ThickFurKeepsTheRunnerOnItsFeetForTheFirstWarning()
