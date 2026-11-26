@@ -49,6 +49,94 @@
    "frames": 54
   },
   {
+   "name": "Characters/AN_Monkey_Demo_ArmReach_L.fbx",
+   "kind": "humanoid",
+   "group": "TutorialDemo",
+   "loop": true,
+   "avatar_from": "",
+   "frames": 31
+  },
+  {
+   "name": "Characters/AN_Monkey_Demo_ArmReach_R.fbx",
+   "kind": "humanoid",
+   "group": "TutorialDemo",
+   "loop": true,
+   "avatar_from": "",
+   "frames": 31
+  },
+  {
+   "name": "Characters/AN_Monkey_Demo_CartLean_L.fbx",
+   "kind": "humanoid",
+   "group": "TutorialDemo",
+   "loop": true,
+   "avatar_from": "",
+   "frames": 37
+  },
+  {
+   "name": "Characters/AN_Monkey_Demo_CartLean_R.fbx",
+   "kind": "humanoid",
+   "group": "TutorialDemo",
+   "loop": true,
+   "avatar_from": "",
+   "frames": 37
+  },
+  {
+   "name": "Characters/AN_Monkey_Demo_HalfSquat.fbx",
+   "kind": "humanoid",
+   "group": "TutorialDemo",
+   "loop": true,
+   "avatar_from": "",
+   "frames": 45
+  },
+  {
+   "name": "Characters/AN_Monkey_Demo_HandsUp.fbx",
+   "kind": "humanoid",
+   "group": "TutorialDemo",
+   "loop": true,
+   "avatar_from": "",
+   "frames": 31
+  },
+  {
+   "name": "Characters/AN_Monkey_Demo_HighKnee.fbx",
+   "kind": "humanoid",
+   "group": "TutorialDemo",
+   "loop": true,
+   "avatar_from": "",
+   "frames": 21
+  },
+  {
+   "name": "Characters/AN_Monkey_Demo_Jump.fbx",
+   "kind": "humanoid",
+   "group": "TutorialDemo",
+   "loop": true,
+   "avatar_from": "",
+   "frames": 37
+  },
+  {
+   "name": "Characters/AN_Monkey_Demo_RunInPlace.fbx",
+   "kind": "humanoid",
+   "group": "TutorialDemo",
+   "loop": true,
+   "avatar_from": "",
+   "frames": 21
+  },
+  {
+   "name": "Characters/AN_Monkey_Demo_SideStep_L.fbx",
+   "kind": "humanoid",
+   "group": "TutorialDemo",
+   "loop": true,
+   "avatar_from": "",
+   "frames": 31
+  },
+  {
+   "name": "Characters/AN_Monkey_Demo_SideStep_R.fbx",
+   "kind": "humanoid",
+   "group": "TutorialDemo",
+   "loop": true,
+   "avatar_from": "",
+   "frames": 31
+  },
+  {
    "name": "Characters/AN_Monkey_RescuePop.fbx",
    "kind": "humanoid",
    "group": "MonkeyRescue",
