@@ -33,7 +33,7 @@ namespace Mongscape.Domain
         public const float LoopSeconds = 1.6f;
         public const string Title = "내 관절 비교", ReferenceLabel = "시범", MineLabel = "나";
         // Lessons with a body line to compare against.
-        public static bool Compares(TutorialStep step) => step == TutorialStep.Jump || step == TutorialStep.Crouch || step == TutorialStep.HighKnee || step == TutorialStep.Lane;
+        public static bool Compares(TutorialStep step) => step == TutorialStep.Jump || step == TutorialStep.Crouch || step == TutorialStep.Stair || step == TutorialStep.Lane;
 
         // The reference figure standing still, measured like a calibration (square picture).
         public static PoseBaseline ReferenceBaseline(PlayStyle style)
@@ -57,9 +57,9 @@ namespace Mongscape.Domain
                 float nose = float.IsNaN(b.NoseY) ? b.ShoulderY - b.Scale : b.NoseY;
                 switch (step)
                 {
-                    case TutorialStep.Jump: return new TargetLine(false, nose - tuning.UpperHandsAboveNose * b.Scale, 0, "손목을 선 위로");
+                    case TutorialStep.Jump: return new TargetLine(true, b.CentreX - tuning.UpperTReach * b.Scale, b.CentreX + tuning.UpperTReach * b.Scale, "손목을 선 밖으로");
                     case TutorialStep.Crouch: return new TargetLine(false, b.ShoulderY + tuning.UpperCrouchDrop * b.Scale, 0, "어깨를 선 아래로");
-                    case TutorialStep.HighKnee: return new TargetLine(false, nose, 0, "손을 올렸다 선 아래로");
+                    case TutorialStep.Stair: return new TargetLine(false, nose, 0, "손을 올렸다 선 아래로");
                     case TutorialStep.Lane: return new TargetLine(true, b.CentreX - tuning.UpperLaneEnter * across, b.CentreX + tuning.UpperLaneEnter * across, "어깨를 선 밖으로");
                     default: return default;
                 }
@@ -68,7 +68,7 @@ namespace Mongscape.Domain
             {
                 case TutorialStep.Jump: return new TargetLine(false, b.HipY - tuning.JumpRise * b.Scale, 0, "엉덩이를 선 위로");
                 case TutorialStep.Crouch: return new TargetLine(false, b.ShoulderY + tuning.CrouchDrop * b.Scale, 0, "어깨를 선 아래로");
-                case TutorialStep.HighKnee:
+                case TutorialStep.Stair:
                     return float.IsNaN(b.KneeDrop) ? default : new TargetLine(false, b.HipY + b.KneeDrop - tuning.HighKneeLift * b.Scale, 0, "무릎을 선 위로");
                 case TutorialStep.Lane: return new TargetLine(true, b.CentreX - tuning.LaneEnter * across, b.CentreX + tuning.LaneEnter * across, "엉덩이를 선 밖으로");
                 default: return default;
@@ -83,9 +83,9 @@ namespace Mongscape.Domain
             bool upper = b.Style == PlayStyle.UpperBody;
             switch (step)
             {
-                case TutorialStep.Jump: return upper ? Math.Max(Y(frame, PoseJoint.LeftWrist), Y(frame, PoseJoint.RightWrist)) < line.At : Mid(frame, PoseJoint.LeftHip, PoseJoint.RightHip, false) < line.At;
+                case TutorialStep.Jump: return upper ? Math.Min(frame.Points[PoseJoint.LeftWrist].X, frame.Points[PoseJoint.RightWrist].X) < line.At && Math.Max(frame.Points[PoseJoint.LeftWrist].X, frame.Points[PoseJoint.RightWrist].X) > line.Other : Mid(frame, PoseJoint.LeftHip, PoseJoint.RightHip, false) < line.At;
                 case TutorialStep.Crouch: return Mid(frame, PoseJoint.LeftShoulder, PoseJoint.RightShoulder, false) > line.At;
-                case TutorialStep.HighKnee: return upper ? Math.Max(Y(frame, PoseJoint.LeftWrist), Y(frame, PoseJoint.RightWrist)) > line.At : Math.Min(Y(frame, PoseJoint.LeftKnee), Y(frame, PoseJoint.RightKnee)) < line.At;
+                case TutorialStep.Stair: return upper ? Math.Max(Y(frame, PoseJoint.LeftWrist), Y(frame, PoseJoint.RightWrist)) > line.At : Math.Min(Y(frame, PoseJoint.LeftKnee), Y(frame, PoseJoint.RightKnee)) < line.At;
                 case TutorialStep.Lane:
                     float x = upper ? Mid(frame, PoseJoint.LeftShoulder, PoseJoint.RightShoulder, true) : Mid(frame, PoseJoint.LeftHip, PoseJoint.RightHip, true);
                     return x < line.At || x > line.Other;
@@ -104,9 +104,9 @@ namespace Mongscape.Domain
             bool upper = style == PlayStyle.UpperBody;
             switch (step)
             {
-                case TutorialStep.Jump: if (upper) Raise(f, wave); else Shift(f, 0, -.09f * wave, false); break;
+                case TutorialStep.Jump: if (upper) TPose(f, wave); else Shift(f, 0, -.09f * wave, false); break;
                 case TutorialStep.Crouch: if (upper) Shift(f, 0, .13f * wave, true); else Squat(f, wave); break;
-                case TutorialStep.HighKnee: if (upper) PullDown(f, wave); else Knee(f, side, (float)Math.Sin(half * Math.PI)); break;
+                case TutorialStep.Stair: if (upper) PullDown(f, wave); else Knee(f, side, (float)Math.Sin(half * Math.PI)); break;
                 case TutorialStep.Lane:
                     float x = (float)Math.Sin(phase * 2 * Math.PI) * .2f;
                     if (upper) Lean(f, x); else Shift(f, x, 0, false);
@@ -159,6 +159,12 @@ namespace Mongscape.Domain
             int ankle = knee == PoseJoint.LeftKnee ? PoseJoint.LeftAnkle : PoseJoint.RightAnkle;
             float lift = (f.Points[knee].Y - f.Points[PoseJoint.LeftHip].Y) * w;
             Move(f, knee, 0, -lift); Move(f, ankle, 0, -lift * .9f);
+        }
+        // Both arms out sideways at shoulder height (the upper body's jump).
+        private static void TPose(PoseFrame f, float w)
+        {
+            Move(f, PoseJoint.LeftElbow, -.1f * w, -.12f * w); Move(f, PoseJoint.RightElbow, .1f * w, -.12f * w);
+            Move(f, PoseJoint.LeftWrist, -.22f * w, -.23f * w); Move(f, PoseJoint.RightWrist, .22f * w, -.23f * w);
         }
         private static void Raise(PoseFrame f, float w)
         {

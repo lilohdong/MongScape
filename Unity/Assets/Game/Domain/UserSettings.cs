@@ -25,6 +25,9 @@ namespace Mongscape.Domain
         }
     }
 
+    [Serializable]
+    public sealed class TutorialMark { public string Owner = ""; public int Chapters; }
+
     // Player/operator options from the settings window. Saved on this PC; applied by the presentation layer.
     [Serializable]
     public sealed class UserSettings
@@ -59,6 +62,8 @@ namespace Mongscape.Domain
         public bool ColorBlind = false;
         // Members (account ids) on this PC who were offered the short tutorial of the exercise update (once each).
         public System.Collections.Generic.List<string> UpdatedTutorialSeen = new System.Collections.Generic.List<string>();
+        // Beat sync (zoo): how many milliseconds late the player's jump lands after the beat; measured in tutorial chapter 2.
+        public int SyncOffsetMs = 0;
 
         public static readonly int[] FrameCaps = { 30, 60, 0 };
 
@@ -78,6 +83,7 @@ namespace Mongscape.Domain
             LaneSensitivity = Math.Max(.6f, Math.Min(1.4f, LaneSensitivity));
             if (Array.IndexOf(FrameCaps, FrameCap) < 0) FrameCap = 60;
             CameraDevice = CameraDevice ?? "";
+            SyncOffsetMs = Math.Max(-400, Math.Min(400, SyncOffsetMs));
         }
         public UserSettings Clone() => (UserSettings)MemberwiseClone();
     }

@@ -6,16 +6,16 @@ using UnityEngine;
 
 namespace Mongscape.Presentation
 {
-    // Runs the tutorial lessons on the ordinary run at full speed. As a lesson comes into view its instruction shows;
-    // the big call follows the action's timing (jump and crouch only when acting clears the obstacle, ActionTiming).
-    // Doing the lesson's action completes the step at once ("좋아요!"), and a slip inside that lesson's chunk afterwards is
-    // forgiven, so an early jump never fails a passed lesson. A real mistake shows "다시 해 볼까요?" and restarts in front of
-    // the same step. The bootstrap ticks it before the session moves.
+    // Runs one tutorial chapter (plan 6-1b) on the ordinary run at full speed. Course lessons (lane, jump, crouch, bananas, stair,
+    // cart fork) show as they come into view and the big call follows the action's timing (ActionTiming). Stations that the maps
+    // do not provide yet (rescue, beat sync, verse, searchlight hiding) are run here with their own pictures, and picture steps
+    // show a short drawing. A real mistake shows "다시 하기" and restarts in front of the same step; the third one grows the demo
+    // window into the joint comparison. The bootstrap ticks it before the session moves.
     public sealed class TutorialDirector : MonoBehaviour
     {
         // The lesson shows (and its action counts) from this far ahead.
         public const float ShowDistance = 14f;
-        public const float RetrySeconds = 1.6f, DoneSeconds = 2.5f, PraiseSeconds = .9f;
+        public const float RetrySeconds = 1.6f, DoneSeconds = 2.5f, PraiseSeconds = .9f, PictureSeconds = 4.5f, ReachSeconds = .4f;
         private RunSession session;
         private ChunkSpawner map;
         private Func<bool> poseReady, visible;
@@ -36,39 +36,59 @@ namespace Mongscape.Presentation
         public string Message { get; private set; }
         // The big call on screen ("↑  점프!", "←  옆으로 피하기  →", ...), null while a timed call is not due yet.
         public string Cue => cue;
-        // Inputs of the camera, pace and police lessons (set by the bootstrap): the body framed head to ankles (waist up for the
-        // upper body), steps a minute, the speed share from the cadence, the pace pressure, and the running line.
+        // The X pause is judged during its step (the bootstrap leaves the gesture off in the other steps).
+        public bool PauseGestureOpen => Active && Script.Current == TutorialStep.PauseX;
+        // Inputs of the camera and pace lessons (set by the bootstrap): the body framed head to ankles (waist up for the
+        // upper body), steps a minute, the speed share from the cadence.
         public Func<bool> Framed;
         // No camera or model (developer tests, a missing webcam): the camera and pace lessons pass at once instead of waiting forever.
         public Func<bool> NoCamera;
-        public Func<float> StepsPerMinute, PaceScale, PacePressure;
-        // The camera sees the player now; while it does not, the police lesson never passes (QA 2026-11-25 L15).
-        public Func<bool> Tracking;
+        public Func<float> StepsPerMinute, PaceScale;
         public float RunCadence = 100f;
-        // The demo window (character clip); null keeps it hidden.
+        // The arm readings the stations need (camera or keys): one arm out, both hands up.
+        public Func<bool> Reaching, HandsUp;
+        // Sound hooks: a beat tick, and a cleared station. The saved sync offset in ms and where to save a new one.
+        public Action Beat, Cleared;
+        public Func<int> SyncMs;
+        public Action<int> SaveSync;
+        // The mirror monkey window (character clip); null keeps it hidden.
         public TutorialDemo Demo;
         // The player's joints (null without a tracked camera), calibrated pose and thresholds, for the joint comparison that
-        // joins the follow-along view (exercise plan 10-3 B).
+        // joins the follow-along view.
         public Func<PoseFrame> MyPose;
         public Func<PoseBaseline> MyBaseline;
         public Func<MotionTuning> Tuning;
         private readonly PoseFrame reference = new PoseFrame();
         // Seconds the camera lesson waits for a framed body, the pace lesson for a held pace.
-        public const float FramedSeconds = 3f, PacedSeconds = 5f, PoliceNear = .3f;
-        private float framedFor, pacedFor;
-        private bool policeCame;
-        private int bigAtStart;
+        public const float FramedSeconds = 3f, PacedSeconds = 5f;
+        private float framedFor, pacedFor, reachFor, pictureFor;
+        private bool cadenceSpeed = true, pauseSeen, wasJumping, wasHands, rescued, stationBegun;
+        private float rescuedAt;
+        private int bigAtStart, lastTick;
+        private readonly BeatSync sync = new BeatSync();
+        private readonly BeatVerse verse = new BeatVerse();
+        private readonly HideSet hide = new HideSet();
 
         public void Configure(RunSession run, ChunkSpawner spawner, Func<bool> calibrated, Action<float> restartAt, Action complete, Func<bool> canDraw)
         {
             session = run; map = spawner; poseReady = calibrated; restart = restartAt; finished = complete; visible = canDraw;
         }
-        public void Begin(PlayStyle style, bool forks, bool cadenceSpeed = true, bool shortVersion = false)
+        public void Begin(TutorialChapter chapter, PlayStyle style, bool forks, bool cadenceOn = true, bool shortVersion = false)
         {
-            Script = new TutorialScript(style, forks, cadenceSpeed, shortVersion); TutorialCourse.Script = Script; framedFor = pacedFor = 0; policeCame = false; bigAtStart = BigTotal; seenMisses = session.TutorialMisses; retryAt = doneAt = praiseUntil = forgiveUntilZ = -1;
-            Waiting = false; LessonDistance = float.PositiveInfinity; Message = null; cue = null;
+            Script = new TutorialScript(chapter, style, forks, shortVersion); TutorialCourse.Script = Script; cadenceSpeed = cadenceOn; bigAtStart = BigTotal; seenMisses = session.TutorialMisses;
+            retryAt = doneAt = praiseUntil = forgiveUntilZ = -1;
+            ResetStation(); Waiting = false; LessonDistance = float.PositiveInfinity; Message = null; cue = null;
         }
         public void End() { TutorialCourse.Script = null; Demo?.Show(null); Script = null; Waiting = false; retryAt = doneAt = praiseUntil = forgiveUntilZ = -1; Message = cue = null; if (session != null) session.SpeedScale = 1; }
+        // The player paused (X gesture or Esc) while the pause step waits: it passes when play goes on again.
+        public void NotifyPaused(PauseReason reason)
+        {
+            if (Active && Script.Current == TutorialStep.PauseX && (reason == PauseReason.Gesture || reason == PauseReason.Key)) pauseSeen = true;
+        }
+        private void ResetStation()
+        {
+            framedFor = pacedFor = reachFor = pictureFor = 0; pauseSeen = wasJumping = wasHands = rescued = stationBegun = false; lastTick = -1;
+        }
 
         public void Tick(float now)
         {
@@ -79,14 +99,14 @@ namespace Mongscape.Presentation
             {
                 session.SpeedScale = 0;
                 if (now < retryAt) return;
-                retryAt = -1; Waiting = false; Message = null; session.SpeedScale = 1;
+                retryAt = -1; Waiting = false; Message = null; session.SpeedScale = 1; ResetStation();
                 restart?.Invoke(TutorialCourse.RestartZ(Script.Current));
                 seenMisses = session.TutorialMisses; return;
             }
             if (session.TutorialMisses > seenMisses)
             {
                 // A slip inside the chunk of a lesson already passed (an early jump landing on its crate) is forgiven.
-                if (runner.Z < forgiveUntilZ || TutorialCourse.ForgivesStairMiss(Script, RouteSurface.SequenceAt(runner.Z))) seenMisses = session.TutorialMisses;
+                if (runner.Z < forgiveUntilZ) seenMisses = session.TutorialMisses;
                 else { Miss(now); return; }
             }
             session.SpeedScale = 1;
@@ -95,7 +115,6 @@ namespace Mongscape.Presentation
             switch (Script.Condition)
             {
                 case TutorialPass.Framed:
-                {
                     // Head to ankles (waist up for the upper body) in view for three seconds in a row.
                     session.SpeedScale = 0; Waiting = true; cue = TutorialScript.Title(step);
                     Message = TutorialScript.Instruction(step, Script.Style);
@@ -103,31 +122,36 @@ namespace Mongscape.Presentation
                     framedFor = Framed == null || Framed() ? framedFor + Time.deltaTime : 0;
                     if (Framed == null || framedFor >= FramedSeconds) Next(now);
                     return;
-                }
+                case TutorialPass.Calibrated:
+                    session.SpeedScale = 0; Waiting = true; Message = TutorialScript.Instruction(step, Script.Style);
+                    if (poseReady == null || poseReady()) Next(now);
+                    return;
                 case TutorialPass.Paced:
                 {
-                    // Run in place: the pace gauge fills with the cadence; five seconds at a running pace (or any stepping when
-                    // the cadence option is off) pass. The runner waits at the end of the pace chunk.
+                    // Run in place: five seconds at a running pace (or any stepping when the cadence option is off) pass.
+                    // The runner waits at the end of the pace chunk.
                     if (NoCamera != null && NoCamera()) { Next(now); return; }
-                    Hold(); Waiting = true; cue = TutorialScript.Title(step);
-                    Message = TutorialScript.Instruction(step, Script.Style, Script.CadenceSpeed);
+                    Hold(step); Waiting = true; cue = TutorialScript.Title(step);
+                    Message = TutorialScript.Instruction(step, Script.Style);
                     float spm = StepsPerMinute?.Invoke() ?? 0;
-                    bool paced = Script.CadenceSpeed ? spm >= RunCadence : spm > 0;
+                    bool paced = cadenceSpeed ? spm >= RunCadence : spm > 0;
                     pacedFor = paced ? pacedFor + Time.deltaTime : Mathf.Max(0, pacedFor - Time.deltaTime);
                     if (StepsPerMinute == null || pacedFor >= PacedSeconds) Next(now);
                     return;
                 }
-                case TutorialPass.PoliceShaken:
-                {
-                    // Stop: the police come close (red edges); run again until they fall back.
-                    if (NoCamera != null && NoCamera()) { Next(now); return; }
-                    Hold(); Waiting = true; cue = TutorialScript.Title(step);
-                    float pressure = PacePressure?.Invoke() ?? 0;
-                    if (pressure >= PoliceNear) policeCame = true;
-                    Message = policeCame ? TutorialScript.PoliceAway : TutorialScript.Instruction(step, Script.Style);
-                    if (PacePressure == null || policeCame && pressure <= .02f && (Tracking == null || Tracking())) Next(now);
+                case TutorialPass.Picture:
+                    Hold(step); Waiting = true; cue = null; Message = TutorialScript.Instruction(step, Script.Style);
+                    pictureFor += Time.deltaTime;
+                    if (pictureFor >= PictureSeconds) Next(now);
                     return;
-                }
+                case TutorialPass.Paused:
+                    Hold(step); Waiting = true; cue = null; Message = TutorialScript.Instruction(step, Script.Style);
+                    if (pauseSeen) Next(now);
+                    return;
+                case TutorialPass.Station:
+                    Hold(step); Waiting = true; cue = null; Message = TutorialScript.Instruction(step, Script.Style);
+                    TickStation(step, now);
+                    return;
                 case TutorialPass.ObstaclePassed when step == TutorialStep.Banana:
                 {
                     FindBananas();
@@ -138,10 +162,6 @@ namespace Mongscape.Presentation
                     Show(LessonDistance <= ShowDistance, false, now);
                     return;
                 }
-                case TutorialPass.Calibrated:
-                    session.SpeedScale = 0; Waiting = true; Message = TutorialScript.Instruction(step, Script.Style);
-                    if (poseReady == null || poseReady()) Next(now);
-                    return;
                 case TutorialPass.ForkChosen:
                 {
                     var plan = RouteSurface.ActivePlan;
@@ -153,20 +173,11 @@ namespace Mongscape.Presentation
                     Show(open || LessonDistance <= ShowDistance, open && TutorialScript.Performed(step, runner), now);
                     return;
                 }
-                case TutorialPass.ObstaclePassed when step == TutorialStep.Rail:
-                {
-                    var gap = FindRail();
-                    if (gap == null) { Hide(); return; }
-                    if (gap.Passed) { Next(now); return; }
-                    LessonDistance = gap.transform.position.z - runner.Z;
-                    Show(LessonDistance <= ShowDistance, TutorialScript.Performed(step, runner), now);
-                    return;
-                }
-                case TutorialPass.ObstaclePassed when step == TutorialStep.HighKnee:
+                case TutorialPass.ObstaclePassed when step == TutorialStep.Stair:
                 {
                     // The stair chunk is the lesson: the first knee step at its foot completes it. Standing still on the steps is a miss
                     // (the stair judge) and restarts the step.
-                    float start = TutorialCourse.StairChunk * RouteSurface.Length;
+                    float start = TutorialCourse.PrisonStairChunk * RouteSurface.Length;
                     if (runner.Z >= start + RouteSurface.Length) { Next(now); return; }
                     LessonDistance = start + StairJudge.From + 1f - runner.Z;
                     Show(LessonDistance <= ShowDistance, TutorialScript.Performed(step, runner), now);
@@ -183,6 +194,55 @@ namespace Mongscape.Presentation
                     return;
                 }
             }
+        }
+
+        // The four stations the director runs itself.
+        private void TickStation(TutorialStep step, float now)
+        {
+            var runner = session.Runner;
+            // The runner must stand at the station's spot first.
+            if (runner.Z < TutorialCourse.HoldZ(Script.Chapter, step) - .5f) return;
+            bool jumping = runner.Y > .01f, jumpEdge = jumping && !wasJumping; wasJumping = jumping;
+            bool hands = HandsUp != null && HandsUp(), handsEdge = hands && !wasHands; wasHands = hands;
+            if (NoCamera != null && NoCamera() && PlayStyleInfo.UsesCamera(Script.Style)) { Next(now); return; }
+            switch (step)
+            {
+                case TutorialStep.Rescue:
+                    // One arm out for a moment: the stuck monkey comes along.
+                    reachFor = Reaching != null && Reaching() ? reachFor + Time.deltaTime : 0;
+                    if (reachFor >= ReachSeconds) { rescued = true; rescuedAt = now; Next(now); }
+                    return;
+                case TutorialStep.Sync:
+                {
+                    if (!stationBegun) { sync.Begin(now); stationBegun = true; lastTick = -1; }
+                    TickBeats(now, sync.Start, BeatSync.Interval);
+                    if (jumpEdge) sync.Jump(now);
+                    if (sync.Done) { SaveSync?.Invoke(Mathf.RoundToInt((float)sync.Offset * 1000f)); Next(now); }
+                    else if (sync.Over(now)) Miss(now);
+                    return;
+                }
+                case TutorialStep.Verse:
+                {
+                    if (!stationBegun) { verse.Begin(now, (SyncMs?.Invoke() ?? 0) / 1000.0); stationBegun = true; lastTick = -1; }
+                    TickBeats(now, verse.Start, BeatVerse.Interval);
+                    if (jumpEdge) verse.Act(NoteKind.Jump, now);
+                    if (handsEdge) verse.Act(NoteKind.Hands, now);
+                    if (verse.Over(now)) { if (verse.Passed) Next(now); else Miss(now); }
+                    return;
+                }
+                case TutorialStep.Hide:
+                    if (!stationBegun) { hide.Begin(); stationBegun = true; }
+                    hide.Tick(Time.deltaTime, runner.Crouching, runner.DeepSliding);
+                    if (hide.Spotted) Miss(now);
+                    else if (hide.Passed) Next(now);
+                    return;
+            }
+        }
+        // One tick sound per interval from the start of a beat lesson.
+        private void TickBeats(float now, double start, double interval)
+        {
+            int n = (int)Math.Floor((now - start) / interval);
+            if (n != lastTick && n >= 0) { lastTick = n; Beat?.Invoke(); }
         }
         // While the lesson is in view its instruction shows and its action completes it.
         private void Show(bool inView, bool performed, float now)
@@ -204,8 +264,8 @@ namespace Mongscape.Presentation
                 Message = TutorialScript.Instruction(step, Script.Style);
             }
         }
-        // The pace lessons keep the runner at the end of the pace chunk until they pass (the speed gauge still follows the steps).
-        private void Hold() { session.SpeedScale = session.Runner.Z >= TutorialCourse.PaceHoldZ ? 0 : 1; }
+        // The pace lessons and stations keep the runner at their spot until they pass (the speed gauge still follows the steps).
+        private void Hold(TutorialStep step) { session.SpeedScale = session.Runner.Z >= TutorialCourse.HoldZ(Script.Chapter, step) ? 0 : 1; }
         private readonly List<FloorItemController> peels = new List<FloorItemController>(2);
         private void FindBananas()
         {
@@ -218,7 +278,7 @@ namespace Mongscape.Presentation
             }
             peels.Sort((a, b) => a.transform.position.z.CompareTo(b.transform.position.z));
         }
-        // Big moves made during the step (exercise plan 6): the praise says so, but they are never required.
+        // Big moves made during the step: the praise says so, but they are never required.
         private int BigTotal { get { if (session == null) return 0; int n = 0; foreach (int c in session.BigMoves) n += c; return n; } }
         private bool bigPraise;
         private void Hide() { LessonDistance = float.PositiveInfinity; Waiting = false; Message = null; cue = null; }
@@ -227,16 +287,19 @@ namespace Mongscape.Presentation
             var step = Script.Current;
             int chunk = TutorialCourse.ChunkOf(step);
             if (chunk >= 0) forgiveUntilZ = Mathf.Max(forgiveUntilZ, (chunk + 1) * RouteSurface.Length);
-            bigPraise = BigTotal > bigAtStart; bigAtStart = BigTotal; framedFor = pacedFor = 0; policeCame = false;
+            bigPraise = BigTotal > bigAtStart; bigAtStart = BigTotal;
+            bool station = TutorialScript.PassOf(step) == TutorialPass.Station;
+            ResetStation();
             Script.Pass(); Waiting = false; LessonDistance = float.PositiveInfinity; session.SpeedScale = 1; cue = null;
             Message = Script.Finished ? TutorialScript.Instruction(TutorialStep.Done, Script.Style) : null;
+            if (station) Cleared?.Invoke();
             if (Script.Finished) doneAt = now;
             else if (step != TutorialStep.Calibrate) praiseUntil = now + PraiseSeconds;
         }
         private void Miss(float now)
         {
             seenMisses = session.TutorialMisses; Script.Fail(); retryAt = now + RetrySeconds; praiseUntil = -1;
-            Waiting = false; session.SpeedScale = 0; cue = null; Message = "다시 해 볼까요?";
+            Waiting = false; session.SpeedScale = 0; cue = null; Message = "다시 하기";
         }
         // Active hazards of this step's lesson chunk (one lane block or one full row).
         private void FindLesson()
@@ -249,19 +312,6 @@ namespace Mongscape.Presentation
                 if (item.Chunk.Sequence != sequence || !item.Chunk.gameObject.activeSelf) continue;
                 Collect(item.Chunk.Obstacles); Collect(item.Chunk.ExerciseObstacles); Collect(item.Chunk.DynamicObstacles);
             }
-        }
-        // The lesson's broken rail window on the tutorial cart chunk, once that chunk is spawned.
-        private CartRailGap FindRail()
-        {
-            if (map == null) return null;
-            foreach (var item in map.Active)
-            {
-                if (item.Chunk.Sequence != TutorialCourse.RailChunk || !item.Chunk.gameObject.activeSelf) continue;
-                var gaps = item.Chunk.RailGaps;
-                if (gaps != null && gaps.Length > TutorialCourse.RailGapIndex && gaps[TutorialCourse.RailGapIndex] != null
-                    && gaps[TutorialCourse.RailGapIndex].gameObject.activeSelf) return gaps[TutorialCourse.RailGapIndex];
-            }
-            return null;
         }
         private void Collect(IList<ObstacleController> hazards)
         {
@@ -276,36 +326,52 @@ namespace Mongscape.Presentation
             skin ??= new HudSkin();
             var old = GUI.matrix; GUI.matrix = ViewportLayout.GuiMatrix; GUI.depth = -5;
             var step = Script.Current;
-            string progress = (Mathf.Min(Script.Index + 1, Script.Steps.Count - 1)) + " / " + (Script.Steps.Count - 1);
-            var header = new Rect(440, 92, 400, 40);
+            // The step's title and its place in the chapter (no separators between the two).
+            var header = new Rect(440, 92, 400, 56);
             skin.Card(header, Palette.A(Palette.Ground, .85f));
             GUI.color = Palette.Gold;
-            GUI.Label(header, step == TutorialStep.Done ? "튜토리얼 완료" : "튜토리얼 " + progress + " · " + TutorialScript.Title(step), skin.Centered(20, FontStyle.Bold));
+            GUI.Label(new Rect(header.x, header.y + 2, header.width, 32), step == TutorialStep.Done ? "다 했어요" : TutorialScript.Title(step), skin.Centered(24, FontStyle.Bold));
+            GUI.color = Palette.Sand;
+            if (step != TutorialStep.Done) GUI.Label(new Rect(header.x, header.y + 32, header.width, 22), TutorialScript.ChapterTitle(Script.Chapter) + "  " + (Script.Index + 1) + " / " + (Script.Steps.Count - 1), skin.Centered(15, FontStyle.Normal));
             // Mistakes and the finish fill the banner; a lesson in view shows its call (when due) with the instruction below.
             bool praise = Time.realtimeSinceStartup < praiseUntil && !Waiting;
             string big = Retrying || Script.Finished ? Message : Waiting ? cue : praise ? (bigPraise ? "크게! 좋아요!" : "좋아요!") : null;
             if (big != null)
             {
-                var banner = new Rect(240, 196, 800, 110);
+                var banner = new Rect(240, 160, 800, 110);
                 skin.Card(banner, Palette.A(Palette.Ground, .88f));
                 GUI.color = Retrying ? new Color(1, .7f, .3f) : praise ? new Color(.45f, 1f, .6f) : Palette.Gold;
                 GUI.Label(banner, big, skin.Centered(58, FontStyle.Bold));
             }
             if (!Retrying && !Script.Finished && !string.IsNullOrEmpty(Message))
             {
-                var line = new Rect(240, 312, 800, 46);
+                var line = new Rect(240, 276, 800, 46);
                 skin.Card(line, Palette.A(Palette.Ground, .82f));
-                GUI.color = Palette.Cream; GUI.Label(line, Message, skin.Centered(22, FontStyle.Bold));
+                GUI.color = Palette.Cream; GUI.Label(line, Message, skin.Centered(24, FontStyle.Bold));
             }
-            DrawPace(step);
+            if (!Retrying) DrawStation(step);
             DrawDemo();
             GUI.color = Color.white; GUI.matrix = old;
         }
-        // The pace lesson gauge: the speed share from the cadence (70 % walking to 130 % sprinting) and the steps a minute.
-        private void DrawPace(TutorialStep step)
+        private void DrawStation(TutorialStep step)
         {
-            if (step != TutorialStep.Cadence || Retrying) return;
-            var box = new Rect(440, 372, 400, 64);
+            float now = Time.realtimeSinceStartup;
+            switch (step)
+            {
+                case TutorialStep.Cadence: DrawPace(); break;
+                case TutorialStep.Rescue: TutorialPictures.Rescue(skin, rescued, now - rescuedAt, Mathf.Clamp01(reachFor / ReachSeconds), Script.Style); break;
+                case TutorialStep.Sync: if (stationBegun) TutorialPictures.Beats(skin, now - (float)sync.Start, (float)BeatSync.Interval, BeatSync.LeadBeats, BeatSync.Beats, sync.Hits); break;
+                case TutorialStep.Verse: if (stationBegun) TutorialPictures.Verse(skin, verse, now, Script.Style); break;
+                case TutorialStep.Hide: TutorialPictures.Hide(skin, hide); break;
+                case TutorialStep.WarnRule: TutorialPictures.WarnRule(skin, pictureFor / PictureSeconds); break;
+                case TutorialStep.Rearview: TutorialPictures.Rearview(skin, pictureFor / PictureSeconds); break;
+                case TutorialStep.AlarmRule: TutorialPictures.AlarmRule(skin, pictureFor / PictureSeconds); break;
+            }
+        }
+        // The pace lesson gauge: the speed share from the cadence (70 % walking to 130 % sprinting) and the steps a minute.
+        private void DrawPace()
+        {
+            var box = new Rect(440, 336, 400, 64);
             skin.Card(box, Palette.A(Palette.Ground, .85f));
             float scale = PaceScale?.Invoke() ?? 1, spm = StepsPerMinute?.Invoke() ?? 0;
             var track = new Rect(box.x + 16, box.y + 38, box.width - 32, 12);
@@ -313,9 +379,10 @@ namespace Mongscape.Presentation
             GUI.color = spm >= RunCadence ? new Color(.45f, 1f, .6f) : Palette.Gold;
             GUI.DrawTexture(new Rect(track.x, track.y, track.width * Mathf.InverseLerp(.7f, 1.3f, scale), track.height), Texture2D.whiteTexture);
             GUI.color = Palette.Cream;
-            GUI.Label(new Rect(box.x, box.y + 4, box.width, 30), "분당 " + Mathf.RoundToInt(spm) + "걸음 · 속도 " + Mathf.RoundToInt(scale * 100) + "%", skin.Centered(19, FontStyle.Bold));
+            GUI.Label(new Rect(box.x, box.y + 4, box.width, 30), "분당 " + Mathf.RoundToInt(spm) + "걸음", skin.Centered(19, FontStyle.Bold));
         }
-        // The demo window: the character clip in the bottom-left; after three misses of one step it grows into the follow-along view.
+        // The mirror monkey: the character clip in the bottom-left, flipped like a mirror; after three misses of one step it grows
+        // into the follow-along view.
         private void DrawDemo()
         {
             var texture = Demo?.Texture;
@@ -324,10 +391,11 @@ namespace Mongscape.Presentation
             var frame = follow ? new Rect(24, 330, 330, 360) : new Rect(24, 474, 210, 230);
             skin.Card(frame, Palette.A(Palette.Ground, .9f));
             GUI.color = follow ? Palette.Gold : Palette.Cream;
-            GUI.Label(new Rect(frame.x, frame.y + 2, frame.width, 26), follow ? "따라 하기" : "이렇게 하세요", skin.Centered(follow ? 22 : 17, FontStyle.Bold));
+            GUI.Label(new Rect(frame.x, frame.y + 2, frame.width, 26), follow ? "따라 하기" : "시범", skin.Centered(follow ? 22 : 17, FontStyle.Bold));
             GUI.color = Color.white;
             float side = frame.width - 12;
-            GUI.DrawTexture(new Rect(frame.x + 6, frame.y + 30, side, Mathf.Min(side, frame.height - 36)), texture, ScaleMode.ScaleAndCrop);
+            // Mirrored: the monkey raises the arm that the player sees on the same side of the picture.
+            GUI.DrawTextureWithTexCoords(new Rect(frame.x + 6, frame.y + 30, side, Mathf.Min(side, frame.height - 36)), texture, new Rect(1, 0, -1, 1));
             if (follow) DrawJoints(new Rect(frame.xMax + 12, frame.y, 430, frame.height));
         }
         // The joint comparison is on screen (the follow-along view of a step that has one), where the HUD notice would sit.
@@ -397,6 +465,6 @@ namespace Mongscape.Presentation
             if (x < 0 || x > 1 || y < 0 || y > 1) return;
             GUI.DrawTexture(new Rect(view.x + x * view.width - size * .5f, view.y + y * view.height - size * .5f, size, size), Texture2D.whiteTexture);
         }
-        private void OnDestroy() { skin?.Dispose(); }
+        private void OnDestroy() { skin?.Dispose(); TutorialPictures.Dispose(); }
     }
 }

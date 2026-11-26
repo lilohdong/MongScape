@@ -82,9 +82,8 @@ namespace Mongscape.Bootstrap
         // Whether any webcam is plugged in; re-read every few seconds outside runs (never during play, enumeration can stall a frame).
         private bool cameraDetected, wasMenu;
         private double nextCameraScan;
-        // Tutorial lessons on the ordinary run; offered once per session on "게임 시작".
+        // Tutorial chapters on the ordinary run (GameBootstrap.Tutorial.cs).
         public TutorialDirector Tutorial { get; private set; }
-        private bool tutorialOffered;
         private void Awake()
         {
             var flags=System.Environment.GetCommandLineArgs();
@@ -143,18 +142,10 @@ namespace Mongscape.Bootstrap
             hud.TitleLogo = TitleLogo;
             hud.LoadingImage=LoadingImage; hud.BeginRun=StartPlayerRun; hud.PauseRun=TogglePause; hud.ToMenu=ExitToMenu; hud.Recalibrate=RecalibrateAndResume; HookPause();
             hud.TextInput=KeyboardGameInput.SetTextInput; hud.Quit=QuitGame;
-            hud.StartTutorial=StartTutorial; hud.OfferTutorial=OfferTutorial;
-            Tutorial=gameObject.AddComponent<TutorialDirector>();
-            Tutorial.Framed=()=>Pose.Framing==FramingIssue.Ok;
-            Tutorial.NoCamera=()=>Pose.Status==PoseStatus.Off||Pose.Status==PoseStatus.NoCamera||Pose.Status==PoseStatus.NoModel;
-            Tutorial.MyPose=()=>Pose.UsesCamera&&Pose.Tracking?Pose.LastFrame:null; Tutorial.MyBaseline=()=>Pose.Baseline; Tutorial.Tuning=()=>Pose.Tuning;
-            Tutorial.StepsPerMinute=()=>Pose.StepsPerMinute; Tutorial.PaceScale=()=>pace.Scale; Tutorial.PacePressure=()=>pace.Pressure; Tutorial.Tracking=()=>Pose.Tracking;
-            Tutorial.RunCadence=Settings!=null?Settings.Motion.RunCadence:100f;
-            Tutorial.Demo=gameObject.AddComponent<TutorialDemo>(); Tutorial.Demo.Configure(MonkeyPrefab);
-            Tutorial.Configure(Session,Map,()=>Pose.Status==PoseStatus.Tracking||Pose.Status==PoseStatus.Off||Pose.Status==PoseStatus.NoCamera||Pose.Status==PoseStatus.NoModel,
-                RestartTutorial,FinishTutorial,()=>!hud.Hidden&&!hud.Loading&&!hud.Revealing&&RunCalibration==RunCalibrationState.None);
+            hud.StartTutorial=StartTutorial; hud.OfferTutorial=OfferTutorial; hud.TutorialMask=()=>TutorialMask;
+            SetupTutorial();
             audioPlayer = gameObject.AddComponent<GameAudio>();
-            audioPlayer.Configure(Session, Settings != null ? Settings.MusicVolume : .35f, Settings != null ? Settings.EffectsVolume : .7f);
+            audioPlayer.Configure(Session, Settings != null ? Settings.MusicVolume : .35f, Settings != null ? Settings.EffectsVolume : .7f); SetupTutorialAudio();
             audioPlayer.NewBest = () => Results != null && Results.LastNewBest;
             hud.RankCracked = audioPlayer.Crack;
             // The prison's cell door, lock gauge and searchlight (plan 2-3a).
@@ -284,44 +275,6 @@ namespace Mongscape.Bootstrap
             menuCamera=false; Pose.SetStyle(profile.Style);
             StartCoroutine(PrepareRun(Settings != null && Settings.Run.RandomizeLayout ? Random.Range(1, int.MaxValue) : 723));
         }
-        // Tutorial (main menu, after sign-up or the "게임 시작" offer): the same scene and map on a fixed lesson course.
-        // It never reaches the result screen, so nothing goes to the ranking, monkeys or calories.
-        public void StartTutorial()
-        {
-            if(Session.Flow.State!=GameFlowState.TitleIdle||hud.Loading) return;
-            tutorialOffered=true; playerRun=false; KeyboardGameInput.SetTextInput(false);
-            if(!PlayableStyle(player.Style)) player.Style=PlayStyle.Keyboard;
-            Session.Workout.SetWeight(""); Session.Workout.Met=PlayStyleInfo.Met(player.Style);Session.Workout.Style=player.Style;
-            menuCamera=false; Pose.SetStyle(player.Style);
-            cadenceRun=PlayStyleInfo.UsesCamera(player.Style)&&userSettings.CadenceSpeed; Results.ClearRace(); Session.Workout.CadenceCounts=userSettings.CadenceSpeed;
-            Session.IsTutorial=true; Tutorial.Begin(player.Style,Session.Config.ExtendedRoutes,userSettings.CadenceSpeed,tutorialShort); tutorialShort=false;
-            StartCoroutine(PrepareRun(TutorialCourse.Seed));
-        }
-        // Members who have not finished it and every guest are offered it once per session.
-        private bool OfferTutorial()
-        {
-            if(TutorialScript.ShouldOffer(Account.IsMember,Account.TutorialDone,tutorialOffered)){tutorialOffered=true;tutorialShort=false;return true;}
-            // Members who finished the earlier tutorial: the short version of what this update changed, offered once on this PC.
-            bool seen=Account.IsMember&&userSettings.UpdatedTutorialSeen.Contains(Account.Id);
-            if(!TutorialScript.ShouldOfferUpdate(Account.IsMember,Account.TutorialDone,seen,tutorialOffered)) return false;
-            tutorialOffered=true; tutorialShort=true; userSettings.UpdatedTutorialSeen.Add(Account.Id); UserSettingsStore.Save(userSettings); return true;
-        }
-        // The next tutorial start is the short update version (set by the offer, cleared when the tutorial begins).
-        private bool tutorialShort;
-        // After a mistake: a fresh course, started at the given route z in front of the step.
-        private void RestartTutorial(float z)
-        {
-            RouteSurface.UsePlan(TutorialCourse.Plan(Session.Config));
-            Session.Reset(); Session.Runner.SetStartZ(z); keyboard.Clear(); poseInput.Clear(); Pose.ResetCommands();
-            Map.Reset(); Map.Tick(z); Map.AnimateGates(z);
-            stairFx.Reset(); guardDistance=15; previousStumble=false; Hero.Apply(Session.Runner); CameraRig.Takeover(Hero.Head);
-        }
-        // A member's profile remembers the finished tutorial; then back to the main menu.
-        private void FinishTutorial()
-        {
-            Accounts.MarkTutorialDone();
-            ExitToMenu();
-        }
         private IEnumerator PrepareRun(int seed)
         {
             Session.Flow.Transition(GameFlowState.LoadingIntro);
@@ -329,7 +282,7 @@ namespace Mongscape.Bootstrap
             // Every run calibrates again: the player stands still during loading, and the countdown waits for it (WaitForCalibration).
             Pose.Recalibrate(); runCalibrated = false; calibrationDoneAt = -1;
             yield return new WaitForSecondsRealtime(.25f);
-            RouteSurface.UsePlan(Session.IsTutorial?TutorialCourse.Plan(Session.Config):new RoutePlan(Session.Config, seed));
+            RouteSurface.UsePlan(Session.IsTutorial?TutorialCourse.Plan(Session.Config,tutorialChapter):new RoutePlan(Session.Config, seed));
             Session.ApplyTraits(Session.IsTutorial ? RunTraits.None : Account.TraitsForRun());
             Session.Reset(); moveTally.Reset(); pace.Reset(); ResetBigMoves(); System.Array.Clear(kindSeconds, 0, 4); keyboard.Clear(); poseInput.Clear(); hud.LoadingProgress=.42f;
             yield return new WaitForSecondsRealtime(.25f);
@@ -351,7 +304,7 @@ namespace Mongscape.Bootstrap
         public readonly PauseFlow PauseControl = new PauseFlow();
         private void HookPause()
         {
-            PauseControl.Paused += reason => { Time.timeScale = 0; keyboard.Clear(); poseInput.Clear(); };
+            PauseControl.Paused += reason => { Time.timeScale = 0; keyboard.Clear(); poseInput.Clear(); Tutorial?.NotifyPaused(reason); };
             PauseControl.Resumed += () => { Time.timeScale = 1; keyboard.Clear(); poseInput.Clear(); Pose.ResetCommands(); };
             PauseControl.Count += n => audioPlayer?.Countdown(false);
         }
@@ -401,7 +354,7 @@ namespace Mongscape.Bootstrap
             if (Session.Flow.State == GameFlowState.Running && !hud.Loading && !hud.Revealing && (settingsWindow == null || !settingsWindow.IsOpen))
             {
                 if (KeyboardGameInput.PausePressed) TogglePause();
-                bool camera = Pose.UsesCamera && !Tutorial.Active;
+                bool camera = Pose.UsesCamera && (!Tutorial.Active||Tutorial.PauseGestureOpen);
                 PauseControl.Tick(Session, Time.unscaledDeltaTime, camera, Pose.Tracking, Pose.Reading.ArmsCrossed, Pose.CadenceStage != CadenceStage.Standing);
             }
             if (Session.Flow.State == GameFlowState.Caught && Time.timeScale < 1 && Time.realtimeSinceStartup - caughtAt > .7f) Time.timeScale = 1;

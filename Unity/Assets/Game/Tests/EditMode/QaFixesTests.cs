@@ -87,18 +87,6 @@ namespace Mongscape.Tests
             Assert.AreEqual(1, mine.Count); Assert.AreEqual(RankRace.MineName, mine[0].Name); Assert.AreEqual(900, mine[0].Score);
         }
 
-        // M2: the short update tutorial forgives a knee miss on its stair chunk; the full one does not.
-        [Test] public void TheShortTutorialForgivesStairMisses()
-        {
-            var shortScript = new TutorialScript(PlayStyle.FullBody, true, true, true);
-            var fullScript = new TutorialScript(PlayStyle.FullBody, true, true, false);
-            Assert.IsTrue(TutorialCourse.ForgivesStairMiss(shortScript, TutorialCourse.StairChunk));
-            Assert.IsFalse(TutorialCourse.ForgivesStairMiss(shortScript, TutorialCourse.BananaChunk));
-            Assert.IsFalse(TutorialCourse.ForgivesStairMiss(fullScript, TutorialCourse.StairChunk));
-            var keyboardShort = new TutorialScript(PlayStyle.Keyboard, true, true, true);
-            Assert.IsTrue(TutorialCourse.ForgivesStairMiss(keyboardShort, TutorialCourse.StairChunk));
-        }
-
         // Webcam items 1, 2 and H2 in the synthetic recordings: faked steps read as standing, real ones still count,
         // and the upper body's pull-down on the stairs is a walking cadence.
         [TestCase("synthetic-cheat-small-steps")] [TestCase("synthetic-upper-arms")] [TestCase("synthetic-upper-stairs")]
