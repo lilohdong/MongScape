@@ -55,6 +55,9 @@ namespace Mongscape.Domain
         public float BigJumpHeight = 1.35f, DeepSlideFactor = 1.5f, BigKneeRelief = .08f, BigLaneTime = .5f;
         // Unused since warnings last until the map is left (plan 6-8); kept for saved settings.
         public float StrikeClearSeconds=8f;
+        // After a warning (or a guard that took one) the runner is falling: for this long no new warning lands, so one hit
+        // touching two pieces of a row, or a banana right behind it, is one warning.
+        public float WarningGraceSeconds=1f;
         public float SpeedRampDistance = 120f;
         // Jump/slide pressed shortly before landing runs on landing. Zero keeps the strict legacy rule.
         public float InputBufferSeconds = 0f;
@@ -349,7 +352,8 @@ namespace Mongscape.Domain
         public CaptureReason Reason {get;private set;}
         private float bananaCatchLeft, smoothSpeed;
         private ChaserDef pursuer;
-        private float lastHit = -100f, clock, lastStrike;
+        private float lastHit = -100f, clock, lastStrike, lastWarnedAt = -100f;
+        public bool InWarningGrace => clock - lastWarnedAt < Config.WarningGraceSeconds;
         // Play time without pauses; shown to the player, not part of the score.
         public float Elapsed => clock;
         // Monkeys stuck in the mine walls (plan 3-0): reach toward them in their lane to rescue them.
@@ -498,8 +502,11 @@ namespace Mongscape.Domain
             if (Flow.State != GameFlowState.Running || Paused) return false;
             if (tutorial) { lastHit = clock; TutorialMisses++; return true; }
             if (Invincible || SlipPursuit) return false;
+            // One collision event is one warning: right after one, the fall makes the runner untouchable for a moment.
+            if (InWarningGrace) return false;
             SoftWarning = false;
-            if (GuardWarning() != WarningGuard.None) { lastHit = clock; return false; }
+            if (GuardWarning() != WarningGuard.None) { lastHit = clock; lastWarnedAt = clock; return false; }
+            lastWarnedAt = clock;
             SoftWarning = TakeThickFur();
             SlipStrikes = Math.Min(MaxWarnings, SlipStrikes + 1); lastStrike = clock; lastHit = clock; LastWarning = cause;
             if (SlipStrikes == 1) Chase.Hit(.45f);
@@ -609,6 +616,6 @@ namespace Mongscape.Domain
             BigMoves[(int)move]++;
             return true;
         }
-        public void Reset() { Array.Clear(BigMoves, 0, BigMoves.Length); Troop.Reset(); LoyaltySaves = 0; thickFurLeft = Traits.ThickFur; loyaltyLeft = Traits.Loyalty; SoftWarning = false; paceRising = false; Runner.Reset(); Stair.Reset(); Chase.Reset(); Score.Reset(); Workout.Reset(); Items.Reset(); Paused=false; SpeedScale=1f; CadenceScale=1f; PacePressure=0f; clock = 0f; lastHit = -100f;SlipStrikes=0;lastStrike=0f;ShieldSaves=0;bananaCatchLeft=0;pursuer=null;ChaserGauge=0f;LastWarning=WarningCause.Collision;CaughtBy=ChaserKind.Police;Reason=CaptureReason.Collision; Sections.Reset(); SectionSpeed = null; Prison.Reset(); MineRescue.Reset(); Stair.GapScale = 1f; HidePose = false; HideDepth = -1f; if (Traits.StartsWithShield && !tutorial) Items.GiveStartingShield(); smoothSpeed = TargetSpeed; }
+        public void Reset() { Array.Clear(BigMoves, 0, BigMoves.Length); Troop.Reset(); LoyaltySaves = 0; thickFurLeft = Traits.ThickFur; loyaltyLeft = Traits.Loyalty; SoftWarning = false; paceRising = false; Runner.Reset(); Stair.Reset(); Chase.Reset(); Score.Reset(); Workout.Reset(); Items.Reset(); Paused=false; SpeedScale=1f; CadenceScale=1f; PacePressure=0f; clock = 0f; lastHit = -100f; lastWarnedAt = -100f;SlipStrikes=0;lastStrike=0f;ShieldSaves=0;bananaCatchLeft=0;pursuer=null;ChaserGauge=0f;LastWarning=WarningCause.Collision;CaughtBy=ChaserKind.Police;Reason=CaptureReason.Collision; Sections.Reset(); SectionSpeed = null; Prison.Reset(); MineRescue.Reset(); Stair.GapScale = 1f; HidePose = false; HideDepth = -1f; if (Traits.StartsWithShield && !tutorial) Items.GiveStartingShield(); smoothSpeed = TargetSpeed; }
     }
 }

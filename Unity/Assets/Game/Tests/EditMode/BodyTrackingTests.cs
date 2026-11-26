@@ -393,7 +393,7 @@ namespace Mongscape.Tests
             run.Items.Activate(ItemKind.Call); Assert.AreEqual(10f, run.Items.Remaining(ItemKind.Call), 1e-4, "Call Lv2 lasts longer");
             run.Items.Activate(ItemKind.Shield); run.Tick(100f); Assert.IsTrue(run.Items.IsActive(ItemKind.Shield), "The shield has no timer");
             Assert.IsFalse(run.Hit(true)); Assert.AreEqual(GameFlowState.Running, run.Flow.State); Assert.AreEqual(1, run.ShieldSaves);
-            Assert.IsTrue(run.Hit(true)); Assert.AreEqual(GameFlowState.Running, run.Flow.State); Assert.AreEqual(1, run.Warnings);
+            run.Tick(1.1f); Assert.IsTrue(run.Hit(true)); Assert.AreEqual(GameFlowState.Running, run.Flow.State); Assert.AreEqual(1, run.Warnings);
         }
         [Test] public void ShieldBlocksOneSlipButNotABrokenRail()
         {
@@ -403,11 +403,12 @@ namespace Mongscape.Tests
             Assert.IsFalse(run.Slip(SlipSource.Banana)); Assert.AreEqual(1, run.ShieldSaves); Assert.IsFalse(run.Items.IsActive(ItemKind.Shield));
             Assert.IsFalse(run.Runner.Slowing); Assert.AreEqual(0, run.SlipStrikes); Assert.AreEqual(0, run.Chase.Pressure);
             // Without the shield the next two peels count, and the second starts the pursuit as before.
-            Assert.IsTrue(run.Slip(SlipSource.Banana)); Assert.IsTrue(run.Runner.Slowing); Assert.AreEqual(1, run.SlipStrikes);
-            Assert.IsTrue(run.Slip(SlipSource.Banana)); Assert.IsTrue(run.SlipPursuit);
+            // One second of fall after each warning (WarningGraceSeconds) before the next can land.
+            run.Tick(1.1f); Assert.IsTrue(run.Slip(SlipSource.Banana)); Assert.IsTrue(run.Runner.Slowing); Assert.AreEqual(1, run.SlipStrikes);
+            run.Tick(1.1f); Assert.IsTrue(run.Slip(SlipSource.Banana)); Assert.IsTrue(run.SlipPursuit);
             run.Reset(); Assert.AreEqual(GameFlowState.Running, run.Flow.State);
             run.Items.Activate(ItemKind.Shield);
-            run.Slip(SlipSource.Banana); run.Slip(SlipSource.Banana); Assert.AreEqual(1, run.SlipStrikes); Assert.IsFalse(run.SlipPursuit, "The shielded first peel must not count towards the pursuit.");
+            run.Slip(SlipSource.Banana); run.Tick(1.1f); run.Slip(SlipSource.Banana); Assert.AreEqual(1, run.SlipStrikes); Assert.IsFalse(run.SlipPursuit, "The shielded first peel must not count towards the pursuit.");
             run.Items.Activate(ItemKind.Shield);
             Assert.IsTrue(run.Fail(CaptureReason.BrokenRail)); Assert.AreEqual(GameFlowState.Caught, run.Flow.State); Assert.AreEqual(CaptureReason.BrokenRail, run.Reason);
             Assert.IsTrue(run.Items.IsActive(ItemKind.Shield), "A broken rail ignores the shield and leaves it unused.");

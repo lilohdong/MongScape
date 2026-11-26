@@ -20,7 +20,7 @@ namespace Mongscape.Tests
             Assert.IsFalse(run.Slip(SlipSource.Banana)); Assert.IsFalse(run.Slip(SlipSource.KneeMiss));
             Assert.AreEqual(GameFlowState.Running, run.Flow.State); Assert.AreEqual(0, run.SlipStrikes); Assert.IsFalse(run.Runner.Slowing);
             run.Reset(); Assert.IsTrue(run.Invincible, "Stays on across runs");
-            run.Invincible = false; Assert.IsTrue(run.Hit(true)); Assert.IsTrue(run.Hit(true)); run.Tick(2f); Assert.AreEqual(GameFlowState.Caught, run.Flow.State);
+            run.Invincible = false; Assert.IsTrue(run.Hit(true)); run.Tick(1.1f); Assert.IsTrue(run.Hit(true)); run.Tick(2f); Assert.AreEqual(GameFlowState.Caught, run.Flow.State);
         }
         [Test] public void OperatorCatchEndsTheRunEvenWhileInvincibleOrShielded()
         {
@@ -172,7 +172,8 @@ namespace Mongscape.Tests
             Assert.IsTrue(run.Hit(heavy));Assert.AreEqual(GameFlowState.Running,run.Flow.State);Assert.AreEqual(1,run.Warnings);
             Assert.IsTrue(run.Runner.Stumbling);Assert.IsTrue(run.Runner.Slowing,"The fall slows the runner for a moment");
             Assert.AreEqual(WarningCause.Collision,run.LastWarning);
-            run.Tick(.5f);Assert.IsTrue(run.Hit(heavy));Assert.IsTrue(run.SlipPursuit);
+            run.Tick(.5f);Assert.IsFalse(run.Hit(heavy),"Still falling: no second warning");Assert.AreEqual(1,run.Warnings);
+            run.Tick(.6f);Assert.IsTrue(run.Hit(heavy));Assert.IsTrue(run.SlipPursuit);
             run.Tick(2f);Assert.AreEqual(GameFlowState.Caught,run.Flow.State);Assert.AreEqual(ChaserKind.Police,run.CaughtBy);
             float z=run.Runner.Z;run.Tick(3);Assert.AreEqual(z,run.Runner.Z);Assert.IsFalse(run.Hit(heavy));
         }
