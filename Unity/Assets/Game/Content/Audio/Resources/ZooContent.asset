@@ -24,11 +24,11 @@ MonoBehaviour:
   - {fileID: 4900000, guid: 53060d36d6893814b914338bd2536934, type: 3}
   - {fileID: 4900000, guid: 9b2db68b8cf96384b8b1c19095e04a80, type: 3}
   - {fileID: 4900000, guid: 5c02ccddc2e7f2e4c9928f0b69fbceda, type: 3}
-  Lion: {fileID: 100100000, guid: 299e2999e05a7604c987771715f49b39, type: 3}
-  Fence: {fileID: 100100000, guid: 6978cefaf25f1da4b87f1beaa201b3d8, type: 3}
-  Puddle: {fileID: 100100000, guid: 1604c271f28392f4ab1c4113743ff28e, type: 3}
-  SqueezeBars: {fileID: 100100000, guid: 9514cf190eec6ec429b55bededa2aa46, type: 3}
-  IronGate: {fileID: 100100000, guid: dd6ae32546ba1894491bb42ff06a28de, type: 3}
-  LionCage: {fileID: 100100000, guid: 5b8022258d83c714dabe1cfe9915b057, type: 3}
-  Exit: {fileID: 100100000, guid: fe8d3ac7c391d3943a4fc306514e2cb0, type: 3}
+  Lion: {fileID: 919132149155446097, guid: 299e2999e05a7604c987771715f49b39, type: 3}
+  Fence: {fileID: 919132149155446097, guid: 6978cefaf25f1da4b87f1beaa201b3d8, type: 3}
+  Puddle: {fileID: 919132149155446097, guid: 1604c271f28392f4ab1c4113743ff28e, type: 3}
+  SqueezeBars: {fileID: 919132149155446097, guid: 9514cf190eec6ec429b55bededa2aa46, type: 3}
+  IronGate: {fileID: 919132149155446097, guid: dd6ae32546ba1894491bb42ff06a28de, type: 3}
+  LionCage: {fileID: 919132149155446097, guid: 5b8022258d83c714dabe1cfe9915b057, type: 3}
+  Exit: {fileID: 919132149155446097, guid: fe8d3ac7c391d3943a4fc306514e2cb0, type: 3}
   Mirror: {fileID: 4800000, guid: 18c5dd62607d476fb487d4729d5a3de2, type: 3}
