@@ -19,6 +19,8 @@
 | `slip` | 바나나, 바닥에 미끄러짐 (계단 무릎 박자 놓침은 소리 없음) | Digital Audio / phaserDown1 | 0.75 |
 | `item` | 아이템 획득 | Digital Audio / powerUp7 | 0.80 |
 | `shield` | 보호막이 막아 줌 | Sci-Fi Sounds / forceField_000 | 0.60 |
+| `lion_roar` | 동물원 사자 포효 경고 (`ChaserCue`) | Kenney 아님: OpenGameArt "80 CC0 creature SFX #2" (rubberduck, CC0) / roar_04, 3반음 올림, 약한 포화, 0.81초 | 0.70 (제안) |
+| `alarm_bell` | 감옥 탐조등 경보 (`ChaserCue`) | Kenney에 없어 `make_sfx.py`가 합성: 1.4 / 1.9 kHz 두 음을 4번 번갈아, 약 1초 | 0.45 (제안) |
 
 - 게임 이득은 효과음 음량 설정에 곱하는 값입니다(`GameAudio.cs` 상수). 파일은 모두 트루 피크 -1 dBTP 이하로 맞췄습니다(4배 오버샘플링, OGG 디코드 뒤에도 확인).
 - 사이렌: Kenney에 없어서 지금처럼 코드 합성 소리를 씁니다.
@@ -38,11 +40,9 @@
 | `warning` | 경고 1회 (짧게 내려가는 피치카토) | Music Jingles / jingles_PIZZI05 | 1.00 |
 | `caught` | 잡힘 (내려가는 피치카토) | Music Jingles / jingles_PIZZI01 | 1.00 |
 | `new_record` | 신기록 (올라가는 피치카토) | Music Jingles / jingles_PIZZI02 | 1.00 |
-| `spotlight_alarm` | 탐조등 경보: 1.4 / 1.9 kHz 두 음을 4번 번갈아, 약 1초 | Kenney에 없어 `make_sfx.py`가 합성 | 0.45 |
-| (없음) | 사자 포효 | Kenney에 없음 | |
 
 연결할 때 지킬 것 (사운드 검수 1회차):
-- `warning`, `caught`, `fork_blocked`, `spotlight_alarm`이 날 때도 `GameAudio.Duck()`으로 음악을 잠깐 낮춥니다.
+- `warning`, `caught`, `fork_blocked`, `alarm_bell`, `lion_roar`가 날 때도 `GameAudio.Duck()`으로 음악을 잠깐 낮춥니다.
 - 바나나 밟기는 `slip`과 `warning`이 같이 나므로, `warning`을 약 0.15초 늦게 냅니다.
 - `fork_blocked`는 막힌 쪽으로 계속 기울이면 반복되므로 같은 소리 재생 간격을 최소 0.4초로 막습니다.
 
@@ -52,7 +52,7 @@
 
 | 묶음 | 목표 | 해당 |
 | --- | --- | --- |
-| 반드시 들림 | +10 LU 이상 | caught, warning, spotlight_alarm |
+| 반드시 들림 | +10 LU 이상 | caught, warning, alarm_bell, lion_roar |
 | 분명히 들림 | +6~9 LU | hit, fork_blocked, gate_down, monkey_rescue, new_record, item, shield, count_go, count_beep, cue, slip, 사이렌 |
 | 음악 아래 은은하게 | 0 아래 | jump, land, footstep, lock_click |
 
