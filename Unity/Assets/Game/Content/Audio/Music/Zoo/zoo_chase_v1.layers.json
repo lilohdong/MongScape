@@ -3,11 +3,11 @@
   "bpm": 160,
   "loop": false,
   "length_seconds": 61.5,
-  "playback": "Played once per zoo visit, in sync with zoo_chase_v1.beatmap.json (beat 0 = first sample).",
+  "playback": "Played once per zoo visit, in sync with a zoo_chase_v1.*.beatmap.json (beat 0 = first sample). The note signals are separate effects, see zoo_signals.json.",
   "layers": {
     "full": {
       "file": "zoo_chase_v1.ogg",
-      "meaning": "The whole approved song (no separate layers)"
+      "meaning": "The approved song without the note signal hits"
     }
   },
   "states": {
@@ -16,13 +16,9 @@
       "layers": {
         "full": 1
       },
-      "lufs": -18.0,
-      "true_peak_dbtp": -1.8
+      "lufs": -20.4,
+      "true_peak_dbtp": -2.0
     }
   },
-  "source_render": {
-    "lufs": -19.7,
-    "true_peak_dbtp": -0.9
-  },
-  "game_copy": "+1.9 dB, peak limiter at 0.79 (sample peak)"
+  "game_copy": "approved render scale +1.9 dB, peak limiter at 0.79 (sample peak)"
 }

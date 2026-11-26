@@ -1,0 +1,19 @@
+{
+  "signals": {
+    "jump": {
+      "file": "zoo_sig_jump.ogg",
+      "lead_seconds": 0.0,
+      "true_peak_dbtp": -3.5
+    },
+    "arms_up": {
+      "file": "zoo_sig_armsup.ogg",
+      "lead_seconds": 0.0938,
+      "true_peak_dbtp": -8.5
+    }
+  },
+  "play": "Start each signal lead_seconds before its note time (beatmap time) and play it on the music bus at the music volume (gain 1.0), so it keeps the balance it had in the approved song.",
+  "song_without_signals": {
+    "lufs": -20.4,
+    "true_peak_dbtp": -2.0
+  }
+}

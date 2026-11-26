@@ -66,10 +66,11 @@
 | 광산 | `Music/Mine` | base, tension | base, chase | 58.18초 | base -18.0 LUFS, chase +1.9 LU |
 | 감옥 | `Music/Prison` | base, steps, tension, hide | flat, stairs, hide, chase | 40.0초 | stairs -18.7 LUFS, hide -25.9 |
 | 결과 | `Music/Result` | base, rhythm | full, calm | 28.8초 | full -20.0 LUFS |
-| 동물원 | `Music/Zoo` | 한 파일 + 박자표 `zoo_chase_v1.beatmap.json` | run | 반복 없음 61.5초 | -18.0 LUFS |
+| 동물원 | `Music/Zoo` | 노트 신호음을 뺀 곡 `zoo_chase_v1.ogg` + 신호음 `zoo_sig_jump.ogg`, `zoo_sig_armsup.ogg` | run | 반복 없음 61.5초 | 곡만 -20.4 LUFS, 신호음 포함 약 -18.6 |
 
 - 곡마다 `<곡>.layers.json`에 층의 뜻, 상태별 층 음량, 상태별 측정값(LUFS, 트루 피크), 페이드 시간이 있습니다. 모든 상태 트루 피크 -1 dBTP 이하.
 - 재생: 한 곡의 층을 모두 `AudioSource.PlayScheduled`로 같은 시각에 시작하고 반복, 상태가 바뀌면 층 음량만 페이드. Load Type은 Streaming으로 맞춰 두었습니다.
+- 동물원 신호음: 배치가 6벌이라 곡에서 빼고 따로 둡니다. 박자표 노트 시각보다 `zoo_signals.json`의 `lead_seconds`만큼 먼저(점프 0초, 만세 0.094초, 글로켄 앞꾸밈음 때문) 음악 음량으로 재생하면 통과된 zoo-v1의 균형과 거의 같습니다. 둘을 리미터 없이 더해도 -1 dBTP를 넘지 않게 신호음은 2 dB 낮춰 두었습니다.
 - 감옥 페이드: 숨기로 0.3초, 숨기에서 나올 때 1.0초, 나머지 0.5초. 광산: chase로 0.5초, base로 1.5초.
 - 작곡, 렌더, 음량 기준, 다시 만들기: [Tools/Music/README.md](../Tools/Music/README.md). 라이선스: [Tools/Music/LICENSES.md](../Tools/Music/LICENSES.md).
 - 검수: 사운드 담당 측정 검수 통과(광산 2회차, 나머지 1회차), 오너 청취 통과.

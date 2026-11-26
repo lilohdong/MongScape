@@ -32,6 +32,7 @@ SR = 44100
 TAIL_SEC = 1.5          # reverb ring-out kept after beat 160 (60 s)
 OFFSET_SEC = 0.0        # beat 0 == sample 0 of the audio
 random.seed(160)
+SIGNALS = True          # bake the jump / arms-up signal hits into the song
 
 # GM programs per channel (change instruments here)
 PROGRAMS = {
@@ -274,7 +275,8 @@ def compose():
                     add(beat, DRUM, n, 70 + k * 6, 0.2)
 
     # ---------- note signals (from NOTES; the only kick/timpani/crash/glock in the groove)
-    for beat, kind in NOTES:
+    # SIGNALS = False leaves them out (the game plays them as separate effects, see make_zoo_game.py).
+    for beat, kind in (NOTES if SIGNALS else []):
         root, triad = CH[chord_for_bar(bar_of_beat(beat))]
         if kind == J:
             add(beat, DRUM, 36, 127, 0.5)      # kick
