@@ -54,6 +54,15 @@ namespace Mongscape.Presentation
             UiIcons.Line(p, new Vector2(r.x + r.width * .7f, r.center.y), new Vector2(r.xMax - r.width * .06f, r.center.y), r.width * .08f, c);
             UiIcons.Polygon(p, c, new Vector2(r.xMax, r.center.y), new Vector2(r.xMax - r.width * .16f, r.center.y - r.height * .13f), new Vector2(r.xMax - r.width * .16f, r.center.y + r.height * .13f));
         };
+        // Going in (log in): an arrow into a door frame, so it differs from the profile person.
+        public static Action<Painter2D, Rect> Enter(Color c) => (p, r) =>
+        {
+            p.strokeColor = c; p.lineWidth = r.width * .09f; p.lineJoin = LineJoin.Round; p.lineCap = LineCap.Round;
+            p.BeginPath(); p.MoveTo(new Vector2(r.x + r.width * .5f, r.y + r.height * .12f)); p.LineTo(new Vector2(r.xMax - r.width * .12f, r.y + r.height * .12f));
+            p.LineTo(new Vector2(r.xMax - r.width * .12f, r.yMax - r.height * .12f)); p.LineTo(new Vector2(r.x + r.width * .5f, r.yMax - r.height * .12f)); p.Stroke();
+            UiIcons.Line(p, new Vector2(r.x + r.width * .08f, r.center.y), new Vector2(r.x + r.width * .52f, r.center.y), r.width * .1f, c);
+            UiIcons.Polygon(p, c, new Vector2(r.x + r.width * .68f, r.center.y), new Vector2(r.x + r.width * .46f, r.center.y - r.height * .17f), new Vector2(r.x + r.width * .46f, r.center.y + r.height * .17f));
+        };
         public static Action<Painter2D, Rect> Back(Color c) => (p, r) =>
         {
             p.strokeColor = c; p.lineWidth = r.width * .12f; p.lineCap = LineCap.Round; p.lineJoin = LineJoin.Round;
@@ -88,8 +97,8 @@ namespace Mongscape.Presentation
         bool member;
         public MainMenuView(GameObject host)
         {
-            Root = new UiRoot(host, "MainMenu", 4); var frame = Root.Frame; Gestures = new GestureButtons(frame);
-            var dim = new VisualElement { pickingMode = PickingMode.Ignore }; UiTokens.Fill(dim); dim.style.backgroundColor = UiTokens.Dim(UiTokens.Deep, .35f); frame.Add(dim);
+            Root = new UiRoot(host, "MainMenu", 4); var frame = Root.Frame; Gestures = new GestureButtons(frame); ConfirmGestures = new GestureButtons(frame);
+            var dim = new VisualElement { pickingMode = PickingMode.Ignore }; UiTokens.Fill(dim); dim.style.backgroundColor = UiTokens.Dim(UiTokens.Deep, .42f); frame.Add(dim);
             logo = new Image { pickingMode = PickingMode.Ignore, scaleMode = ScaleMode.ScaleToFit }; UiTokens.Absolute(logo, 100, 30, 470, 220); frame.Add(logo);
             string[] labels = { "시작", "튜토리얼", "특성", "랭킹" };
             MenuAction[] actions = { MenuAction.Play, MenuAction.Tutorial, MenuAction.Traits, MenuAction.Ranking };
@@ -100,10 +109,10 @@ namespace Mongscape.Presentation
                 var b = Gestures.Add(new UiButton(labels[i], primary, () => Select?.Invoke(a), 72, icon));
                 UiTokens.Absolute(b, 110, 290 + i * 202, 590, 130); frame.Add(b);
             }
-            account = new IconButton("프로필", MenuIcons.Person(UiTokens.Text), () => Select?.Invoke(member ? MenuAction.Profile : MenuAction.Identity));
+            account = new IconButton("프로필", (p, rr) => { if (member) MenuIcons.Person(UiTokens.Text)(p, rr); else MenuIcons.Enter(UiTokens.Text)(p, rr); }, () => Select?.Invoke(member ? MenuAction.Profile : MenuAction.Identity));
             var help = new IconButton("도움말", MenuIcons.Question(UiTokens.Text), () => Select?.Invoke(MenuAction.Help));
             var settings = new IconButton("설정", MenuIcons.Gear(UiTokens.Text), () => Select?.Invoke(MenuAction.Settings));
-            var quit = new IconButton("나가기", MenuIcons.Door(UiTokens.Text), () => Select?.Invoke(MenuAction.Quit));
+            var quit = new IconButton("나가기", MenuIcons.Door(UiTokens.Text), () => AskQuit(true));
             var icons = new[] { account, help, settings, quit };
             for (int i = 0; i < icons.Length; i++) { UiTokens.Absolute(icons[i], 1000 + i * 232, 60, 160, 160); Gestures.Add(icons[i].Button); frame.Add(icons[i]); }
             card = UiTokens.Box(1290, 760, 550, 220); card.style.backgroundColor = UiTokens.A(UiTokens.Panel, .94f); UiTokens.Radius(card, 32); UiTokens.Border(card, 5, UiTokens.PanelEdge); frame.Add(card);
@@ -116,13 +125,26 @@ namespace Mongscape.Presentation
             weekFill = UiTokens.Box(0, 0, 0, 40); weekFill.style.backgroundColor = UiTokens.Focus; UiTokens.Radius(weekFill, 20); track.Add(weekFill);
             weekValue = UiTokens.Label("", 44, UiTokens.Text, TextAnchor.MiddleRight); UiTokens.Absolute(weekValue, 190, 52, 320, 56); weekRow.Add(weekValue);
             build = UiTokens.Label(BuildInfo.Label, 36, UiTokens.TextDim, TextAnchor.MiddleRight, true); UiTokens.Absolute(build, 1290, 1000, 550, 50); frame.Add(build);
+            // The build line only in development builds (graphics review).
+            UiTokens.Show(build, Debug.isDebugBuild);
+            // A hand resting a moment too long next to 설정 must not close the game: 나가기 asks once.
+            confirm = new VisualElement(); UiTokens.Fill(confirm); confirm.style.backgroundColor = UiTokens.Dim(UiTokens.Deep, .8f);
+            var box = UiTokens.Box(460, 300, 1000, 480); box.style.backgroundColor = UiTokens.Panel; UiTokens.Radius(box, 36); UiTokens.Border(box, 5, UiTokens.PanelEdge); confirm.Add(box);
+            var ask = UiTokens.Label("나갈까요?", 88, UiTokens.Accent, TextAnchor.MiddleCenter); UiTokens.Absolute(ask, 0, 60, 1000, 130); box.Add(ask);
+            var yes = ConfirmGestures.Add(new UiButton("나가기", false, () => { AskQuit(false); Select?.Invoke(MenuAction.Quit); }, 64)); UiTokens.Absolute(yes, 80, 290, 380, 130); box.Add(yes);
+            var no = ConfirmGestures.Add(new UiButton("취소", true, () => AskQuit(false), 64)); UiTokens.Absolute(no, 540, 290, 380, 130); box.Add(no);
+            confirm.style.display = DisplayStyle.None; frame.Add(confirm);
             Root.Visible = false;
         }
+        readonly VisualElement confirm;
+        public bool Asking => confirm.style.display == DisplayStyle.Flex;
+        public GestureButtons ConfirmGestures;
+        public void AskQuit(bool on) => UiTokens.Show(confirm, on);
         public void Refresh(IHudData data, Texture2D titleLogo)
         {
             logo.image = titleLogo;
             member = data is IIdentityData id && id.SignedIn;
-            account.SetText(member ? "프로필" : "로그인");
+            account.SetText(member ? "프로필" : "로그인"); account.Button.Query<ShapeElement>().ForEach(e => e.MarkDirtyRepaint());
             player.text = MainMenuScreen.PlayerLabel(data);
             monkeys.text = UiTokens.N(data?.Monkeys ?? 0);
             UiTokens.Show(weekRow, member);

@@ -349,8 +349,9 @@ namespace Mongscape.Presentation
                     if (Account != null) identity.Draw(Data, Account, "얼굴 로그인", "정면을 보고 틀 안에 얼굴을 맞추면 잠시 뒤 자동으로 로그인됩니다.\n가입한 얼굴이면 이름 입력 없이 로그인됩니다.", "얼굴 로그인", LoginWithFace, OpenLogin);
                     break;
                 case MenuPage.Main:
-                    mainView.Gestures.Pass();
-                    if (e.type == EventType.KeyDown && (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter)) { e.Use(); SelectMenu(MenuAction.Play); }
+                    if (mainView.Asking) mainView.ConfirmGestures.Pass(); else mainView.Gestures.Pass();
+                    if (e.type == EventType.KeyDown && e.keyCode == KeyCode.Escape && mainView.Asking) { e.Use(); mainView.AskQuit(false); }
+                    else if (e.type == EventType.KeyDown && (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter) && !mainView.Asking) { e.Use(); SelectMenu(MenuAction.Play); }
                     break;
                 case MenuPage.TutorialOffer: { var choice = tutorialOffer.Draw(offerMode, TutorialMask?.Invoke() ?? 0, Data == null || Data.BodyStylesAllowed, Data?.Player?.Style ?? PlayStyle.Keyboard, out var style, out var chapter); ChooseTutorial(choice, style, chapter); break; }
                 case MenuPage.Credits: if (credits.Draw()) CloseCredits(); break;
