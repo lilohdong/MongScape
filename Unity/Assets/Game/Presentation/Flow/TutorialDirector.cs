@@ -15,7 +15,7 @@ namespace Mongscape.Presentation
     {
         // The lesson shows (and its action counts) from this far ahead.
         public const float ShowDistance = 14f;
-        public const float RetrySeconds = 1.6f, DoneSeconds = 2.5f, PraiseSeconds = .9f, PictureSeconds = 4.5f, ReachSeconds = .4f;
+        public const float RetrySeconds = 1.6f, DoneSeconds = 2.5f, PraiseSeconds = .9f, PictureSeconds = 4.5f, ReachSeconds = .4f, AlarmSeconds = 1.6f;
         private RunSession session;
         private ChunkSpawner map;
         private Func<bool> poseReady, visible;
@@ -24,7 +24,7 @@ namespace Mongscape.Presentation
         private HudSkin skin;
         private readonly List<ObstacleController> lesson = new List<ObstacleController>(3);
         private int seenMisses;
-        private float retryAt = -1, doneAt = -1, praiseUntil = -1, forgiveUntilZ = -1;
+        private float retryAt = -1, doneAt = -1, praiseUntil = -1, forgiveUntilZ = -1, advanceAt = -1, passedAt = -100;
         private string cue;
         public TutorialScript Script { get; private set; }
         public bool Active => Script != null && session != null && session.IsTutorial;
@@ -74,10 +74,10 @@ namespace Mongscape.Presentation
         public void Begin(TutorialChapter chapter, PlayStyle style, bool forks, bool cadenceOn = true, bool shortVersion = false)
         {
             Script = new TutorialScript(chapter, style, forks, shortVersion); TutorialCourse.Script = Script; cadenceSpeed = cadenceOn; bigAtStart = BigTotal; seenMisses = session.TutorialMisses;
-            retryAt = doneAt = praiseUntil = forgiveUntilZ = -1;
+            retryAt = doneAt = praiseUntil = forgiveUntilZ = advanceAt = -1; passedAt = -100;
             ResetStation(); Waiting = false; LessonDistance = float.PositiveInfinity; Message = null; cue = null;
         }
-        public void End() { if (Zoo != null) Zoo.StopPractice(); TutorialCourse.Script = null; Demo?.Show(null); Script = null; Waiting = false; retryAt = doneAt = praiseUntil = forgiveUntilZ = -1; Message = cue = null; if (session != null) session.SpeedScale = 1; }
+        public void End() { if (Zoo != null) Zoo.StopPractice(); TutorialCourse.Script = null; Demo?.Show(null); Script = null; Waiting = false; retryAt = doneAt = praiseUntil = forgiveUntilZ = advanceAt = -1; Message = cue = null; if (session != null) { session.SpeedScale = 1; session.TutorialWarnings = session.BlinkNextWarning = false; } }
         // The player paused (X gesture or Esc) while the pause step waits: it passes when play goes on again.
         public void NotifyPaused(PauseReason reason)
         {
@@ -92,12 +92,25 @@ namespace Mongscape.Presentation
         {
             if (!Active || session.Flow.State != GameFlowState.Running || session.Paused) return;
             var runner = session.Runner;
+            // The warning lessons let one real warning land; the banana lesson blinks the empty slot after it.
+            session.TutorialWarnings = Script.Condition == TutorialPass.Warned;
+            session.BlinkNextWarning = Script.Current == TutorialStep.Banana && session.Warnings == 1;
             if (doneAt >= 0) { session.SpeedScale = .5f; if (now - doneAt >= DoneSeconds) { var done = finished; End(); done?.Invoke(); } return; }
             if (retryAt >= 0)
             {
                 session.SpeedScale = 0;
                 if (now < retryAt) return;
                 retryAt = -1; Waiting = false; Message = null; session.SpeedScale = 1; ResetStation();
+                restart?.Invoke(TutorialCourse.RestartZ(Script.Current));
+                if (Script.Current == TutorialStep.Banana) session.SetTutorialWarnings(1);
+                seenMisses = session.TutorialMisses; return;
+            }
+            if (advanceAt >= 0)
+            {
+                // The alarm lesson rang: a moment under the light, then the hiding lesson starts in front of the same door.
+                session.SpeedScale = 0;
+                if (now < advanceAt) return;
+                advanceAt = -1; session.SpeedScale = 1; ResetStation();
                 restart?.Invoke(TutorialCourse.RestartZ(Script.Current));
                 seenMisses = session.TutorialMisses; return;
             }
@@ -137,10 +150,8 @@ namespace Mongscape.Presentation
                     if (StepsPerMinute == null || pacedFor >= PacedSeconds) Next(now);
                     return;
                 }
-                case TutorialPass.Picture:
-                    Hold(step); Waiting = true; cue = null; Message = TutorialScript.Instruction(step, Script.Style);
-                    pictureFor += Time.deltaTime;
-                    if (pictureFor >= PictureSeconds) Next(now);
+                case TutorialPass.Warned:
+                    TickWarned(step, now);
                     return;
                 case TutorialPass.Paused:
                     Hold(step); Waiting = true; cue = null; Message = TutorialScript.Instruction(step, Script.Style);
@@ -158,7 +169,9 @@ namespace Mongscape.Presentation
                     if (peels.Count == 0) { Hide(); return; }
                     bool passed = true; foreach (var peel in peels) passed &= peel.Passed;
                     if (passed) { Next(now); return; }
-                    LessonDistance = peels[0].transform.position.z - runner.Z;
+                    // The first peel not passed yet (the warning lesson stepped on the first one).
+                    var ahead = peels[0]; foreach (var peel in peels) if (!peel.Passed) { ahead = peel; break; }
+                    LessonDistance = ahead.transform.position.z - runner.Z;
                     Show(LessonDistance <= ShowDistance, false, now);
                     return;
                 }
@@ -247,6 +260,29 @@ namespace Mongscape.Presentation
                     return;
             }
         }
+        // The warning lessons: one real warning taken on purpose (the first banana, standing under the searchlight). Getting past
+        // without it is another try.
+        private void TickWarned(TutorialStep step, float now)
+        {
+            var runner = session.Runner;
+            if (session.Warnings >= 1) { Next(now); return; }
+            cue = step == TutorialStep.WarnRule ? "바나나 밟기!" : "일어서기!";
+            if (step == TutorialStep.WarnRule)
+            {
+                FindBananas();
+                if (peels.Count == 0) { Hide(); return; }
+                if (peels[0].Passed) { Miss(now); return; }
+                LessonDistance = peels[0].transform.position.z - runner.Z;
+                if (LessonDistance > ShowDistance) { Hide(); return; }
+            }
+            else
+            {
+                float door = TutorialCourse.PrisonCellChunk * RouteSurface.Length + PrisonCourse.DoorZ;
+                if (session.Prison.Phase == PrisonPhase.Flat && runner.Z > door + 1f) { Miss(now); return; }
+                LessonDistance = door - runner.Z;
+            }
+            Waiting = true; Message = TutorialScript.Instruction(step, Script.Style);
+        }
         // One tick sound per interval from the start of a beat lesson.
         private void TickBeats(float now, double start, double interval)
         {
@@ -297,13 +333,14 @@ namespace Mongscape.Presentation
             int chunk = TutorialCourse.ChunkOf(step);
             if (chunk >= 0) forgiveUntilZ = Mathf.Max(forgiveUntilZ, (chunk + 1) * RouteSurface.Length);
             bigPraise = BigTotal > bigAtStart; bigAtStart = BigTotal;
-            bool station = TutorialScript.PassOf(step) == TutorialPass.Station;
             ResetStation();
             Script.Pass(); Waiting = false; LessonDistance = float.PositiveInfinity; session.SpeedScale = 1; cue = null;
             Message = Script.Finished ? TutorialScript.Instruction(TutorialStep.Done, Script.Style) : null;
-            if (station) Cleared?.Invoke();
+            // Every pass: the count goes up at once with a short sound and a flash.
+            Cleared?.Invoke(); passedAt = Time.realtimeSinceStartup;
             if (Script.Finished) doneAt = now;
             else if (step != TutorialStep.Calibrate) praiseUntil = now + PraiseSeconds;
+            if (step == TutorialStep.AlarmRule && !Script.Finished) advanceAt = now + AlarmSeconds;
         }
         private void Miss(float now)
         {
@@ -337,15 +374,24 @@ namespace Mongscape.Presentation
             var old = GUI.matrix; GUI.matrix = ViewportLayout.GuiMatrix; GUI.depth = -5;
             var step = Script.Current;
             // The step's title and its place in the chapter (no separators between the two).
+            // The count is the lessons done: it goes up the moment one passes, with a green flash.
             var header = new Rect(440, 92, 400, 56);
+            float since = Time.realtimeSinceStartup - passedAt;
+            bool flash = since >= 0 && since < .7f;
+            if (flash)
+            {
+                float grow = 10f * (1f - since / .7f);
+                skin.Card(new Rect(header.x - grow, header.y - grow, header.width + grow * 2, header.height + grow * 2), new Color(.45f, 1f, .6f, .75f * (1f - since / .7f)));
+            }
             skin.Card(header, Palette.A(Palette.Ground, .85f));
             GUI.color = Palette.Gold;
             GUI.Label(new Rect(header.x, header.y + 2, header.width, 32), step == TutorialStep.Done ? "다 했어요" : TutorialScript.Title(step), skin.Centered(24, FontStyle.Bold));
-            GUI.color = Palette.Sand;
-            if (step != TutorialStep.Done) GUI.Label(new Rect(header.x, header.y + 32, header.width, 22), TutorialScript.ChapterTitle(Script.Chapter) + "  " + (Script.Index + 1) + " / " + (Script.Steps.Count - 1), skin.Centered(15, FontStyle.Normal));
+            GUI.color = flash ? new Color(.45f, 1f, .6f) : Palette.Sand;
+            int total = Script.Steps.Count - 1;
+            GUI.Label(new Rect(header.x, header.y + 30, header.width, 24), TutorialScript.ChapterTitle(Script.Chapter) + "  " + Mathf.Min(Script.Index, total) + " / " + total, skin.Centered(flash ? 20 : 16, FontStyle.Bold));
             // Mistakes and the finish fill the banner; a lesson in view shows its call (when due) with the instruction below.
             bool praise = Time.realtimeSinceStartup < praiseUntil && !Waiting;
-            string big = Retrying || Script.Finished ? Message : Waiting ? cue : praise ? (bigPraise ? "크게! 좋아요!" : "좋아요!") : null;
+            string big = Retrying ? "다시!" : Script.Finished ? Message : Waiting ? cue : praise ? (bigPraise ? "크게! 좋아요!" : "좋아요!") : null;
             if (big != null)
             {
                 var banner = new Rect(240, 160, 800, 110);
@@ -374,8 +420,6 @@ namespace Mongscape.Presentation
                 case TutorialStep.Rescue: TutorialPictures.Reach(skin, Mathf.Clamp01(reachFor / ReachSeconds)); break;
                 case TutorialStep.Sync: if (stationBegun) TutorialPictures.Beats(skin, now - (float)sync.Start, (float)BeatSync.Interval, BeatSync.LeadBeats, BeatSync.Beats, sync.Hits); break;
                 case TutorialStep.Verse: if (Zoo != null && Zoo.Chase.Practice && Zoo.Chase.Phase == ZooPhase.Song) TutorialPictures.Count(skin, Zoo.Chase.Hits, ZooPractice.PassHits(Zoo.Chase.Obstacles.Count)); break;
-                case TutorialStep.WarnRule: TutorialPictures.WarnRule(skin, pictureFor / PictureSeconds); break;
-                case TutorialStep.AlarmRule: TutorialPictures.AlarmRule(skin, pictureFor / PictureSeconds); break;
             }
         }
         // The pace lesson gauge: the speed share from the cadence (70 % walking to 130 % sprinting) and the steps a minute.

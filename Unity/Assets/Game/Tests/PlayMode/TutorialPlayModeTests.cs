@@ -178,7 +178,8 @@ namespace Mongscape.Tests
             var run=game.Session.Runner;Time.timeScale=3;
             float deadline=Time.realtimeSinceStartup+90;
             bool sawGauge=false;
-            while(game.Tutorial.Active&&game.Tutorial.Script.Current!=TutorialStep.AlarmRule&&Time.realtimeSinceStartup<deadline)
+            bool alarm=false;
+            while(game.Tutorial.Active&&game.Tutorial.Script.Current!=TutorialStep.Done&&Time.realtimeSinceStartup<deadline)
             {
                 var step=game.Tutorial.Script.Current;
                 if(!game.Tutorial.Retrying)
@@ -186,9 +187,12 @@ namespace Mongscape.Tests
                     if(step==TutorialStep.Stair&&run.SinceKneeStep>=.4f)run.Command(MotionCommand.KneeStep);
                     else if(step==TutorialStep.Hide&&game.Session.Prison.Holding){run.Command(MotionCommand.Crouch);sawGauge|=game.Session.Prison.LockGauge>0f;}
                 }
+                // Standing under the light rings the alarm and fills one real warning slot (the alarm lesson).
+                alarm|=step==TutorialStep.AlarmRule&&game.Session.Warnings==1;
                 yield return null;
             }
-            Assert.AreEqual(TutorialStep.AlarmRule,game.Tutorial.Script.Current,"Hiding through the real searchlight opens the cell and passes the step");
+            Assert.IsTrue(alarm,"Standing under the searchlight fills a warning slot");
+            Assert.AreEqual(TutorialStep.Done,game.Tutorial.Script.Current,"Hiding through the real searchlight opens the cell and passes the step");
             Assert.IsTrue(sawGauge,"The real lock gauge filled");Assert.IsTrue(game.Session.Prison.Opened[0]);
             Time.timeScale=1;game.ExitToMenu();game.FaceLogout(false);
         }
@@ -249,6 +253,7 @@ namespace Mongscape.Tests
                     if(step==TutorialStep.Lane&&near&&run.Lane==0)run.Command(MotionCommand.Left);
                     else if(step==TutorialStep.Jump&&t.Cue==ActionCuePresenter.JumpCue&&run.Y<=.001f)run.Command(MotionCommand.Jump);
                     else if(step==TutorialStep.Crouch&&t.Cue==ActionCuePresenter.CrouchCue)run.Command(MotionCommand.Crouch);
+                    else if(step==TutorialStep.WarnRule&&near&&run.Lane!=TutorialCourse.BlockedLane)run.Command(run.Lane<0?MotionCommand.Right:MotionCommand.Left);
                     else if(step==TutorialStep.Banana&&near&&run.Lane==TutorialCourse.BlockedLane)run.Command(MotionCommand.Left);
                     else if(step==TutorialStep.PauseX&&t.Waiting&&!game.Session.Paused&&run.Z>=TutorialCourse.HoldZ(TutorialChapter.Basics,step)-.5f)game.TogglePause();
                     else if(step==TutorialStep.Fork&&(RouteSurface.ActivePlan?.ForkWindow(run.Z)??false)&&run.Lane==0)run.Command(MotionCommand.Left);
