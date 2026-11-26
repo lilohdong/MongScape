@@ -61,9 +61,8 @@ namespace Mongscape.Presentation
             int pct = (int)Math.Round(Math.Abs(change));
             return pct == 0 ? "하루 평균 같아요" : "하루 평균 " + pct.ToString(Num) + "% " + (change > 0 ? "더" : "덜");
         }
-        // The weekly goal counts moderate exercise only (5 MET or more: running in place, or the moments of a jump, crouch,
-        // knee raise or side step); walking in place and the upper body's arm swings are lighter (QA 2026-11-25 L2).
-        public const string WeekGoalTitle = "이번 주 중강도 운동", WeekGoalNote = "달리기·동작한 시간만 · 걷기와 상체는 빠져요";
+        // The weekly goal counts moderate exercise or more (3 MET, WHO) and a vigorous minute (6 MET) twice (plan 5-5).
+        public const string WeekGoalTitle = "이번 주 중강도 운동", WeekGoalNote = "숨이 조금 찰 정도 이상, 고강도는 2배로 쳐요";
         // "주간 중강도 37 / 150분" (moderate minutes this week) and "연속 3일" (days with 10 active minutes).
         public static string WeekGoal(double minutes) => "주간 중강도 " + WeekGoalValue(minutes);
         // A guest's result: this run's moderate minutes; a keyboard run's: why there is no bar.

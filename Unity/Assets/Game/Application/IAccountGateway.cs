@@ -131,7 +131,7 @@ namespace Mongscape.Application
         // Runs with and without "달리기 속도 조절" share one ranking, so the option is not sent.
         public static AccountRun Create(RunSession run, PlayStyle mode, int coins)
         {
-            double playSeconds = run.Elapsed, moderate = run.Workout.ModerateSeconds;
+            double playSeconds = run.Elapsed, moderate = run.Workout.GoalSeconds;
             var record = new AccountRun
             {
                 id = Guid.NewGuid().ToString(), distance = Math.Max(0f, run.Score.Distance), score = Math.Max(0, run.Score.Score),

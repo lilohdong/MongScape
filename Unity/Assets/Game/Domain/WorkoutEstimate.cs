@@ -6,26 +6,6 @@ namespace Mongscape.Domain
     // Moments of a run, counted for the result report: steps, jumps, crouches, knee steps (stairs) and lane changes.
     public enum MoveKind { Step, Jump, Crouch, KneeStep, SideStep }
 
-    // MET of the moment from the cadence (steps a minute over the last 3 s), not one figure for the whole run.
-    // 2024 Adult Compendium: walking in place about 3.5, a moderate active game 5, running in place about 8 (kept at 7).
-    // A big movement (deep squat, high jump, hips-high knee, wide side step) adds 1. The upper body uses 0.6 of each.
-    // A moment counts toward the weekly moderate minutes when its MET after the play-style scale is Moderate or more
-    // (QA 2026-11-25 M5: the upper body's fast arm swings, 7 x 0.6 = 4.2, are not moderate exercise).
-    public static class IntensityMet
-    {
-        public const double Walk = 3.5, Run = 5, Sprint = 7, BigMove = 1, UpperScale = .6;
-        // "달리기 속도 조절" off: stepping counts nothing; a jump, crouch, knee raise or lane change moment counts at this MET
-        // (a moderate active game, +1 when big), so a full body run without the cadence still fills the weekly goal (QA H1).
-        public const double Move = 5;
-        // MET (after the play-style scale) from which a moment counts toward the weekly moderate minutes.
-        public const double Moderate = 5;
-        public static bool IsModerate(double met) => met >= Moderate - 1e-9;
-        public static double Base(CadenceStage stage) => stage == CadenceStage.Sprint ? Sprint : stage == CadenceStage.Run ? Run : stage == CadenceStage.Walk ? Walk : 0;
-        // Keyboard play has no measured exercise.
-        public static double Scale(PlayStyle style) => style == PlayStyle.FullBody ? 1 : style == PlayStyle.UpperBody ? UpperScale : 0;
-        public static double Of(CadenceStage stage, bool big, double scale) => stage == CadenceStage.Standing ? 0 : (Base(stage) + (big ? BigMove : 0)) * Math.Max(0, scale);
-    }
-
     // Calories: MET x 3.5 x weight / 200 per minute, summed over the moments the camera saw exercise.
     // This estimates gross expenditure; camera recognition does not measure metabolism.
     public sealed class WorkoutEstimate
@@ -42,8 +22,13 @@ namespace Mongscape.Domain
         // MET x seconds over the run: calories and the score both come from it.
         public double MetSeconds {get; private set;}
         public double Met {get;set;}=AssumedMet;
-        // Play-style share of the intensity MET (1 full body, 0.6 upper body, 0 keyboard).
-        public double StyleScale {get;set;}=1;
+        // Play style and map of the moment pick the Compendium activity (plan 5-5); the run session keeps Section current.
+        public PlayStyle Style {get;set;}=PlayStyle.FullBody;
+        public SectionKind Section {get;set;}=SectionKind.Mine;
+        // Facts the zoo and prison scenes report each frame (deep crouch, fast stairs, missed beats).
+        public MetHints Hints {get;set;}
+        // The activity of the last counted moment (Standing when the last one counted nothing).
+        public MetActivity LastActivity {get; private set;}
         public double EstimatedKcal=>KcalOf(MetSeconds,WeightKg);
         // Average MET over the active time (0 before any).
         public double AverageMet=>ActiveSeconds>0?MetSeconds/ActiveSeconds:0;
@@ -51,12 +36,21 @@ namespace Mongscape.Domain
         private readonly double[] activitySeconds=new double[5], activityMetSeconds=new double[5];
         // Active seconds by cadence stage (index = CadenceStage; Standing stays 0) and those at moderate intensity or more.
         private readonly double[] stageSeconds=new double[4];
+        // Seconds at 3 MET or more (vigorous included) and at 6 MET or more.
         public double ModerateSeconds {get; private set;}
+        public double VigorousSeconds {get; private set;}
+        // Weekly goal seconds (plan 5-5): a vigorous second counts two (WHO).
+        public double GoalSeconds=>ModerateSeconds+VigorousSeconds;
+        // Result report: seconds by intensity (light under 3, moderate 3 to 6, vigorous 6 and up) and by Compendium activity.
+        private readonly double[] intensitySeconds=new double[3];
+        private readonly double[] metActivitySeconds=new double[Enum.GetValues(typeof(MetActivity)).Length];
+        public double SecondsAt(Intensity level)=>intensitySeconds[(int)level];
+        public double SecondsIn(MetActivity activity)=>metActivitySeconds[(int)activity];
         // False when "달리기 속도 조절" is off: walk, run and sprint MET are 0 and only the moments of a jump, crouch,
         // knee raise or lane change count (MoveSeconds), so the result report shows that time instead of the stages.
         public bool CadenceCounts {get;set;}=true;
         public double MoveSeconds {get; private set;}
-        // Seconds in which the movement was big (stage 4 feeds it; the +1 MET).
+        // Seconds in which the movement was big (stage 4 feeds it; counted, no extra MET since plan 5-5).
         public double BigSeconds {get; private set;}
         private readonly int[] moves=new int[5];
         public bool GoalReached=>EstimatedKcal>=GoalKcal;
@@ -74,30 +68,27 @@ namespace Mongscape.Domain
         public void TickActivity(double seconds,bool playing,bool tracked,bool active,int activity)
         {
             if(!playing||!tracked||!active||!Valid(seconds)) return;
-            Add(seconds,Met,true,(int)CadenceStage.Run,false,activity);
+            Add(seconds,Met,true,(int)CadenceStage.Run,false,activity,MetActivity.MineGeneral);
         }
         // One camera frame of a run. stage comes from the cadence; moving says another motion (jump, crouch, knee, lane)
-        // happened just now, which counts as walking when the feet are still. Standing still or out of view counts nothing
-        // (no grace period). big: the movement was big enough for the +1 MET.
+        // happened just now. Standing still or out of view counts nothing (no grace period). The MET is the Compendium
+        // activity for the play style, map and motion (IntensityMet.Classify). With the cadence off stepping counts nothing.
         public void TickIntensity(double seconds,bool playing,bool tracked,CadenceStage stage,bool moving,bool big,int activity)
         {
             if(!playing||!tracked||!Valid(seconds)) return;
-            if(!CadenceCounts)
-            {
-                // Cadence off: no MET for stepping in place, only for the motion moments.
-                if(!moving) return;
-                double moveMet=(IntensityMet.Move+(big?IntensityMet.BigMove:0))*Math.Max(0,StyleScale);
-                Add(seconds,moveMet,IntensityMet.IsModerate(moveMet),-1,big,activity);
-                return;
-            }
-            if(stage==CadenceStage.Standing) { if(!moving) return; stage=CadenceStage.Walk; }
-            double met=IntensityMet.Of(stage,big,StyleScale);
-            Add(seconds,met,IntensityMet.IsModerate(met),(int)stage,big,activity);
+            var kind=IntensityMet.Classify(Style,Section,stage,CadenceCounts,moving,activity,Hints);
+            LastActivity=kind;
+            if(kind==MetActivity.Standing) return;
+            double met=IntensityMet.Of(kind);
+            int bucket=!CadenceCounts?-1:stage==CadenceStage.Standing?(int)CadenceStage.Walk:(int)stage;
+            Add(seconds,met,IntensityMet.IsModerate(met),bucket,big,activity,kind);
         }
         // stage -1: a motion moment of a run without cadence (MoveSeconds).
         // moderate: the moment counts toward the weekly moderate minutes (the flat-MET ticks of tools and tests always do).
-        private void Add(double seconds,double met,bool moderate,int stage,bool big,int activity)
+        private void Add(double seconds,double met,bool moderate,int stage,bool big,int activity,MetActivity kind)
         {
+            intensitySeconds[(int)IntensityMet.Level(met)]+=seconds; metActivitySeconds[(int)kind]+=seconds;
+            if(moderate&&IntensityMet.IsVigorous(met)) VigorousSeconds+=seconds;
             int a=Math.Max(0,Math.Min(4,activity));
             ActiveSeconds+=seconds; MetSeconds+=met*seconds;
             activitySeconds[a]+=seconds; activityMetSeconds[a]+=met*seconds;
@@ -116,17 +107,18 @@ namespace Mongscape.Domain
         public void Tick(double seconds,bool playing,bool poseConnected,MotionCommand recognizedMotion)
         {
             if(!playing||!poseConnected||recognizedMotion==MotionCommand.Center||!Valid(seconds)) return;
-            Add(seconds,Met,true,(int)CadenceStage.Run,false,0);
+            Add(seconds,Met,true,(int)CadenceStage.Run,false,0,MetActivity.MineGeneral);
         }
         // Flat-MET seconds (tools and tests).
         public void Tick(double seconds,bool playing,bool active)
         {
             if(!playing||!active||!Valid(seconds)) return;
-            Add(seconds,Met,true,(int)CadenceStage.Run,false,0);
+            Add(seconds,Met,true,(int)CadenceStage.Run,false,0,MetActivity.MineGeneral);
         }
         public void Reset()
         {
-            ActiveSeconds=MetSeconds=ModerateSeconds=BigSeconds=MoveSeconds=0;
+            ActiveSeconds=MetSeconds=ModerateSeconds=VigorousSeconds=BigSeconds=MoveSeconds=0; LastActivity=MetActivity.Standing;
+            Array.Clear(intensitySeconds,0,intensitySeconds.Length); Array.Clear(metActivitySeconds,0,metActivitySeconds.Length);
             Array.Clear(activitySeconds,0,activitySeconds.Length); Array.Clear(activityMetSeconds,0,activityMetSeconds.Length);
             Array.Clear(stageSeconds,0,stageSeconds.Length); Array.Clear(moves,0,moves.Length);
         }

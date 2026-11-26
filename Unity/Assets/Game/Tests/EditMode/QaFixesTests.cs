@@ -48,11 +48,11 @@ namespace Mongscape.Tests
             off.TickIntensity(30, true, true, CadenceStage.Standing, true, false, 1);
             off.TickIntensity(30, true, true, CadenceStage.Standing, true, true, 2);
             Assert.AreEqual(60, off.ModerateSeconds, "Cadence off: the motion moments are moderate (QA H1)");
-            Assert.AreEqual((5 * 30 + 6 * 30), off.MetSeconds, 1e-9);
-            var upper = new WorkoutEstimate { StyleScale = IntensityMet.Scale(PlayStyle.UpperBody) };
+            Assert.AreEqual(4.0 * 60, off.MetSeconds, 1e-9);
+            var upper = new WorkoutEstimate { Style = PlayStyle.UpperBody };
             upper.TickIntensity(60, true, true, CadenceStage.Sprint, false, false, 0);
-            Assert.AreEqual(0, upper.ModerateSeconds, "7 x 0.6 = 4.2 MET is not moderate (QA M5)");
-            Assert.IsTrue(IntensityMet.IsModerate(5)); Assert.IsFalse(IntensityMet.IsModerate(4.8));
+            Assert.AreEqual(60, upper.ModerateSeconds, "Upper body arm swings are 3.0 MET (22200), moderate");
+            Assert.IsTrue(IntensityMet.IsModerate(3)); Assert.IsTrue(IntensityMet.IsModerate(4.8)); Assert.IsFalse(IntensityMet.IsModerate(2.8));
         }
 
         // Webcam item 3: a crouch held still stops counting as moving (and a deep one stops the bonus) after a moment.
