@@ -87,7 +87,10 @@ namespace Mongscape.DevTools
             double originalMet=game.Session.Workout.Met;
             data.Player.Style=PlayStyle.FullBody; game.Session.Workout.Met=PlayStyleInfo.Met(PlayStyle.FullBody);game.Session.Workout.Tick(60,true,true); workoutPreview=true;
             yield return Shot("09b_Workout_Synthetic");
-            workoutPreview=false; yield return Shot("09c_Tracking_Recovery_Synthetic");
+            workoutPreview=false;
+            RunHudView.PreviewWarnings=1; RunHudView.PreviewChase=.8f; yield return Shot("09c_RunHud_Warning1_Synthetic");
+            RunHudView.PreviewLost=true; yield return Shot("09d_RunHud_TrackingLost_Synthetic");
+            RunHudView.PreviewWarnings=null; RunHudView.PreviewChase=null; RunHudView.PreviewLost=false;
             if(game.Session.Flow.State!=GameFlowState.Running){Fail("HUD previews left running state");yield break;}
             data.Player.Style=PlayStyle.Keyboard; game.Session.Workout.Reset();game.Session.Workout.Met=originalMet;
             game.enabled=true;game.TogglePause();
@@ -105,6 +108,9 @@ namespace Mongscape.DevTools
                 yield return null;
             }
             yield return Shot("11_Result");
+            yield return new WaitForSecondsRealtime(1.5f); yield return Shot("11b_Result_Ranking");
+            hud.Result.ShowMore(true); yield return Shot("11c_Result_More"); hud.Result.ShowMore(false);
+            hud.Result.ShowInfo(true); yield return Shot("11d_Result_Info"); hud.Result.ShowInfo(false);
 
             game.ExitToMenu(); yield return Shot("12_MainMenu_AfterRun");
             game.OpenStartSetup(); yield return Shot("13_Setup");

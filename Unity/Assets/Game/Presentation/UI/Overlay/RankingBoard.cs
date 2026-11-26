@@ -12,7 +12,7 @@ namespace Mongscape.Presentation
     public sealed class RankingRow
     {
         // Runs with and without "달리기 속도 조절" share one ranking and are not marked.
-        public int Rank; public string Name = ""; public int Score; public bool Member;
+        public int Rank; public string Name = ""; public int Score; public bool Member; public float Distance;
     }
 
     // Ranking tabs [회원 랭킹 | 이 PC] × [전신 | 상체 | 키보드] × [전체 | 오늘], and on the result the best score and calorie lines.
@@ -96,8 +96,8 @@ namespace Mongscape.Presentation
                 if (mine != request) return;
                 if (reply == null || !reply.ok) { Status = RankingStatus.Failed; return; }
                 Status = RankingStatus.Ready;
-                if (reply.entries != null) foreach (var e in reply.entries) if (e != null) Rows.Add(new RankingRow { Rank = e.rank, Name = e.name ?? "", Score = e.score, Member = true });
-                if (reply.me != null && reply.me.rank > 0) Mine = new RankingRow { Rank = reply.me.rank, Name = "내 기록", Score = reply.me.score, Member = true };
+                if (reply.entries != null) foreach (var e in reply.entries) if (e != null) Rows.Add(new RankingRow { Rank = e.rank, Name = e.name ?? "", Score = e.score, Member = true, Distance = (float)e.distance });
+                if (reply.me != null && reply.me.rank > 0) Mine = new RankingRow { Rank = reply.me.rank, Name = "내 기록", Score = reply.me.score, Member = true, Distance = (float)reply.me.distance };
             });
         }
 
@@ -105,7 +105,7 @@ namespace Mongscape.Presentation
         {
             for (int i = 0; i < list.Count; i++)
             {
-                var row = new RankingRow { Rank = i + 1, Name = list[i].Name ?? "", Score = list[i].Score, Member = list[i].Member };
+                var row = new RankingRow { Rank = i + 1, Name = list[i].Name ?? "", Score = list[i].Score, Member = list[i].Member, Distance = list[i].Distance };
                 Rows.Add(row);
                 if (MineEntry != null && list[i] == MineEntry) Mine = row;
             }
@@ -131,14 +131,14 @@ namespace Mongscape.Presentation
                 foreach (var e in reply.entries)
                 {
                     if (e == null) continue;
-                    var row = new RankingRow { Name = e.name ?? "", Score = e.score, Member = true };
+                    var row = new RankingRow { Name = e.name ?? "", Score = e.score, Member = true, Distance = (float)e.distance };
                     // The member's own server row gives way to the newer run that is still uploading.
                     if (e.rank == serverMine && serverMine > 0) { if (pending) continue; mineMember = row; }
                     members.Add(row);
                 }
             if (pending)
             {
-                mineMember = new RankingRow { Name = mineEntry.Name ?? "", Score = mineEntry.Score, Member = true };
+                mineMember = new RankingRow { Name = mineEntry.Name ?? "", Score = mineEntry.Score, Member = true, Distance = mineEntry.Distance };
                 int at = 0; while (at < members.Count && members[at].Score >= mineMember.Score) at++;
                 members.Insert(at, mineMember);
             }
@@ -149,7 +149,7 @@ namespace Mongscape.Presentation
                 bool guest = m >= members.Count || g < guests.Count && guests[g].Score >= members[m].Score;
                 if (guest)
                 {
-                    var row = new RankingRow { Name = guests[g].Name ?? "", Score = guests[g].Score, Member = false };
+                    var row = new RankingRow { Name = guests[g].Name ?? "", Score = guests[g].Score, Member = false, Distance = guests[g].Distance };
                     if (mineEntry != null && guests[g] == mineEntry) mine = row;
                     rows.Add(row); g++;
                 }
@@ -162,7 +162,7 @@ namespace Mongscape.Presentation
             {
                 int above = serverMine - 1;
                 foreach (var guest in guests) if (guest.Score > reply.me.score) above++;
-                mine = new RankingRow { Rank = above + 1, Name = "내 기록", Score = reply.me.score, Member = true };
+                mine = new RankingRow { Rank = above + 1, Name = "내 기록", Score = reply.me.score, Member = true, Distance = (float)reply.me.distance };
             }
             return rows;
         }

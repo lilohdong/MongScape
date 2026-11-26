@@ -71,7 +71,13 @@ namespace Mongscape.Presentation
         private LeaderboardScreen board;
         private CalibrationPanel calibration;
         private LoadingScreen loading;
-        private RunHud runHud;
+        private RunHudView runView;
+        private ResultView resultView;
+        // The UI Toolkit result screen (score count-up, today's ranking, this run).
+        public ResultView Result => resultView;
+        private readonly RunHudModel runModel = new RunHudModel();
+        // The UI Toolkit running HUD; the zoo sets the rear-view mirror through it.
+        public RunHudView RunView => runView;
         private PauseScreen pause;
         public void Configure(RunSession run, Action again)
         {
@@ -81,7 +87,8 @@ namespace Mongscape.Presentation
             title = new TitleScreen(skin); setup = new SetupScreen(skin); loading = new LoadingScreen(skin); identity=new IdentityScreen(skin); signUp=new SignUpScreen(skin,identity);
             menu = new MainMenuScreen(overlaySkin); credits = new CreditsScreen(overlaySkin); tutorialOffer = new TutorialOfferScreen(overlaySkin); gate = new LoginGateScreen(overlaySkin); profile = new ProfileScreen(overlaySkin); board = new LeaderboardScreen(overlaySkin, Ranking);
             calibration = new CalibrationPanel(overlaySkin, skin);
-            runHud = new RunHud(skin, new ProgressHud(overlaySkin)); pause = new PauseScreen(skin);
+            runView = new RunHudView(gameObject); pause = new PauseScreen(skin);
+            resultView = new ResultView(gameObject) { Retry = () => retry?.Invoke(), Calibrate = OpenCalibration, Main = () => ToMenu?.Invoke() };
         }
         public void ShowPage(MenuPage page)
         {
@@ -153,6 +160,7 @@ namespace Mongscape.Presentation
         {
             if (resultOpen || session == null || session.Flow.State != GameFlowState.Result) return;
             resultOpen = true; board.OpenResult(Data, Account, session); if (board.AsksGuestName) TextInput?.Invoke(true);
+            resultView?.Show(Data, Ranking, session, CalibrationAvailable, Time.unscaledTime);
         }
         // Result screen 웹캠 보정: only after a camera run; the panel blocks the result buttons and hand pointing while open.
         public bool CalibrationAvailable => session != null && session.Flow.State == GameFlowState.Result && Data?.Player != null && PlayStyleInfo.UsesCamera(Data.Player.Style);
@@ -162,18 +170,33 @@ namespace Mongscape.Presentation
         public void CloseSetup() { ShowPage(MenuPage.None); Loading = false; revealRemaining = 0; }
         public void BeginLoading() { ShowPage(MenuPage.None); Loading = true; }
         public void EndLoading() { Loading = false; revealRemaining = .85f; }
-        public RunHudModel RunModel => runHud?.Model;
+        public RunHudModel RunModel => runView != null ? runModel : null;
         private void Update()
         {
             revealRemaining = Mathf.Max(0, revealRemaining - Time.unscaledDeltaTime);
             if (!CalibrationAvailable) calibration?.Close(); else calibration.Tick(Data, Time.realtimeSinceStartup);
-            if (session == null || runHud == null || Hidden || Loading || Revealing) return;
-            if (session.Flow.State == GameFlowState.Running || session.Flow.State == GameFlowState.Caught)
-                runHud.Model.Tick(session, Map, Data?.Player?.Style ?? PlayStyle.Keyboard, Data?.PoseStatus ?? PoseStatus.Off, PoliceAlert?.Invoke() ?? false, Time.unscaledTime);
-            if (session.Flow.State == GameFlowState.Running && !session.Paused && Data != null) runHud.Strip.Tick(Data.Race, Data.HazardNear, Time.unscaledTime);
+            if (runView == null) return;
+            bool inRun = session != null && (session.Flow.State == GameFlowState.Running || session.Flow.State == GameFlowState.Caught);
+            if (inRun && !wasRunning) runView.ResetRun();
+            wasRunning = inRun;
+            bool showRun = inRun && !Hidden && !Loading && !Revealing && !session.Paused
+                && !(Data != null && Data.RunCalibration != RunCalibrationState.None && session.Flow.State == GameFlowState.Running);
+            runView.Root.Visible = showRun;
+            if (session == null || Hidden || Loading || Revealing) return;
+            if (inRun)
+                runModel.Tick(session, Map, Data?.Player?.Style ?? PlayStyle.Keyboard, Data?.PoseStatus ?? PoseStatus.Off, PoliceAlert?.Invoke() ?? false, Time.unscaledTime);
+            if (showRun) runView.Render(session, Data, runModel, Time.unscaledTime);
+            if (resultView != null)
+            {
+                bool result = session.Flow.State == GameFlowState.Result && resultView.Open;
+                if (session.Flow.State != GameFlowState.Result && resultView.Open) resultView.Hide();
+                resultView.Root.Visible = result && !CalibrationOpen;
+                if (result) resultView.Render(Time.unscaledTime);
+            }
         }
+        private bool wasRunning;
         // Played when the ranking strip passes a row.
-        public Action RankCracked { set { if (runHud != null) runHud.Strip.Cracked = value; } }
+        public Action RankCracked { set { if (runView != null) runView.Strip.Cracked = value; } }
         private void OnGUI()
         {
             if (session == null || Hidden) return;
@@ -191,7 +214,7 @@ namespace Mongscape.Presentation
                 if (session.Paused) pause.Draw(session, Data, PauseRun, Recalibrate, ToMenu);
                 // Camera runs hold on the calibration screen until the player is measured, then the countdown starts.
                 else if (Data != null && Data.RunCalibration != RunCalibrationState.None && state == GameFlowState.Running) calibration.DrawRun(Data);
-                else { runHud.Draw(session, Fade, Data, PauseRun); pause.DrawGesture(Data?.Pause); }
+                // The running HUD is the UI Toolkit RunHudView (drawn by its own panel).
             }
             else if (state == GameFlowState.Result)
             {
@@ -199,9 +222,18 @@ namespace Mongscape.Presentation
                 bool calibrating = calibration.Open;
                 // The open calibration panel takes the keys first and leaves the result screen underneath inert.
                 calibration.Keys();
-                GUI.enabled = !calibrating;
-                board.Draw(Data, session, retry, "다시 하기", ToMenu, "메인으로", CalibrationAvailable ? OpenCalibration : (Action)null, "웹캠 보정");
-                GUI.enabled = true;
+                if (!calibrating && resultView != null)
+                {
+                    resultView.Gestures.Pass();
+                    var e = Event.current;
+                    if (e.type == EventType.KeyDown && !board.AsksGuestName)
+                    {
+                        if (e.keyCode == KeyCode.Escape) { e.Use(); if (!resultView.CloseWindow()) ToMenu?.Invoke(); }
+                        else if (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter || e.keyCode == KeyCode.Space) { e.Use(); if (!resultView.CloseWindow()) retry?.Invoke(); }
+                    }
+                    // A guest names the run on this PC's ranking (text input stays IMGUI), over the lower ranking rows.
+                    if (resultView.ShowingRanking && !resultView.MoreOpen && !resultView.InfoOpen) board.DrawGuestName(Data, new Rect(60, 400, 700, 150));
+                }
                 if (calibrating) calibration.Draw(Data);
             }
             // F9 demo invincibility (development builds): a small reminder in the bottom-left corner while it is on, with the F7 key that still ends the run.
