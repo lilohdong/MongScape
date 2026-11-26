@@ -53,6 +53,37 @@ namespace Mongscape.Tests
             Assert.AreEqual(2, seen.Count, "Both normal charts come up");
             Assert.IsNull(ZooBeatmap.Pick(new List<ZooBeatmap>(), 1, random));
         }
+        [Test] public void TheRoarWarningAddsTheWholeCueTime()
+        {
+            var plain = new RunSession(new RunConfig());
+            Assert.AreEqual(1.5f + RunSession.CueSeconds, ZooChase.RoarLeadFor(plain.WarningCueSeconds), 1e-4f);
+            Assert.AreEqual(2.7f, ZooChase.RoarLeadFor(RunSession.CueSeconds + .6f), 1e-4f);
+        }
+        [Test] public void TheLionBreaksOutRunsRoarsAndPounces()
+        {
+            var c = Started(new ZooBeatmap());
+            Assert.AreEqual(LionAction.CageBreakout, c.ActionAt(.9f));
+            Run(c, 2.1f); Assert.AreEqual(LionAction.Run, c.ActionAt(.9f));
+            for (int i = 0; i < 2000 && !c.Roaring; i++) c.Tick(.02f, true);
+            Assert.AreEqual(LionAction.Roar, c.ActionAt(.9f));
+            for (int i = 0; i < 400 && c.Bites == 0; i++) c.Tick(.02f, true);
+            Assert.AreEqual(LionAction.Pounce, c.ActionAt(.9f));
+            Run(c, 1f); Assert.AreEqual(LionAction.Run, c.ActionAt(.9f));
+        }
+        [Test] public void ThePracticeVerseIsTheEasyChartUpToTheBreakAndTheLionNeverRoars()
+        {
+            var full = Chart("easy_a"); var verse = ZooPractice.Verse(full);
+            Assert.AreEqual(ZooPractice.Chart, verse.Chart);
+            Assert.Greater(verse.Notes.Count, 0); Assert.Less(verse.Notes.Count, full.Notes.Count);
+            Assert.IsTrue(verse.Notes.Exists(n => n.Kind == ZooNoteKind.Jump) && verse.Notes.Exists(n => n.Kind == ZooNoteKind.ArmsUp), "Both note kinds");
+            foreach (var note in verse.Notes) Assert.Less(note.Time, full.BreakStart);
+            Assert.AreEqual(5, ZooPractice.PassHits(8));
+            var c = new ZooChase { Practice = true }; c.Start(verse, 0f, 9f);
+            Run(c, full.BreakStart + .5f, true);
+            Assert.AreEqual(verse.Notes.Count, c.Hits + c.Misses);
+            Assert.AreEqual(ZooPractice.LionCap, c.Lion, 1e-4f); Assert.IsFalse(c.Roaring); Assert.AreEqual(0, c.Bites);
+            Assert.IsTrue(c.MirrorVisible);
+        }
         [Test] public void NothingIsJudgedDuringTheCutAndTheShout()
         {
             var c = Started(); Assert.AreEqual(ZooPhase.Cut, c.Phase);

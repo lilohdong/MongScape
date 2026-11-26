@@ -45,14 +45,15 @@ namespace Mongscape.Presentation
         public Func<bool> NoCamera;
         public Func<float> StepsPerMinute, PaceScale;
         public float RunCadence = 100f;
-        // Both hands up (camera or key), for the verse; the rescue reach comes from the run (pose or Q and E).
-        public Func<bool> HandsUp;
+        // The rescue reach comes from the run (pose or Q and E).
         // Sound hooks: a beat tick, and a cleared station. The saved sync offset in ms and where to save a new one.
         public Action Beat, Cleared;
         public Func<int> SyncMs;
         public Action<int> SaveSync;
         // The mirror monkey window (character clip); null keeps it hidden.
         public TutorialDemo Demo;
+        // The real zoo (song, notes, lion and mirror) for chapter 2.
+        public ZooMapView Zoo;
         // The player's joints (null without a tracked camera), calibrated pose and thresholds, for the joint comparison that
         // joins the follow-along view.
         public Func<PoseFrame> MyPose;
@@ -62,10 +63,9 @@ namespace Mongscape.Presentation
         // Seconds the camera lesson waits for a framed body, the pace lesson for a held pace.
         public const float FramedSeconds = 3f, PacedSeconds = 5f;
         private float framedFor, pacedFor, reachFor, pictureFor;
-        private bool cadenceSpeed = true, pauseSeen, wasJumping, wasHands, stationBegun;
+        private bool cadenceSpeed = true, pauseSeen, wasJumping, stationBegun;
         private int bigAtStart, lastTick;
         private readonly BeatSync sync = new BeatSync();
-        private readonly BeatVerse verse = new BeatVerse();
 
         public void Configure(RunSession run, ChunkSpawner spawner, Func<bool> calibrated, Action<float> restartAt, Action complete, Func<bool> canDraw)
         {
@@ -77,7 +77,7 @@ namespace Mongscape.Presentation
             retryAt = doneAt = praiseUntil = forgiveUntilZ = -1;
             ResetStation(); Waiting = false; LessonDistance = float.PositiveInfinity; Message = null; cue = null;
         }
-        public void End() { TutorialCourse.Script = null; Demo?.Show(null); Script = null; Waiting = false; retryAt = doneAt = praiseUntil = forgiveUntilZ = -1; Message = cue = null; if (session != null) session.SpeedScale = 1; }
+        public void End() { if (Zoo != null) Zoo.StopPractice(); TutorialCourse.Script = null; Demo?.Show(null); Script = null; Waiting = false; retryAt = doneAt = praiseUntil = forgiveUntilZ = -1; Message = cue = null; if (session != null) session.SpeedScale = 1; }
         // The player paused (X gesture or Esc) while the pause step waits: it passes when play goes on again.
         public void NotifyPaused(PauseReason reason)
         {
@@ -85,7 +85,7 @@ namespace Mongscape.Presentation
         }
         private void ResetStation()
         {
-            framedFor = pacedFor = reachFor = pictureFor = 0; pauseSeen = wasJumping = wasHands = stationBegun = false; lastTick = -1;
+            framedFor = pacedFor = reachFor = pictureFor = 0; pauseSeen = wasJumping = stationBegun = false; lastTick = -1;
         }
 
         public void Tick(float now)
@@ -147,7 +147,9 @@ namespace Mongscape.Presentation
                     if (pauseSeen) Next(now);
                     return;
                 case TutorialPass.Station:
-                    Hold(step); Waiting = true; cue = null; Message = TutorialScript.Instruction(step, Script.Style);
+                    // While the zoo song plays it moves the runner.
+                    if (Zoo == null || !Zoo.Chase.Practice) Hold(step);
+                    Waiting = true; cue = null; Message = TutorialScript.Instruction(step, Script.Style);
                     TickStation(step, now);
                     return;
                 case TutorialPass.ObstaclePassed when step == TutorialStep.Banana:
@@ -201,7 +203,6 @@ namespace Mongscape.Presentation
             // The runner must stand at the station's spot first.
             if (step != TutorialStep.Hide && runner.Z < TutorialCourse.HoldZ(Script.Chapter, step) - .5f) return;
             bool jumping = runner.Y > .01f, jumpEdge = jumping && !wasJumping; wasJumping = jumping;
-            bool hands = HandsUp != null && HandsUp(), handsEdge = hands && !wasHands; wasHands = hands;
             if (NoCamera != null && NoCamera() && PlayStyleInfo.UsesCamera(Script.Style)) { Next(now); return; }
             switch (step)
             {
@@ -224,14 +225,20 @@ namespace Mongscape.Presentation
                     return;
                 }
                 case TutorialStep.Verse:
-                {
-                    if (!stationBegun) { verse.Begin(now, (SyncMs?.Invoke() ?? 0) / 1000.0); stationBegun = true; lastTick = -1; }
-                    TickBeats(now, verse.Start, BeatVerse.Interval);
-                    if (jumpEdge) verse.Act(NoteKind.Jump, now);
-                    if (handsEdge) verse.Act(NoteKind.Hands, now);
-                    if (verse.Over(now)) { if (verse.Passed) Next(now); else Miss(now); }
+                    // The real zoo song on the easy chart (ZooMapView judges the notes).
+                    if (!stationBegun)
+                    {
+                        if (Zoo == null || !Zoo.StartPractice((SyncMs?.Invoke() ?? 0) / 1000f)) { Next(now); return; }
+                        stationBegun = true;
+                    }
+                    else if (Zoo.VerseOver) { if (Zoo.VersePassed) Next(now); else Miss(now); }
                     return;
-                }
+                case TutorialStep.Rearview:
+                    // One look at the real lion in the mirror while the song goes on.
+                    if (!stationBegun) { if (Zoo != null) Zoo.ShowLion(); stationBegun = true; }
+                    pictureFor += Time.deltaTime;
+                    if (pictureFor >= PictureSeconds) Next(now);
+                    return;
                 case TutorialStep.Hide:
                     // The real cell door and searchlight (PrisonStage, PrisonCourse): the lock opening passes it; the light going by
                     // with the door shut (or the alarm, which is a counted miss) means another try.
@@ -302,6 +309,7 @@ namespace Mongscape.Presentation
         {
             seenMisses = session.TutorialMisses; Script.Fail(); retryAt = now + RetrySeconds; praiseUntil = -1;
             Waiting = false; session.SpeedScale = 0; cue = null; Message = "다시 하기";
+            if (Zoo != null) Zoo.StopPractice();
         }
         // Active hazards of this step's lesson chunk (one lane block or one full row).
         private void FindLesson()
@@ -345,7 +353,9 @@ namespace Mongscape.Presentation
                 GUI.color = Retrying ? new Color(1, .7f, .3f) : praise ? new Color(.45f, 1f, .6f) : Palette.Gold;
                 GUI.Label(banner, big, skin.Centered(58, FontStyle.Bold));
             }
-            if (!Retrying && !Script.Finished && !string.IsNullOrEmpty(Message))
+            // The zoo's entry cut and its shout keep the middle of the screen to themselves.
+            bool entry = Zoo != null && Zoo.Chase.Practice && (Zoo.Chase.Phase == ZooPhase.Cut || Zoo.Chase.Phase == ZooPhase.Shout);
+            if (!entry && !Retrying && !Script.Finished && !string.IsNullOrEmpty(Message))
             {
                 var line = new Rect(240, 276, 800, 46);
                 skin.Card(line, Palette.A(Palette.Ground, .82f));
@@ -363,9 +373,8 @@ namespace Mongscape.Presentation
                 case TutorialStep.Cadence: DrawPace(); break;
                 case TutorialStep.Rescue: TutorialPictures.Reach(skin, Mathf.Clamp01(reachFor / ReachSeconds)); break;
                 case TutorialStep.Sync: if (stationBegun) TutorialPictures.Beats(skin, now - (float)sync.Start, (float)BeatSync.Interval, BeatSync.LeadBeats, BeatSync.Beats, sync.Hits); break;
-                case TutorialStep.Verse: if (stationBegun) TutorialPictures.Verse(skin, verse, now, Script.Style); break;
+                case TutorialStep.Verse: if (Zoo != null && Zoo.Chase.Practice && Zoo.Chase.Phase == ZooPhase.Song) TutorialPictures.Count(skin, Zoo.Chase.Hits, ZooPractice.PassHits(Zoo.Chase.Map.Notes.Count)); break;
                 case TutorialStep.WarnRule: TutorialPictures.WarnRule(skin, pictureFor / PictureSeconds); break;
-                case TutorialStep.Rearview: TutorialPictures.Rearview(skin, pictureFor / PictureSeconds); break;
                 case TutorialStep.AlarmRule: TutorialPictures.AlarmRule(skin, pictureFor / PictureSeconds); break;
             }
         }
@@ -389,7 +398,9 @@ namespace Mongscape.Presentation
             var texture = Demo?.Texture;
             if (texture == null) return;
             bool follow = Script.FollowAlong;
-            var frame = follow ? new Rect(24, 330, 330, 360) : new Rect(24, 474, 210, 230);
+            // The zoo's rear-view mirror takes the bottom left: the demo moves up while it shows.
+            bool mirror = Zoo != null && Zoo.Chase.MirrorVisible;
+            var frame = follow ? new Rect(24, mirror ? 130 : 330, 330, 360) : new Rect(24, mirror ? 244 : 474, 210, 230);
             skin.Card(frame, Palette.A(Palette.Ground, .9f));
             GUI.color = follow ? Palette.Gold : Palette.Cream;
             GUI.Label(new Rect(frame.x, frame.y + 2, frame.width, 26), follow ? "따라 하기" : "시범", skin.Centered(follow ? 22 : 17, FontStyle.Bold));

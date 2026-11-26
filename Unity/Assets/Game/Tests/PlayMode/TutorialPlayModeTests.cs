@@ -203,6 +203,23 @@ namespace Mongscape.Tests
             float deadline=Time.realtimeSinceStartup+30;
             while(!game.Tutorial.Waiting&&Time.realtimeSinceStartup<deadline)yield return null;
             Assert.IsTrue(game.Tutorial.Waiting);Assert.AreEqual("Space와 W 누르기",game.Tutorial.Message);
+            // The verse is the real zoo: the song on the easy chart. Hitting its notes leads to the lion in the mirror.
+            var zoo=game.GetComponent<Mongscape.Presentation.Map.ZooMapView>();
+            deadline=Time.realtimeSinceStartup+40;
+            while(!zoo.Chase.Active&&Time.realtimeSinceStartup<deadline)yield return null;
+            Assert.IsTrue(zoo.Chase.Active&&zoo.Chase.Practice,"The zoo song plays");Assert.AreEqual(ZooPractice.Chart,zoo.Chase.Map.Chart);
+            while(game.Tutorial.Active&&game.Tutorial.Script.Current==TutorialStep.Verse&&Time.realtimeSinceStartup<deadline)
+            {
+                var notes=zoo.Chase.Map.Notes;
+                for(int i=0;i<notes.Count;i++)if(!zoo.Chase.IsJudged(i)&&Mathf.Abs(notes[i].Time-zoo.Chase.SongTime)<.2f)zoo.Chase.Input(notes[i].Kind);
+                yield return null;
+            }
+            Assert.AreEqual(TutorialStep.Rearview,game.Tutorial.Script.Current,"The verse passes");
+            yield return null;yield return null;
+            Assert.IsTrue(zoo.Chase.MirrorVisible,"The lion shows in the mirror");
+            deadline=Time.realtimeSinceStartup+30;
+            while(game.Session.Flow.State==GameFlowState.Running&&Time.realtimeSinceStartup<deadline)yield return null;
+            Assert.AreNotEqual(GameFlowState.Running,game.Session.Flow.State,"The chapter ends in the menu");Assert.IsFalse(zoo.Chase.Active);
             Time.timeScale=1;game.ExitToMenu();game.FaceLogout(false);
         }
 

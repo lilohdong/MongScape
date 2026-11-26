@@ -58,37 +58,4 @@ namespace Mongscape.Domain
             }
         }
     }
-
-    public enum NoteKind { Jump, Hands }
-
-    // One verse of the zoo practice (chapter 2): eight notes on the beat, jumps and hands-up, judged against the sync offset.
-    // Five of eight pass; the notes come one per two beats so the first verse never rushes.
-    public sealed class BeatVerse
-    {
-        public const double Interval = .75, Window = .35, Lead = 3;
-        public const int PassHits = 5;
-        public static readonly NoteKind[] Notes = { NoteKind.Jump, NoteKind.Jump, NoteKind.Hands, NoteKind.Jump, NoteKind.Hands, NoteKind.Jump, NoteKind.Hands, NoteKind.Hands };
-        private readonly bool[] hit = new bool[Notes.Length];
-        public double Start { get; private set; }
-        public double Offset { get; private set; }
-        public int Hits { get; private set; }
-        public int Count => Notes.Length;
-        public bool Passed => Hits >= PassHits;
-        public void Begin(double now, double syncOffset) { Start = now; Offset = syncOffset; Hits = 0; Array.Clear(hit, 0, hit.Length); }
-        public double NoteTime(int n) => Start + Lead * Interval + n * Interval;
-        public bool IsHit(int n) => hit[n];
-        public bool Over(double now) => now > NoteTime(Notes.Length - 1) + Window;
-        // The action of the kind at `time` (an edge: the jump or the moment the hands went up). Returns whether a note was hit.
-        public bool Act(NoteKind kind, double time)
-        {
-            double t = time - Offset;
-            for (int n = 0; n < Notes.Length; n++)
-            {
-                if (hit[n] || Notes[n] != kind || Math.Abs(t - NoteTime(n)) > Window) continue;
-                hit[n] = true; Hits++; return true;
-            }
-            return false;
-        }
-    }
-
 }

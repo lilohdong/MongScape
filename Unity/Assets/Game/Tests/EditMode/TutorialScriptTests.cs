@@ -65,8 +65,8 @@ namespace Mongscape.Tests
             Assert.AreEqual(TutorialPass.ObstaclePassed, TutorialScript.PassOf(TutorialStep.Jump)); Assert.AreEqual(MotionCommand.Jump, TutorialScript.AwaitedOf(TutorialStep.Jump));
             Assert.AreEqual(MotionCommand.KneeStep, TutorialScript.AwaitedOf(TutorialStep.Stair));
             Assert.AreEqual(TutorialPass.ForkChosen, TutorialScript.PassOf(TutorialStep.Fork));
-            foreach (var step in new[] { TutorialStep.Rescue, TutorialStep.Sync, TutorialStep.Verse, TutorialStep.Hide }) Assert.AreEqual(TutorialPass.Station, TutorialScript.PassOf(step));
-            foreach (var step in new[] { TutorialStep.WarnRule, TutorialStep.Rearview, TutorialStep.AlarmRule }) Assert.AreEqual(TutorialPass.Picture, TutorialScript.PassOf(step));
+            foreach (var step in new[] { TutorialStep.Rescue, TutorialStep.Sync, TutorialStep.Verse, TutorialStep.Rearview, TutorialStep.Hide }) Assert.AreEqual(TutorialPass.Station, TutorialScript.PassOf(step));
+            foreach (var step in new[] { TutorialStep.WarnRule, TutorialStep.AlarmRule }) Assert.AreEqual(TutorialPass.Picture, TutorialScript.PassOf(step));
             Assert.AreEqual(TutorialPass.Paused, TutorialScript.PassOf(TutorialStep.PauseX));
             Assert.IsTrue(TutorialScript.Accepts(TutorialStep.Lane, MotionCommand.Right)); Assert.IsTrue(TutorialScript.Accepts(TutorialStep.Fork, MotionCommand.Left));
             Assert.IsFalse(TutorialScript.Accepts(TutorialStep.Jump, MotionCommand.Crouch)); Assert.IsFalse(TutorialScript.Accepts(TutorialStep.Done, MotionCommand.Jump));
@@ -191,18 +191,6 @@ namespace Mongscape.Tests
             Assert.AreEqual(0, late.Offset);
         }
 
-        [Test]
-        public void TheVerseNeedsFiveOfEightNotesAndJudgesWithTheOffset()
-        {
-            var verse = new BeatVerse(); verse.Begin(0, .1);
-            Assert.AreEqual(8, verse.Count); Assert.IsFalse(verse.Passed);
-            Assert.IsFalse(verse.Act(NoteKind.Hands, verse.NoteTime(0) + .1), "The first note is a jump");
-            Assert.IsTrue(verse.Act(NoteKind.Jump, verse.NoteTime(0) + .1), "A jump .1 s late lands on the note because the offset is .1");
-            Assert.IsFalse(verse.Act(NoteKind.Jump, verse.NoteTime(0) + .1), "A note is hit once");
-            Assert.IsTrue(verse.Act(NoteKind.Jump, verse.NoteTime(1) + .1)); Assert.IsTrue(verse.Act(NoteKind.Hands, verse.NoteTime(2) + .1));
-            Assert.IsTrue(verse.Act(NoteKind.Jump, verse.NoteTime(3) + .1)); Assert.IsFalse(verse.Passed); Assert.IsTrue(verse.Act(NoteKind.Hands, verse.NoteTime(4) + .1)); Assert.IsTrue(verse.Passed);
-            Assert.IsFalse(verse.Over(verse.NoteTime(7))); Assert.IsTrue(verse.Over(verse.NoteTime(7) + BeatVerse.Window + .01));
-        }
 
 
         [Test]

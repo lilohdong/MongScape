@@ -29,6 +29,14 @@ namespace Mongscape.Presentation.Map
         private readonly List<Transform> noteViews = new List<Transform>();
         private GameObject lion, cage, gate;
         private Vector3 cagePosition;
+        private LionRig rig;
+        private int lastStep;
+        private float peekAt = -1f;
+        // The lion's distance behind the runner: far away, and at the heels (roar and pounce).
+        public const float FarGap = 22f, NearGap = 3.6f;
+        // Sized against the cage and the other chaser (the art model is a head taller).
+        private const float LionScale = .85f;
+        public LionRig Rig => rig;
         private Camera rear;
         private RenderTexture mirrorTexture, cutTexture;
         private Material mirrorMaterial;
@@ -59,11 +67,37 @@ namespace Mongscape.Presentation.Map
         {
             if (span.Kind != SectionKind.Zoo || !span.Branch || run.IsTutorial) return;
             var chart = ZooBeatmap.Pick(charts, run.Sections.Visits(SectionKind.Zoo), random) ?? new ZooBeatmap();
-            Chase.SongSpeed = SongSpeed; Chase.SyncOffset = SyncOffset;
+            Chase.Practice = false;
+            Begin(chart, SyncOffset);
+        }
+        // The zoo tutorial: the real song on the easy chart up to the break, on the tutorial's zoo map. syncOffset is the
+        // player's calibrated delay. False without a chart.
+        public bool StartPractice(float syncOffset)
+        {
+            var full = charts.Find(c => c.Chart == ZooPractice.Chart) ?? charts.Find(c => c.Tier == ZooTier.Easy);
+            if (run == null || full == null) return false;
+            StopZoo(); Chase.Practice = true;
+            Begin(ZooPractice.Verse(full), syncOffset);
+            return true;
+        }
+        public void StopPractice() { if (Chase.Practice) StopZoo(); }
+        // Every verse note has been judged; enough of them were caught.
+        public bool VerseOver => Chase.Practice && Chase.Active && Chase.Phase == ZooPhase.Song && Chase.Hits + Chase.Misses >= Chase.Map.Notes.Count;
+        public bool VersePassed => Chase.Hits >= ZooPractice.PassHits(Chase.Map.Notes.Count);
+        // The tutorial's one look in the mirror: the lion comes close and roars.
+        public void ShowLion()
+        {
+            if (!Chase.Practice || !Chase.Active) return;
+            Chase.ShowLion(); peekAt = Chase.SongTime;
+            if (audioPlayer != null) audioPlayer.ChaserCue(ChaserSound.Roar);
+        }
+        private void Begin(ZooBeatmap chart, float syncOffset)
+        {
+            Chase.SongSpeed = SongSpeed; Chase.SyncOffset = syncOffset; peekAt = -1f; lastStep = -1;
             Chase.Start(chart, run.Runner.Z, Mathf.Max(SongSpeed * .6f, run.CurrentSpeed));
             run.Runner.CenterLane();
             lastJumps = run.Runner.JumpCommands; lastArms = run.Runner.ArmsUpCommands; nextSignal = 0; gateSounded = false;
-            Chase.RoarLead = ZooChase.RoarSeconds + run.Traits.WarningLeadSeconds;
+            Chase.RoarLead = ZooChase.RoarLeadFor(run.WarningCueSeconds);
             if (content != null && content.Music != null) { song.clip = content.Music; song.time = 0f; song.volume = Volume; song.Play(); }
             if (audioPlayer != null) { audioPlayer.MapMusicPlaying = true; ownsMusic = true; }
             BuildProps();
@@ -71,7 +105,7 @@ namespace Mongscape.Presentation.Map
         private void Exited(SectionSpan span) { if (span.Kind == SectionKind.Zoo) StopZoo(); }
         private void StopZoo()
         {
-            Chase.Stop(); Chase.Reset();
+            Chase.Stop(); Chase.Reset(); Chase.Practice = false; peekAt = -1f; rig = null;
             if (song != null) song.Stop();
             if (ownsMusic && audioPlayer != null) audioPlayer.MapMusicPlaying = false;
             ownsMusic = false;
@@ -80,7 +114,8 @@ namespace Mongscape.Presentation.Map
             props.Clear(); noteViews.Clear(); lion = cage = gate = null;
             if (rear != null) rear.enabled = false;
         }
-        private float Volume => audioPlayer != null ? Mathf.Clamp01(audioPlayer.MusicVolume / .35f) : 1f;
+        // The zoo song follows the music volume and ducks with it (docs/AUDIO.md).
+        private float Volume => audioPlayer != null ? Mathf.Clamp01(audioPlayer.MusicVolume / .35f) * audioPlayer.MusicDuck : 1f;
 
         // Called by the bootstrap each running frame before RunSession.Tick. behind: the running beat lags the music (null for
         // the keyboard or with the cadence option off).
@@ -105,6 +140,7 @@ namespace Mongscape.Presentation.Map
             run.Approach(Mathf.Min(Chase.Lion, .99f) - run.ChaserGauge);
             var hints = run.Workout.Hints; hints.MissingBeats = Chase.Misses >= 3 && Chase.Misses * 2 > Chase.Hits; run.Workout.Hints = hints;
             PlaySignals();
+            PlaySteps();
             SyncSong();
         }
         private void Judged(int index, bool hit)
@@ -127,6 +163,23 @@ namespace Mongscape.Presentation.Map
                 if (clip != null && Chase.SongTime - (note.Time - lead) < .1f) signals.PlayOneShot(clip, Volume);
                 nextSignal++;
             }
+        }
+        // The lion's paws on every beat once it is out of the cage, louder the closer it is.
+        private void PlaySteps()
+        {
+            int beat = Mathf.FloorToInt(Chase.SongTime / Chase.Map.BeatSeconds);
+            if (beat == lastStep) return;
+            lastStep = beat;
+            if (audioPlayer != null && Chase.SongTime >= ZooChase.CutSeconds) audioPlayer.LionStep(Mathf.InverseLerp(FarGap, NearGap, Gap()));
+        }
+        private float PounceSeconds => content != null && content.LionPounce != null ? content.LionPounce.length : .9f;
+        private float Gap()
+        {
+            float gap = Mathf.Lerp(FarGap, NearGap + 1f, Chase.Lion);
+            if (Chase.Roaring) return Mathf.Lerp(gap, NearGap, 1f - Chase.RoarLeft / Mathf.Max(ZooChase.RoarSeconds, Chase.RoarLead));
+            // The pounce lands at the heels, then the lion drops back.
+            if (Chase.SinceBite < PounceSeconds) return Mathf.Lerp(NearGap, gap, Mathf.InverseLerp(.7f, 1f, Chase.SinceBite / PounceSeconds));
+            return gap;
         }
         private void LeadIn()
         {
@@ -176,7 +229,7 @@ namespace Mongscape.Presentation.Map
                 var view = Spawn(prefab, jump ? new Vector3(3f, .9f, .25f) : new Vector3(.3f, 2.6f, .3f), jump ? new Color(.55f, .38f, .2f) : new Color(.35f, .36f, .4f), Chase.NoteZ(i), 0f);
                 noteViews.Add(view != null ? view.transform : null);
             }
-            if (Chase.Map.Length > 0f)
+            if (Chase.Map.Length > 0f && !Chase.Practice)
             {
                 gate = Spawn(content != null ? content.IronGate : null, new Vector3(4f, 3.5f, .3f), new Color(.3f, .3f, .33f), Chase.EntryZ + Chase.DistanceAt(Chase.Map.BreakEnd), 0f);
                 Spawn(content != null ? content.Exit : null, new Vector3(5f, 4f, .5f), new Color(.4f, .6f, .3f), Chase.EntryZ + Chase.DistanceAt(Chase.Map.Length - .5f), 0f);
@@ -185,6 +238,22 @@ namespace Mongscape.Presentation.Map
             cage = Spawn(content != null ? content.LionCage : null, new Vector3(3f, 2.5f, 3f), new Color(.45f, .4f, .3f), cageZ, 4.2f);
             cagePosition = cage != null ? cage.transform.position : Vector3.zero;
             lion = Spawn(content != null ? content.Lion : null, new Vector3(.9f, 1.1f, 2f), new Color(.85f, .6f, .25f), cageZ, 4.2f);
+            rig = null;
+            if (content != null && content.Lion != null)
+            {
+                // The model keeps its own import transform under a holder that the chase moves.
+                var model = lion;
+                var holder = new GameObject(model.name); holder.transform.position = model.transform.position;
+                model.transform.SetParent(holder.transform, true);
+                props[props.Count - 1] = lion = holder;
+                rig = model.AddComponent<LionRig>();
+                rig.Configure(content.LionBreakout, content.LionRun, content.LionRoar, content.LionPounce);
+                holder.transform.localScale = Vector3.one * LionScale;
+                // A warm key light in front of the face, so the lion reads in the small mirror at night.
+                var glow = new GameObject("LionLight").AddComponent<Light>();
+                glow.transform.SetParent(holder.transform, false); glow.transform.localPosition = new Vector3(0f, 2.6f, 3f);
+                glow.type = LightType.Point; glow.color = new Color(1f, .82f, .6f); glow.range = 8f; glow.intensity = 6f;
+            }
         }
         private GameObject Spawn(GameObject prefab, Vector3 fallbackSize, Color fallbackColor, float z, float side)
         {
@@ -230,10 +299,9 @@ namespace Mongscape.Presentation.Map
         private void PlaceLion()
         {
             if (lion == null) return;
-            float runnerZ = run.Runner.Z, t = Chase.SongTime;
-            float gap = Mathf.Lerp(22f, 2.5f, Chase.Lion);
-            if (Chase.Roaring) gap = Mathf.Lerp(gap, 1.6f, 1f - Chase.RoarLeft / Mathf.Max(ZooChase.RoarSeconds, Chase.RoarLead));
-            float z = runnerZ - gap;
+            float t = Chase.SongTime;
+            Animate();
+            float z = run.Runner.Z - Gap();
             RouteSurface.Sample(z, out float x, out float y);
             var onPath = new Vector3(x, y, z);
             Vector3 position;
@@ -245,10 +313,23 @@ namespace Mongscape.Presentation.Map
                 position = Vector3.Lerp(cagePosition, onPath, k) + Vector3.up * Mathf.Sin(k * Mathf.PI) * 1.6f;
                 if (cage != null) cage.transform.localRotation = Quaternion.Euler(0f, 0f, Mathf.Sin(t * 40f) * 3f * (1f - k));
             }
-            else position = onPath + Vector3.up * Mathf.Abs(Mathf.Sin(t * Mathf.PI * 2f * 160f / 120f)) * .18f;
+            // The run clip carries the gallop; the box stand-in keeps a bob.
+            else position = onPath + Vector3.up * (rig != null ? 0f : Mathf.Abs(Mathf.Sin(t * Mathf.PI * 2f * 160f / 120f)) * .18f);
             lion.transform.position = position;
             var forward = t < 1f ? Vector3.left : Vector3.forward;
-            lion.transform.rotation = Quaternion.LookRotation(forward, Vector3.up) * Quaternion.Euler(Chase.Roaring ? -12f : 0f, 0f, 0f);
+            lion.transform.rotation = Quaternion.LookRotation(forward, Vector3.up) * Quaternion.Euler(Chase.Roaring && rig == null ? -12f : 0f, 0f, 0f);
+        }
+        private void Animate()
+        {
+            if (rig == null) return;
+            if (peekAt >= 0f) { rig.Show(LionAction.Roar, Chase.SongTime - peekAt); return; }
+            var action = Chase.ActionAt(PounceSeconds);
+            float time = Chase.SongTime;
+            // The breakout fills the entry cut and the roar fills the whole warning.
+            if (action == LionAction.CageBreakout && content.LionBreakout != null) time = Chase.SongTime / ZooChase.CutSeconds * content.LionBreakout.length;
+            else if (action == LionAction.Roar && content.LionRoar != null) time = (1f - Chase.RoarLeft / Mathf.Max(ZooChase.RoarSeconds, Chase.RoarLead)) * content.LionRoar.length;
+            else if (action == LionAction.Pounce) time = Chase.SinceBite;
+            rig.Show(action, time);
         }
         private void PlaceRear()
         {
@@ -258,10 +339,10 @@ namespace Mongscape.Presentation.Map
             RouteSurface.Sample(run.Runner.Z, out float x, out float y);
             var eye = new Vector3(x + run.Runner.WorldLaneOffset, y + 1.7f, run.Runner.Z + .4f);
             rear.transform.position = eye;
-            Vector3 target = cut ? Vector3.Lerp(cagePosition, lion != null ? lion.transform.position : cagePosition, .5f) + Vector3.up * .8f : eye + Vector3.back * 10f + Vector3.down * 1.2f;
+            Vector3 target = cut ? Vector3.Lerp(cagePosition, lion != null ? lion.transform.position : cagePosition, .5f) + Vector3.up * .8f : lion != null ? lion.transform.position + Vector3.up * 1.1f : eye + Vector3.back * 10f + Vector3.down * 1.2f;
             rear.transform.rotation = Quaternion.LookRotation(target - eye, Vector3.up);
             rear.targetTexture = cut ? cutTexture : mirrorTexture;
-            rear.fieldOfView = cut ? 60f : 50f;
+            rear.fieldOfView = cut ? 60f : 34f;
             rear.enabled = true;
         }
         private void EnsureRear()

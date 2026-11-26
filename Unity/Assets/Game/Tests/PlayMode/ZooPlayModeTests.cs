@@ -36,6 +36,15 @@ namespace Mongscape.Tests
             Assert.IsTrue(GameObject.Find("Zoo_Lion") != null || GameObject.Find("Zoo_Note") != null, "The lion is placed");
             yield return new WaitUntil(() => zoo.Chase.Phase == ZooPhase.Song || !zoo.Chase.Active);
             Assert.AreEqual(ZooPhase.Song, zoo.Chase.Phase);
+            // The art clips drive the lion's bones.
+            yield return null;
+            Assert.IsNotNull(zoo.Rig, "The lion is animated");
+            Assert.AreEqual(LionAction.Run, zoo.Rig.Current);
+            var bones = zoo.Rig.GetComponentsInChildren<Transform>(); var before = new Quaternion[bones.Length];
+            for (int i = 0; i < bones.Length; i++) before[i] = bones[i].localRotation;
+            yield return new WaitForSeconds(.2f);
+            int moved = 0; for (int i = 1; i < bones.Length; i++) if (Quaternion.Angle(before[i], bones[i].localRotation) > 1f) moved++;
+            Assert.Greater(moved, 3, "The run clip binds to the lion's bones");
             float expected = zoo.Chase.EntryZ + zoo.Chase.DistanceAt(zoo.Chase.SongTime);
             Assert.AreEqual(expected, game.Session.Runner.Z, 1.5f, "The runner follows the song clock");
             Assert.AreEqual(0, game.Session.Runner.Lane);

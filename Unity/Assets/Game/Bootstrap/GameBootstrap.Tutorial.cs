@@ -31,7 +31,6 @@ namespace Mongscape.Bootstrap
             Tutorial.MyPose = TrackedFrame; Tutorial.MyBaseline = () => Pose.Baseline; Tutorial.Tuning = () => Pose.Tuning;
             Tutorial.StepsPerMinute = () => Pose.StepsPerMinute; Tutorial.PaceScale = () => pace.Scale;
             Tutorial.RunCadence = Settings != null ? Settings.Motion.RunCadence : 100f;
-            Tutorial.HandsUp = () => player.Style == PlayStyle.Keyboard ? KeyboardGameInput.HandsHeld : ArmPose.HandsUp(TrackedFrame());
             Tutorial.SyncMs = () => userSettings != null ? userSettings.SyncOffsetMs : 0;
             Tutorial.SaveSync = ms => { if (userSettings == null) return; userSettings.SyncOffsetMs = ms; UserSettingsStore.Save(userSettings); };
             Tutorial.Demo = gameObject.AddComponent<TutorialDemo>(); Tutorial.Demo.Configure(MonkeyPrefab);

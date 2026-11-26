@@ -3,8 +3,8 @@ using UnityEngine;
 
 namespace Mongscape.Presentation
 {
-    // The drawings of the tutorial stations and picture steps (plan 6-1b): the stuck monkey, the beat lane, the warning rule,
-    // the lion in the mirror, the searchlight with the lock gauge and the alarm rule. Plain shapes on the 1280x720 HUD plane;
+    // The drawings of the tutorial stations and picture steps (plan 6-1b): the stuck monkey, the sync beats, the warning rule,
+    // the searchlight with the lock gauge and the alarm rule. Plain shapes on the 1280x720 HUD plane;
     // the caller has set the GUI matrix. No sentences, only pictures and one symbol each.
     internal static class TutorialPictures
     {
@@ -58,26 +58,12 @@ namespace Mongscape.Presentation
             }
         }
 
-        // One verse: notes slide toward the line on the left; jump notes are gold arrows, hands-up notes are blue.
-        public static void Verse(HudSkin skin, BeatVerse verse, float now, PlayStyle style)
+        // Notes caught in the zoo verse, against the number that passes.
+        public static void Count(HudSkin skin, int hits, int pass)
         {
-            const float lineX = 360, speed = 300, y = 520;
-            Box(new Rect(220, y - 52, 900, 104), new Color(.07f, .06f, .05f, .75f));
-            Box(new Rect(lineX - 3, y - 52, 6, 104), Gold);
-            double t = now - verse.Offset;
-            for (int n = 0; n < verse.Count; n++)
-            {
-                float x = lineX + (float)(verse.NoteTime(n) - t) * speed;
-                if (x < 200 || x > 1130) continue;
-                bool jump = BeatVerse.Notes[n] == NoteKind.Jump;
-                var color = verse.IsHit(n) ? Green : jump ? Gold : new Color(.5f, .8f, 1f);
-                if (!verse.IsHit(n) && x < lineX - 60) color = new Color(color.r, color.g, color.b, .25f);
-                Round(new Vector2(x, y), 36, color);
-                Mark(skin, new Rect(x - 36, y - 20, 72, 40), jump ? "↑" : "만세", jump ? 34 : 20, Ink);
-            }
-            Mark(skin, new Rect(220, y + 56, 900, 30), verse.Hits + " / " + BeatVerse.PassHits, 22, verse.Passed ? Green : Color.white);
+            Box(new Rect(580, 330, 120, 36), new Color(.07f, .06f, .05f, .75f));
+            Mark(skin, new Rect(580, 330, 120, 36), hits + " / " + pass, 22, hits >= pass ? Green : Color.white);
         }
-
 
         // 1 yellow warning stays until the map ends, the second one means the cuffs (shown as four small pictures in a row).
         public static void WarnRule(HudSkin skin, float t)
@@ -101,19 +87,6 @@ namespace Mongscape.Presentation
             Round(c + new Vector2(-44, 0), 38, steel); Round(c + new Vector2(-44, 0), 20, new Color(.07f, .06f, .05f, 1));
             Round(c + new Vector2(44, 0), 38, steel); Round(c + new Vector2(44, 0), 20, new Color(.07f, .06f, .05f, 1));
             Box(new Rect(c.x - 30, c.y - 5, 60, 10), steel);
-        }
-
-        // The lion behind in the mirror: it grows as the beat slips, then roars (red frame).
-        public static void Rearview(HudSkin skin, float t)
-        {
-            var frame = new Rect(440, 350, 400, 210);
-            Box(frame, new Color(.4f, .27f, .15f)); var glass = new Rect(frame.x + 12, frame.y + 12, frame.width - 24, frame.height - 24); Box(glass, new Color(.12f, .2f, .22f));
-            float size = Mathf.Lerp(26, 76, Mathf.SmoothStep(0, 1, Mathf.Clamp01(t * 1.2f)));
-            var c = glass.center + new Vector2(0, 12);
-            Round(c, size, Mane); Round(c + new Vector2(0, size * .1f), size * .66f, Face);
-            Round(c + new Vector2(-size * .26f, -size * .08f), size * .1f, Ink); Round(c + new Vector2(size * .26f, -size * .08f), size * .1f, Ink);
-            Round(c + new Vector2(0, size * .2f), size * .14f, Ink);
-            if (t > .7f && Mathf.Repeat(t * 8, 1) < .5f) { Box(new Rect(frame.x, frame.y, frame.width, 6), Red); Box(new Rect(frame.x, frame.yMax - 6, frame.width, 6), Red); }
         }
 
         // The searchlight finds the monkey, the bell rings, a warning appears; the second one is the cuffs.
