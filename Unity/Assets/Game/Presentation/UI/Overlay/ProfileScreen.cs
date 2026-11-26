@@ -166,7 +166,7 @@ namespace Mongscape.Presentation
             skin.Box(track, Palette.A(Palette.Ground, .9f));
             float share = Mathf.Clamp01((float)(form.WeekMinutes / ExerciseLog.WeeklyGoalMinutes));
             if (share > 0) skin.Box(new Rect(track.x, track.y, Mathf.Max(4, track.width * share), track.height), share >= 1 ? new Color(.4f, 1, .6f) : Palette.Gold);
-            string streak = form.Streak > 0 ? "연속 " + form.Streak.ToString(Num) + "일째 운동 중 · 하루 10분이면 이어져요" : "하루 10분 운동하면 연속 기록이 시작돼요";
+            string streak = form.Streak > 0 ? "연속 " + form.Streak.ToString(Num) + "일째 운동 중이에요" : "하루 10분 운동하면 연속 기록이 시작돼요";
             skin.Text(new Rect(r.x + 24, r.y + 60, r.width - 48, 22), streak, 14, Palette.Sand, TextAnchor.MiddleLeft, false, true);
         }
         void DrawStats(ProfileForm form, Rect r)

@@ -42,7 +42,7 @@ namespace Mongscape.DevTools
             var hud = game.Hud; var data = (IHudData)game;
             // --mongscape-uicapture-quick: only the run, pause and result (no settings window or face login, which list or open cameras).
             bool quick = Array.IndexOf(Environment.GetCommandLineArgs(), "--mongscape-uicapture-quick") >= 0;
-            if (quick) { game.UseAccountServices(new ReviewAccountGateway()); Seed(data, false); game.OpenMainMenu(); hud.ShowPage(MenuPage.Help); yield return Shot("07h_Help"); hud.ShowPage(MenuPage.Week); hud.WeekCard.Show(81, new double[] { 12, 0, 25, 18, 26, 0, 0 }, new double[] { 34, 21, 26 }, 4, false); yield return Shot("07w_WeekCard"); hud.ShowPage(MenuPage.Setup); yield return Shot("08_Setup"); goto run; }
+            if (quick) { game.UseAccountServices(new ReviewAccountGateway()); Seed(data, false); game.OpenLogin(); yield return Shot("02_Login"); hud.ShowPage(MenuPage.SignUp); yield return Shot("03_SignUp_Consent"); game.OpenMainMenu(); yield return Shot("07_MainMenu"); hud.MainView.AskQuit(true); yield return Shot("07q_MainMenu_Quit"); hud.MainView.AskQuit(false); hud.ShowPage(MenuPage.Ranking); hud.Ranking.Select(false, PlayStyle.Keyboard, true); yield return Shot("06_Ranking_Today"); hud.Ranking.Select(false, PlayStyle.Keyboard, false); yield return Shot("06b_Ranking_All"); game.OpenMainMenu(); hud.ShowPage(MenuPage.Help); yield return Shot("07h_Help"); hud.ShowPage(MenuPage.Week); hud.WeekCard.Show(81, new double[] { 12, 0, 25, 18, 26, 0, 0 }, new double[] { 34, 21, 26 }, 4, false); yield return Shot("07w_WeekCard"); hud.ShowPage(MenuPage.Setup); yield return Shot("08_Setup"); goto run; }
             // One look at the login gate with the configured face server (connected or not), read-only: nothing is sent but /health.
             game.OpenLogin();
             float checkStarted = Time.realtimeSinceStartup;
@@ -66,7 +66,7 @@ namespace Mongscape.DevTools
             game.OpenTraits(); yield return Shot("05_Traits"); game.CloseTraits();
             // The review data is on this PC (keyboard runs); the member tab would ask the server.
             hud.ShowPage(MenuPage.Ranking); hud.Ranking.Select(false, PlayStyle.Keyboard, false); yield return Shot("06_Ranking");
-            game.OpenMainMenu(); yield return Shot("07_MainMenu");
+            game.OpenMainMenu(); yield return Shot("07_MainMenu"); hud.MainView.AskQuit(true); yield return Shot("07q_MainMenu_Quit"); hud.MainView.AskQuit(false);
             hud.SelectMenu(MenuAction.Credits); yield return Shot("07c_Credits"); hud.CloseCredits();
             // Settings: each tab, then cancel so the review leaves the stored settings untouched.
             var settings = FindFirstObjectByType<SettingsWindow>();

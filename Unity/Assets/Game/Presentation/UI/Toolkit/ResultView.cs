@@ -167,15 +167,15 @@ namespace Mongscape.Presentation
             radial.Apply(); return radial;
         }
         // Play style icons (style guide 5): full body = standing person, upper body = seated with raised arms, keyboard.
-        public static void ModeIcon(Painter2D p, Rect r, PlayStyle style)
+        public static void ModeIcon(Painter2D p, Rect r, PlayStyle style) => ModeIconColored(p, r, style, UiTokens.TextDim);
+        public static void ModeIconColored(Painter2D p, Rect r, PlayStyle style, Color c)
         {
-            var c = UiTokens.TextDim;
             if (style == PlayStyle.Keyboard)
             {
                 UiIcons.RoundRect(p, new Rect(r.x, r.y + r.height * .28f, r.width, r.height * .48f), r.width * .08f, c);
                 for (int row = 0; row < 2; row++) for (int k = 0; k < 5; k++)
-                    UiIcons.RoundRect(p, new Rect(r.x + r.width * (.08f + k * .175f), r.y + r.height * (.35f + row * .14f), r.width * .12f, r.height * .09f), 2, UiTokens.Panel);
-                UiIcons.RoundRect(p, new Rect(r.x + r.width * .25f, r.y + r.height * .63f, r.width * .5f, r.height * .07f), 2, UiTokens.Panel);
+                    UiIcons.RoundRect(p, new Rect(r.x + r.width * (.08f + k * .175f), r.y + r.height * (.35f + row * .14f), r.width * .12f, r.height * .09f), 2, c == UiTokens.Panel ? UiTokens.Accent : UiTokens.Panel);
+                UiIcons.RoundRect(p, new Rect(r.x + r.width * .25f, r.y + r.height * .63f, r.width * .5f, r.height * .07f), 2, c == UiTokens.Panel ? UiTokens.Accent : UiTokens.Panel);
                 return;
             }
             if (style == PlayStyle.UpperBody)
@@ -289,6 +289,8 @@ namespace Mongscape.Presentation
         void FillMore()
         {
             moreBody.Clear();
+            // A keyboard run has only the monkeys and one line: a shorter window (graphics review).
+            SizeOverlay(more, moreClose, camera ? 900 : 560);
             var left = UiTokens.Box(0, 0, 620, 560); var right = UiTokens.Box(680, 0, 600, 560);
             moreBody.Add(left); moreBody.Add(right);
             var workout = session?.Workout;
@@ -316,6 +318,12 @@ namespace Mongscape.Presentation
                 if (change.Length > 0) right.Add(UiTokens.Label(change.Replace(" · ", "  "), 44, UiTokens.Text));
             }
             var who = UiTokens.Label("WHO 권장 주 150분", 36, UiTokens.TextDim); who.style.marginTop = 24; right.Add(who);
+        }
+        static void SizeOverlay(VisualElement overlay, UiButton close, float height)
+        {
+            var panel = overlay[0];
+            panel.style.height = height; panel.style.top = (1080 - height) / 2;
+            close.style.top = height - 50 - 120;
         }
         static VisualElement MonkeyRow(int n)
         {
