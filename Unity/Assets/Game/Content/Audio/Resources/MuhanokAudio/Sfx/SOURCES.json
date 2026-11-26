@@ -222,6 +222,99 @@
       "source": "Synthesised by Tools/Audio/make_sfx.py (project)",
       "seconds": 0.96,
       "license": "Project"
+    },
+    {
+      "file": "lock_click.ogg",
+      "use": "Prison lock: click while picking",
+      "pack": "rpg-audio",
+      "source": "https://kenney.nl/assets/rpg-audio",
+      "original": "metalClick.ogg",
+      "original_sha256": "9851a69d0c613e13bceef08060ecc4148f098ef487927cbebe270d642398a3b3",
+      "seconds": 0.369,
+      "license": "CC0-1.0"
+    },
+    {
+      "file": "lock_open.ogg",
+      "use": "Prison lock: opens",
+      "pack": "rpg-audio",
+      "source": "https://kenney.nl/assets/rpg-audio",
+      "original": "metalLatch.ogg",
+      "original_sha256": "ba9ba60b172b3ebc131a940f25793cd2e207aca7af73dc80d637277f060f1708",
+      "seconds": 0.199,
+      "license": "CC0-1.0"
+    },
+    {
+      "file": "monkey_rescue.ogg",
+      "use": "A monkey is rescued (short rising pizzicato)",
+      "pack": "music-jingles",
+      "source": "https://kenney.nl/assets/music-jingles",
+      "original": "jingles_PIZZI10.ogg",
+      "original_sha256": "baf50beffc4cc2dbb92c9d596a22732a8b5249c7648b681c0df6d0af6c561478",
+      "seconds": 0.794,
+      "license": "CC0-1.0"
+    },
+    {
+      "file": "fork_blocked.ogg",
+      "use": "Leaning into a blocked fork: short metal clunk",
+      "pack": "impact-sounds",
+      "source": "https://kenney.nl/assets/impact-sounds",
+      "original": "impactMetal_medium_003.ogg",
+      "original_sha256": "2a185e2e57211d02c1bdd33b872d6b6a2fe83e6c14f4e56f426a95e717acf08e",
+      "seconds": 0.294,
+      "license": "CC0-1.0",
+      "layered_with": {
+        "pack": "impact-sounds",
+        "original": "impactPlate_light_003.ogg",
+        "original_sha256": "dbfb7c1d002576696df3e9a43d6639ee3f342068398b5e7b55bc2389d20508a9",
+        "gain": 0.8
+      },
+      "processing": {
+        "max_sec": 0.3,
+        "drive": 6.0
+      }
+    },
+    {
+      "file": "gate_down.ogg",
+      "use": "Iron gate comes down",
+      "pack": "rpg-audio",
+      "source": "https://kenney.nl/assets/rpg-audio",
+      "original": "doorClose_1.ogg",
+      "original_sha256": "834d29c60a8a8bfb50b158cdb6b7dfa8f02812a408a1ee9703d038dfab0b1aeb",
+      "seconds": 0.63,
+      "license": "CC0-1.0",
+      "processing": {
+        "drive": 3.0
+      }
+    },
+    {
+      "file": "warning.ogg",
+      "use": "First warning (short falling pizzicato)",
+      "pack": "music-jingles",
+      "source": "https://kenney.nl/assets/music-jingles",
+      "original": "jingles_PIZZI05.ogg",
+      "original_sha256": "017e600a154f504039b302b4848a5ad5870248280b4320b037f1d82324988bf5",
+      "seconds": 0.525,
+      "license": "CC0-1.0"
+    },
+    {
+      "file": "caught.ogg",
+      "use": "Caught (falling pizzicato)",
+      "pack": "music-jingles",
+      "source": "https://kenney.nl/assets/music-jingles",
+      "original": "jingles_PIZZI01.ogg",
+      "original_sha256": "3f8f2534a297d19386c233a7ee4fa8737cc40870dd206010263760e1983dde46",
+      "seconds": 0.985,
+      "license": "CC0-1.0"
+    },
+    {
+      "file": "new_record.ogg",
+      "use": "New record (rising pizzicato)",
+      "pack": "music-jingles",
+      "source": "https://kenney.nl/assets/music-jingles",
+      "original": "jingles_PIZZI02.ogg",
+      "original_sha256": "4967dc3cd31257716f455ef50f8980378726ce086954c7a5563c0c57ee129e3e",
+      "seconds": 0.944,
+      "license": "CC0-1.0"
     }
   ],
   "missing_in_kenney": [

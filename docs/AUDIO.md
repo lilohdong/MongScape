@@ -1,6 +1,6 @@
 # 사운드
 
-효과음은 Kenney CC0 오디오 팩에서 골라 넣었고, 파일이 없으면 예전처럼 코드로 합성한 소리로 대신합니다. 배경음 5곡(메인 메뉴, 광산, 감옥, 동물원, 결과)은 직접 작곡해 `Unity/Assets/Game/Content/Audio/Music/`에 넣었습니다. 게임 연결 전이라 지금 게임은 아직 코드 합성 음악을 냅니다.
+효과음은 Kenney CC0 오디오 팩에서 골라 넣었고, 파일이 없으면 예전처럼 코드로 합성한 소리로 대신합니다. 배경음 5곡(메인 메뉴, 광산, 감옥, 동물원, 결과)은 직접 작곡해 `Unity/Assets/Game/Content/Audio/Music/`에 넣었습니다. `GameAudio`가 `MusicPlayer`로 상황에 맞는 곡과 층을 틀고, 동물원에서는 동물원 맵이 곡을 직접 틉니다.
 
 ## 효과음 (지금 게임에서 쓰는 것)
 
@@ -26,9 +26,9 @@
 - 사이렌: Kenney에 없어서 지금처럼 코드 합성 소리를 씁니다.
 - 코인 소리와 순위표 유리 깨짐은 바꾸지 않았습니다 (코인은 2차에서 없어짐).
 
-## 2차용 효과음 (골라만 둠, 코드 연결 전)
+## 2차 효과음
 
-위치: `Unity/Assets/Game/Content/Audio/SfxV2/` (Resources 밖이라 빌드에 들어가지 않습니다).
+위치: 다른 효과음과 같은 `Resources/MuhanokAudio/Sfx/`. 자물쇠 딸깍, 열림, 감방 구출은 감옥 맵(`PrisonArt`)이 틉니다.
 
 | 파일 | 쓸 곳 | 출처 | 제안 이득 |
 | --- | --- | --- | --- |
@@ -41,10 +41,11 @@
 | `caught` | 잡힘 (내려가는 피치카토) | Music Jingles / jingles_PIZZI01 | 1.00 |
 | `new_record` | 신기록 (올라가는 피치카토) | Music Jingles / jingles_PIZZI02 | 1.00 |
 
-연결할 때 지킬 것 (사운드 검수 1회차):
-- `warning`, `caught`, `fork_blocked`, `alarm_bell`, `lion_roar`가 날 때도 `GameAudio.Duck()`으로 음악을 잠깐 낮춥니다.
-- 바나나 밟기는 `slip`과 `warning`이 같이 나므로, `warning`을 약 0.15초 늦게 냅니다.
-- `fork_blocked`는 막힌 쪽으로 계속 기울이면 반복되므로 같은 소리 재생 간격을 최소 0.4초로 막습니다.
+게임에서 (사운드 검수 1회차 반영):
+- 경고가 늘면 추격자 소리(`ChaserCue`: 사이렌, `lion_roar`, `alarm_bell`)와 `warning`이 나고, 잡히면 `hit` 뒤 0.35초에 `caught`, 결과 화면이 열리고 0.8초 뒤 신기록이면 `new_record`.
+- `hit`, `warning`, `caught`, `new_record`, `fork_blocked`, `alarm_bell`, `lion_roar`가 날 때 `GameAudio.Duck()`으로 음악을 0.4초 동안 5 dB 낮춥니다.
+- 바나나 밟기는 `slip`과 `warning`이 같이 나므로, `slip` 뒤 0.3초 안의 `warning`은 0.15초 늦게 냅니다.
+- 다른 맵 코드가 부르는 훅: `GameAudio.ForkBlocked()` (막힌 갈림길, 최소 0.4초 간격), `GameAudio.GateDown()` (철문), `GameAudio.MonkeyRescued()` (원숭이 합류).
 
 ## 크기 기준
 
@@ -69,7 +70,10 @@
 | 동물원 | `Music/Zoo` | 노트 신호음을 뺀 곡 `zoo_chase_v1.ogg` + 신호음 `zoo_sig_jump.ogg`, `zoo_sig_armsup.ogg` | run | 반복 없음 61.5초 | 곡만 -20.4 LUFS, 신호음 포함 약 -18.6 |
 
 - 곡마다 `<곡>.layers.json`에 층의 뜻, 상태별 층 음량, 상태별 측정값(LUFS, 트루 피크), 페이드 시간이 있습니다. 모든 상태 트루 피크 -1 dBTP 이하.
-- 재생: 한 곡의 층을 모두 `AudioSource.PlayScheduled`로 같은 시각에 시작하고 반복, 상태가 바뀌면 층 음량만 페이드. Load Type은 Streaming으로 맞춰 두었습니다.
+- 재생: `MusicPlayer`가 한 곡의 층을 모두 `AudioSource.PlayScheduled`로 같은 시각에 시작해 반복하고, 상태가 바뀌면 층 음량만 페이드합니다. 곡끼리는 1초 크로스페이드. 클립은 `Resources/MongscapeMusic/MusicLibrary` 에셋이 참조하고, Load Type은 Streaming. 라이브러리가 없으면 예전 합성 음악.
+- 곡 고르기: 메뉴와 로딩은 메인 메뉴, 달리는 중은 지금 구역(광산 또는 감옥), 결과 화면은 결과. 동물원은 맵이 `MapMusicPlaying`을 켜면 반복 곡을 멈춤. 잡힘 연출 동안 40%, 일시정지 동안 50%.
+- 광산 tension 층: 경찰 게이지(`ChaserGauge`, 추격 압력, 바나나 추격 중 최대값)가 0.3에서 0.8로 오를 때 0에서 1로.
+- 감옥: 계단 = base + steps, 간수 추격 계단 = base + steps + tension, 탐조등 숨기(문 앞 정지) = hide만, 다가가기, 평지, 옥상 = base.
 - 동물원 신호음: 배치가 6벌이라 곡에서 빼고 따로 둡니다. 박자표 노트 시각보다 `zoo_signals.json`의 `lead_seconds`만큼 먼저(점프 0초, 만세 0.094초, 글로켄 앞꾸밈음 때문) 음악 음량으로 재생하면 통과된 zoo-v1의 균형과 거의 같습니다. 둘을 리미터 없이 더해도 -1 dBTP를 넘지 않게 신호음은 2 dB 낮춰 두었습니다.
 - 감옥 페이드: 숨기로 0.3초, 숨기에서 나올 때 1.0초, 나머지 0.5초. 광산: chase로 0.5초, base로 1.5초.
 - 작곡, 렌더, 음량 기준, 다시 만들기: [Tools/Music/README.md](../Tools/Music/README.md). 라이선스: [Tools/Music/LICENSES.md](../Tools/Music/LICENSES.md).

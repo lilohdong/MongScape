@@ -17,7 +17,7 @@ import musiclib as m  # noqa: E402
 
 AUDIO = os.path.normpath(os.path.join(HERE, "..", "..", "Unity", "Assets", "Game", "Content", "Audio"))
 LIVE = os.path.join(AUDIO, "Resources", "MuhanokAudio", "Sfx")
-NEXT = os.path.join(AUDIO, "SfxV2")
+NEXT = LIVE
 MUSIC_VOLUME, EFFECTS_VOLUME = .35, .7   # GameSettings defaults
 
 # (file, gain) - live gains match GameAudio.cs; v2 gains are the proposed starting values.
