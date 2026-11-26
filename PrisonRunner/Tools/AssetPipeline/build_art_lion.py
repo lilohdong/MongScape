@@ -26,13 +26,13 @@ EYE = A.mat('LionEyeWhite', '#FAF5DE', .5)
 PUPIL = A.mat('LionPupil', '#080502', .4)
 MOUTH = A.mat('LionMouth', '#1F0302', .8)
 TONGUE = A.mat('LionTongue', '#BA1F21', .6)
-IRIS = A.mat('LionIris', '#E0A21C', .45)
 # Cage (reuses in-game zoo / prison materials by name, see palette 'unity' links)
 IRON = A.mat('ForgedIron', '#333D45', .64, .48)
-STEEL = A.mat('PaintedSteel', '#8FA6AB', .66, .35)
+
 BARK = A.mat('ZooLogBark', '#80664A', .78)
 CAUTION = A.mat('ZooCaution', '#FFBD14', .7)
-SLAB = A.mat('blender_Stone_2', '#CFC2AD', .78)
+STRAW = A.mat('ZooStraw', '#C9A45C', .85)
+EARTH = A.mat('ZooEarth', '#33542B', .9)
 
 # ------------------------------------------------------------------ rig
 SIDES = [(-1, 'R'), (1, 'L')]
@@ -122,8 +122,7 @@ def build_body():
     for s, l in SIDES:
         part(details, A.ball('Inner ear', (s * .275, -1.005, 1.97), (.08, .02, .08), CREAM), 'Ear.' + l)
         part(details, A.ball('Eye white', (s * .145, -1.30, 1.75), (.095, .05, .11), EYE), 'Head')
-        part(details, A.ball('Iris', (s * .14, -1.345, 1.74), (.055, .012, .07), IRIS), 'Head')
-        part(details, A.ball('Pupil', (s * .14, -1.355, 1.74), (.026, .008, .05), PUPIL), 'Head')
+        part(details, A.ball('Pupil', (s * .14, -1.345, 1.735), (.042, .012, .062), PUPIL), 'Head')
         part(details, A.ball('Glint', (s * .14 - .015, -1.362, 1.775), (.012, .005, .016), EYE), 'Head')
         b = A.ball('Brow', (s * .15, -1.30, 1.86), (.11, .035, .03), MANE); b.rotation_euler.y = -s * .32
         part(details, b, 'Head')
@@ -261,11 +260,27 @@ def breakout_at(f):
         g = N.mix(N.add(STRIKE, {'Root': {'l': (0, 3.0 - 4.05, 0)}}), g, (f - 42) / 4)
     return g
 
+def body_travel(fn):
+    """Move any 'Root' translation onto the Spine (body) bone: the Root bone stays at the origin
+    (no root motion in Unity), travel is only in the body keys like the monkey's Hips."""
+    def wrapped(f):
+        p = dict(fn(f)); r = p.pop('Root', None)
+        if r and 'l' in r:
+            p = N.add(p, {'Spine': {'l': r['l']}})
+        return p
+    return wrapped
+
+def pounce_in_place(f):
+    """Pounce with a short 1.2 m lunge (the chase code keeps placing the lion; this is only the strike)."""
+    p = pounce_at(f); r = p.get('Root', {}).get('l')
+    if r: p['Root'] = {'l': (r[0], r[1] * .4, r[2])}
+    return p
+
 clips = {
-    'AN_Lion_Run': (17, lambda f: gallop((f - 1) / 16)),
-    'AN_Lion_Roar': (46, roar_at),
-    'AN_Lion_Pounce': (28, pounce_at),
-    'AN_Lion_CageBreakout': (60, breakout_at),
+    'AN_Lion_Run': (21, lambda f: gallop((f - 1) / 20)),   # same 21 frames (0.67 s) as the monkey/police runs
+    'AN_Lion_Roar': (46, body_travel(roar_at)),
+    'AN_Lion_Pounce': (28, body_travel(pounce_in_place)),
+    'AN_Lion_CageBreakout': (60, body_travel(breakout_at)),
 }
 
 # ------------------------------------------------------------------ cage prop (zoo enclosure front)
@@ -273,28 +288,30 @@ cage_parts = []
 def cp(ob): cage_parts.append(ob); return ob
 W, D, H = 2.6, 4.0, 2.7          # inner width (x), depth (y), height
 FRONT = -1.25                    # door plane (y); the lion starts at y = +.6 inside
-cp(A.box('Cage floor slab', (0, .35, .08), (W + .5, D + .4, .16), SLAB, .12))
+cp(A.box('Cage floor', (0, .35, .08), (W + .5, D + .4, .16), EARTH, .12))
+for k in range(9):  # straw tufts on the floor
+    cp(A.box('Straw', (-1 + (k % 3) * 1.0 + .2 * math.sin(k * 7), .4 + (k // 3) * 1.1, .19), (.7, .45, .08), STRAW, .3, segments=1, rot=(0, 0, k * .7)))
 for x in (-W / 2 - .05, W / 2 + .05):
     for y in (FRONT, FRONT + D):
-        cp(A.box('Cage post', (x, y, H / 2 + .1), (.2, .2, H), STEEL, .14))
+        cp(A.box('Cage post', (x, y, H / 2 + .1), (.26, .26, H), BARK, .14))
 for y in (FRONT, FRONT + D):
-    cp(A.box('Cage top beam', (0, y, H + .15), (W + .32, .22, .22), STEEL, .14))
+    cp(A.box('Cage top beam', (0, y, H + .15), (W + .4, .26, .26), BARK, .14))
 for x in (-W / 2 - .05, W / 2 + .05):
-    cp(A.box('Cage side beam', (x, FRONT + D / 2, H + .15), (.22, D + .2, .22), STEEL, .14))
-cp(A.box('Cage roof', (0, FRONT + D / 2, H + .32), (W + .6, D + .5, .14), BARK, .14))
+    cp(A.box('Cage side beam', (x, FRONT + D / 2, H + .15), (.26, D + .2, .26), BARK, .14))
+cp(A.box('Cage roof', (0, FRONT + D / 2, H + .38), (W + .7, D + .6, .2), STRAW, .3))
 for x in (-W / 2 - .05, W / 2 + .05):
-    for k in range(9):
-        cp(A.cyl('Side bar', (x, FRONT + .35 + k * .42, H / 2 + .12), .045, H - .1, IRON, 10))
-for k in range(9):
-    cp(A.cyl('Back bar', (-W / 2 + .2 + k * (W - .4) / 8, FRONT + D, H / 2 + .12), .045, H - .1, IRON, 10))
+    for k in range(6):
+        cp(A.cyl('Side bar', (x, FRONT + .5 + k * .6, H / 2 + .12), .05, H - .1, IRON, 10))
+for k in range(5):
+    cp(A.cyl('Back bar', (-W / 2 + .3 + k * (W - .6) / 4, FRONT + D, H / 2 + .12), .05, H - .1, IRON, 10))
 cp(A.box('Warning plate', (W / 2 - .2, FRONT - .14, H + .15), (.7, .05, .3), CAUTION, .2))
 cage = A.join(cage_parts, 'MD_Zoo_LionCage')
 bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
 door_parts = []
-for k in range(7):
-    door_parts.append(A.cyl('Door bar', (-W / 2 + .3 + k * (W - .6) / 6, FRONT, H / 2 + .12), .05, H - .2, IRON, 10))
+for k in range(5):  # wide gaps so the lion and its mane read through the door
+    door_parts.append(A.cyl('Door bar', (-W / 2 + .35 + k * (W - .7) / 4, FRONT, H / 2 + .12), .055, H - .2, IRON, 10))
 for z in (.35, H - .1):
-    door_parts.append(A.box('Door rail', (0, FRONT, z), (W - .3, .12, .14), STEEL, .16))
+    door_parts.append(A.box('Door rail', (0, FRONT, z), (W - .3, .12, .14), BARK, .16))
 door_parts.append(A.box('Door lock', (0, FRONT - .09, H * .5), (.26, .09, .32), A.mat('LockBrass', '#F0940F', .45, .4), .2))
 door = A.join(door_parts, 'Door')
 A.set_origin(door, (0, FRONT, .3))   # pivot at the bottom rail: tips forward and slides when rammed
@@ -347,13 +364,18 @@ if '--no-render' not in A.args():
     A.studio()
     cage.hide_render = True; door.hide_render = True
     rig.animation_data.action = None; N.apply_pose(rig, STAND)
-    A.render_turn(out, 'Lion_model', [mesh], res=(900, 900), size=3.4, center=(0, -.1, 1.05))
-    for name, frames in (('AN_Lion_Run', [1, 5, 9, 13]), ('AN_Lion_Roar', [1, 12, 24, 44]), ('AN_Lion_Pounce', [1, 6, 12, 20])):
+    A.render_turn(out, 'Lion_model', [mesh], views=('front', 'three_quarter', 'side', 'back'), res=(900, 900), size=3.4, center=(0, -.1, 1.05))
+    for name, frames in (('AN_Lion_Run', [1, 6, 11, 16]), ('AN_Lion_Roar', [1, 12, 24, 44]), ('AN_Lion_Pounce', [1, 6, 12, 20])):
         rig.animation_data.action = actions[name]
         bpy.context.scene.frame_start, bpy.context.scene.frame_end = 1, clips[name][0]
         A.render_frames(out, name, [mesh], frames, 'side' if name != 'AN_Lion_Roar' else 'three_quarter',
-                        size=6.6 if name == 'AN_Lion_Pounce' else 3.6, center=(0, -1.6, 1.3) if name == 'AN_Lion_Pounce' else (0, -.2, 1.05),
+                        size=4.6 if name == 'AN_Lion_Pounce' else 3.6, center=(0, -.7, 1.2) if name == 'AN_Lion_Pounce' else (0, -.2, 1.05),
                         gif_frames=list(range(1, clips[name][0] + 1, 1 if name == 'AN_Lion_Run' else 2)))
+    rig.animation_data.action = actions['AN_Lion_Run']   # the runner camera sees the chaser from behind/front
+    bpy.context.scene.frame_start, bpy.context.scene.frame_end = 1, 21
+    A.render_frames(out, 'AN_Lion_Run_back', [mesh], [1, 6, 11, 16], 'back', size=3.6, center=(0, -.2, 1.05),
+                    gif_frames=list(range(1, 22)))
+    A.render_frames(out, 'AN_Lion_Run_front', [mesh], [1, 6, 11, 16], 'front', size=3.6, center=(0, -.2, 1.05), gif=False)
     cage.hide_render = False; door.hide_render = False
     rig.animation_data.action = actions['AN_Lion_CageBreakout']
     door.animation_data.action = door_act

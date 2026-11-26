@@ -20,12 +20,12 @@ def arm(side, down=80, forward=0, bend=15, hand=0, twist=0):
     fx = -forward * hang
     fz = -s * forward * (1 - hang)
     return {n + 'UpperArm': {'r': (fx, twist, fz), 'base': base},
-            n + 'LowerArm': {'r': (0, 0, -s * bend) if hang < .5 else (-bend, 0, 0)},
+            n + 'LowerArm': {'r': (0, 0, -s * bend)},   # elbow flex, same axis as the existing clips
             n + 'Hand': {'r': (0, 0, -s * hand)}}
 
 def leg(side, lift=0, knee=4, foot=0, spread=0):
     n = NAME[side]; s = S[side]
-    return {n + 'UpperLeg': {'r': (-lift, 0, 0 if not spread else 0), 'l': (0, 0, 0)} if not spread else {'r': (-lift, -s * spread, 0)},
+    return {n + 'UpperLeg': {'r': (-lift, -s * spread, 0)},
             n + 'LowerLeg': {'r': (knee, 0, 0)},
             n + 'Foot': {'r': (foot, 0, 0)}}
 

@@ -8,7 +8,7 @@ GROUPS = [
  ('Mine', [('Stone 0', '#B8AD9C'), ('Stone 3', '#DACCB6'), ('Stone 5', '#F1E0C8'), ('Timber', '#C7B08F'), ('Cart timber', '#97693D'), ('Cart steel', '#65737C'), ('Ore', '#F9CA45'), ('Lantern', '#FF9C30'), ('Cavern', '#0E171F')]),
  ('Prison', [('Concrete', '#B8D1EB'), ('Forged iron', '#333D45'), ('Painted steel', '#8FA6AB'), ('Security red', '#CC160B'), ('Cold lamp', '#70B8F0'), ('Hazard yellow', '#FFC70F'), ('Charcoal', '#060709')]),
  ('Zoo', [('Grass', '#245226'), ('Foliage', '#2B6629'), ('Earth', '#33542B'), ('Log bark', '#80664A'), ('Caution', '#FFBD14'), ('Giraffe', '#E2B86F'), ('Elephant', '#A0A6B1'), ('Paving', '#FFFFFF'), ('Night stone', '#14334F')]),
- ('Art v2 (new)', [('Lion coat', '#C9822F'), ('Lion mane', '#7A3313'), ('Lion muzzle', '#F2D49E'), ('Lion nose', '#3B1A14'), ('Beam', '#FFE7A3'), ('Sign board', '#2A1D14'), ('Sign ink', '#FFD36B')]),
+ ('Art v2 (new)', [('Lion coat', '#C9822F'), ('Lion mane', '#7A3313'), ('Lion muzzle', '#F2D49E'), ('Lion nose', '#3B1A14'), ('Zoo straw', '#C9A45C'), ('Beam', '#FFE7A3'), ('Sign board', '#2A1D14'), ('Sign ink', '#FFD36B')]),
 ]
 W, SW, PAD = 1500, 140, 20
 font = None

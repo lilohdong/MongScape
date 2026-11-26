@@ -27,8 +27,18 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: ZooEarth
+    second: {fileID: 2100000, guid: d568a53618c9dcf4b86161ffc8bce3d5, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: ZooLogBark
     second: {fileID: 2100000, guid: f4aade71ee1008240b52b8299917e6b1, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: ZooStraw
+    second: {fileID: 2100000, guid: 914e1bbbdace4f04a90ce09466033d47, type: 2}
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule

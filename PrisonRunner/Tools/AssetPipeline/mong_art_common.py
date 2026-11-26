@@ -83,6 +83,10 @@ def write_palette(asset):
     """Merge this asset's materials into art_v2_palette.json (read by MongscapeArtV2Import.cs).
     A material whose name matches an existing Unity material in ArtV2/Materials reuses that material."""
     data = _load_items(PALETTE_JSON)
+    for name in list(data):  # this asset no longer uses materials it is not registering now
+        if name not in _registry and asset in data[name].get('assets', []):
+            data[name]['assets'].remove(asset)
+            if not data[name]['assets']: del data[name]
     for name, v in _registry.items():
         old = data.get(name, {})
         v = dict(v, name=name, emission=v['emission'] or '', alpha=-1 if v['alpha'] is None else v['alpha'])
@@ -307,7 +311,7 @@ def studio(ground=True):
     bg = next(n for n in world.node_tree.nodes if n.type == 'BACKGROUND')
     bg.inputs[0].default_value = (*hex_linear(STUDIO_BG), 1); bg.inputs[1].default_value = 1.0
     if ground:
-        bpy.ops.mesh.primitive_plane_add(size=60, location=(0, 0, 0))
+        bpy.ops.mesh.primitive_plane_add(size=400, location=(0, 0, 0))
         g = bpy.context.object; g.name = 'Studio ground'; g['mong_studio'] = True
         g.data.materials.append(mat('Studio ground', STUDIO_GROUND, .9))
         _registry.pop('Studio ground', None)

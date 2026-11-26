@@ -49,18 +49,6 @@
    ]
   },
   {
-   "hex": "#E0A21C",
-   "smoothness": 0.55,
-   "metallic": 0.0,
-   "emission": "",
-   "emission_strength": 0.0,
-   "alpha": -1,
-   "name": "LionIris",
-   "assets": [
-    "Lion"
-   ]
-  },
-  {
    "hex": "#7A3313",
    "smoothness": 0.15,
    "metallic": 0.0,
@@ -145,18 +133,6 @@
    ]
   },
   {
-   "hex": "#8FA6AB",
-   "smoothness": 0.34,
-   "metallic": 0.35,
-   "emission": "",
-   "emission_strength": 0.0,
-   "alpha": -1,
-   "name": "PaintedSteel",
-   "assets": [
-    "Lion"
-   ]
-  },
-  {
    "hex": "#FFBD14",
    "smoothness": 0.3,
    "metallic": 0.0,
@@ -164,6 +140,18 @@
    "emission_strength": 0.0,
    "alpha": -1,
    "name": "ZooCaution",
+   "assets": [
+    "Lion"
+   ]
+  },
+  {
+   "hex": "#33542B",
+   "smoothness": 0.1,
+   "metallic": 0.0,
+   "emission": "",
+   "emission_strength": 0.0,
+   "alpha": -1,
+   "name": "ZooEarth",
    "assets": [
     "Lion"
    ]
@@ -181,13 +169,13 @@
    ]
   },
   {
-   "hex": "#CFC2AD",
-   "smoothness": 0.22,
+   "hex": "#C9A45C",
+   "smoothness": 0.15,
    "metallic": 0.0,
    "emission": "",
    "emission_strength": 0.0,
    "alpha": -1,
-   "name": "blender_Stone_2",
+   "name": "ZooStraw",
    "assets": [
     "Lion"
    ]

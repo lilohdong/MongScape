@@ -42,8 +42,10 @@ def mix(a, b, t):
             if k in va or k in vb:
                 pa, pb_ = va.get(k, (0, 0, 0)), vb.get(k, (0, 0, 0))
                 o[k] = tuple(pa[i] + (pb_[i] - pa[i]) * t for i in range(3))
-        base = va.get('base') or vb.get('base')
-        if base is not None: o['base'] = base
+        ba, bb = va.get('base'), vb.get('base')
+        if ba is not None and bb is not None: o['base'] = ba.slerp(bb, t)
+        elif ba is not None or bb is not None:
+            o['base'] = (ba or Quaternion()).slerp(bb or Quaternion(), t)
         out[bone] = o
     return out
 
