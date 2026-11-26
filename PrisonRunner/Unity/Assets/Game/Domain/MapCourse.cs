@@ -54,19 +54,4 @@ namespace Muhanok.Domain
         public static int Stairs(int baseCount, int destination)
             => Math.Max(1, Math.Min(3, baseCount + (destination == 0 ? 1 : destination < 0 ? -1 : 0)));
     }
-
-    // Today's challenge (exercise plan 10): everyone runs the same map (the seed of the KST date) and has a ranking for the day.
-    public static class DailyChallenge
-    {
-        // Challenge runs are kept apart on the server by play style + Offset (10 full body, 11 upper body, 12 keyboard).
-        public const int ModeOffset = 10;
-        public static DateTime KstDate(DateTime utcNow) => utcNow.AddHours(9).Date;
-        public static string Day(DateTime utcNow) => KstDate(utcNow).ToString("yyyyMMdd");
-        public static int Seed(DateTime utcNow)
-        {
-            var d = KstDate(utcNow);
-            unchecked { int h = 17; h = h * 31 + d.Year; h = h * 31 + d.Month; h = h * 31 + d.Day; return (h & 0x7fffffff) % 2000000000 + 1; }
-        }
-        public static int Mode(PlayStyle style) => (int)style + ModeOffset;
-    }
 }

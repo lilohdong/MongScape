@@ -31,14 +31,6 @@ namespace Muhanok.Presentation
             GUI.color = Palette.Gold; GUI.Label(new Rect(195, 92, 500, 50), "탈출 준비", skin.Style(36, FontStyle.Bold));
             if (openSettings != null && skin.FlatButton(new Rect(950, 92, 140, 44), "설정", false)) openSettings();
             if (back != null && skin.FlatButton(new Rect(800, 92, 140, 44), "뒤로", false)) back();
-            // Today's challenge: the same map for everyone today, with its own ranking (exercise plan 10).
-            if (data != null && skin.FlatButton(new Rect(600, 92, 190, 44), ChallengeLabel(data.DailyChallenge), data.DailyChallenge)) data.SetDailyChallenge(!data.DailyChallenge);
-            // On, what it is: in the free space right of the title (QA 2026-11-25 L7).
-            if (data != null && data.DailyChallenge)
-            {
-                hintStyle ??= new GUIStyle(skin.Style(14, FontStyle.Normal)) { wordWrap = true };
-                GUI.color = Palette.Cream; GUI.Label(new Rect(345, 92, 250, 48), ChallengeHint, hintStyle);
-            }
             GUI.color = Color.white;
             skin.Panel(new Rect(195, 150, 400, 182), .95f);
             GUI.Label(new Rect(215, 166, 360, 40), data?.SavedProfile.DisplayName ?? "플레이어", skin.Style(30, FontStyle.Bold));
@@ -94,12 +86,10 @@ namespace Muhanok.Presentation
                 if (skin.FlatButton(new Rect(860, 500, 230, 40), CadenceLabel(on), on)) data.SetCadenceSpeed(!on);
             }
         }
-        public static string ChallengeLabel(bool on) => on ? "오늘의 도전 ✓" : "오늘의 도전";
         public static string CadenceLabel(bool on) => "달리기 속도 조절 " + (on ? "켜짐" : "꺼짐");
         public const string CadenceOffHint = "꺼짐: 걸음은 칼로리에서 빠져요";
         // Under the cadence button, inside the panel and clear of 시작하기 (584).
         public static readonly Rect CadenceOffHintRect = new Rect(640, 544, 450, 32);
-        public const string ChallengeHint = "오늘은 모두 같은 맵을 달려요.\n순위는 도전 탭에 따로!";
         public const string NoCameraGuide = "카메라가 연결되어 있지 않아 키보드로만 플레이할 수 있어요. 카메라를 연결하면 전신·상체를 고를 수 있어요.";
         private bool Choice(Rect rect, string text, bool selected, bool enabled = true)
         {

@@ -100,19 +100,5 @@ namespace Muhanok.Tests
             Assert.AreEqual(ExerciseKind.Warmup, tied.Recommend("", now), "Strength and cardio both at 0");
         }
 
-        [Test] public void TodaysChallengeIsOneMapPerKstDayWithItsOwnBoard()
-        {
-            var a = new DateTime(2026, 11, 25, 14, 59, 0, DateTimeKind.Utc); // 23:59 KST
-            Assert.AreEqual(DailyChallenge.Seed(a), DailyChallenge.Seed(a.AddHours(-10)), "The same KST day");
-            Assert.AreNotEqual(DailyChallenge.Seed(a), DailyChallenge.Seed(a.AddMinutes(2)), "A new KST day, a new map");
-            Assert.AreEqual("20261125", DailyChallenge.Day(a)); Assert.AreEqual(11, DailyChallenge.Mode(PlayStyle.UpperBody));
-            var board = new Leaderboard(); long now = DateTime.Now.Ticks;
-            var challenge = new RankingEntry { Name = "C", Score = 500, ScoreVersion = RunScore.Version, Mode = 0, Challenge = "20261125", Ticks = now };
-            board.Add(new RankingEntry { Name = "N", Score = 100, ScoreVersion = RunScore.Version, Mode = 0, Ticks = now + 1 });
-            Assert.AreEqual(1, board.Add(challenge));
-            CollectionAssert.AreEqual(new[] { "N" }, board.View(false, DateTime.Now, PlayStyle.FullBody).ConvertAll(e => e.Name), "Challenge runs stay off the ordinary board");
-            CollectionAssert.AreEqual(new[] { "C" }, board.ChallengeView("20261125", PlayStyle.FullBody).ConvertAll(e => e.Name));
-            Assert.IsEmpty(board.ChallengeView("20261126", PlayStyle.FullBody));
-        }
     }
 }

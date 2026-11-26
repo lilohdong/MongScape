@@ -29,9 +29,7 @@ namespace Muhanok.Presentation
             Row(ref row, "위치", RouteSurface.AreaAt(session.Runner.Z));
             bool workout = PlayStyleInfo.UsesCamera(data?.Player?.Style ?? PlayStyle.Keyboard);
             Row(ref row, "칼로리", workout ? session.Workout.EstimatedKcal.ToString("F1", Num) + " / " + session.Workout.GoalKcal.ToString("F0", Num) + " kcal" : RunHudModel.KeyboardKcal);
-            if (session.Config.IntervalMode) Row(ref row, "구간 전환", session.PhaseRemainingSeconds.ToString("F0", Num) + "초 남음");
-            else if (workout) Row(ref row, WorkoutReport.BigMovesLabel, WorkoutReport.BigMoves(session));
-            else Row(ref row, "최고 콤보", session.BestDodgeStreak.ToString(Num));
+            if (workout) Row(ref row, WorkoutReport.BigMovesLabel, WorkoutReport.BigMoves(session));
             if (skin.PrimaryButton(new Rect(710, 247, 240, 58), "계속하기", 26)) resume?.Invoke();
             if (skin.FlatButton(new Rect(710, 325, 240, 48), "설정", false)) settings?.Invoke();
             if (skin.FlatButton(new Rect(710, 391, 240, 48), "메인으로", false)) toMenu?.Invoke();

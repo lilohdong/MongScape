@@ -5,12 +5,12 @@ using UnityEngine;
 
 namespace Muhanok.Presentation
 {
-    public enum HudNoticeKind { None, Tracking, Obstacle, Fork, Police, Combo, Section }
+    // During a run the only text line left is the tracking-lost notice and the fork key line (v2: no guidance text while running).
+    public enum HudNoticeKind { None, Tracking, Fork }
 
     // Sample in Update, then render cached values for all of Unity's GUI events.
     public sealed class RunHudModel
     {
-        public const float CueInterval = .1f;
         public string Coins { get; private set; } = "0";
         // The double-coin item marks the coin counter with "×2" while it lasts.
         public bool CoinBoost { get; private set; }
@@ -40,29 +40,23 @@ namespace Muhanok.Presentation
         public string Notice { get; private set; }
         public HudNoticeKind NoticeKind { get; private set; }
         public readonly string[] ItemLabels = new string[ItemCatalog.All.Length];
-        public int CueScans { get; private set; }
         public bool ShowFork {get;private set;}
         public bool ForkCommitted {get;private set;}
         public int ForkLane {get;private set;}
         public float ForkProgress {get;private set;}
         public string ForkCaption {get;private set;}
         // Fork preview (exercise plan 3): about PreviewSeconds before the choice, three cards at the top say where each
-        // branch leads; the card the player leans toward lights up. After the choice the course banner shows for a second.
-        public const float PreviewSeconds = 4f, BannerSeconds = 1.2f;
+        // branch leads; the card the player leans toward lights up.
+        public const float PreviewSeconds = 4f;
         public bool ShowForkPreview {get;private set;}
         public readonly int[] PreviewDestinations = new int[3];
-        public string CourseBanner {get;private set;}
-        private float bannerUntil;
-        private int forkDestination=99;
         private static readonly string[] ChoiceCaptions={"왼쪽 선택","가운데 선택","오른쪽 선택"};
         private readonly int[] itemSeconds = new int[ItemCatalog.All.Length];
-        private int coins = -1, kcal = -1, streak;
+        private int coins = -1, kcal = -1;
         private double goal = -1;
         private int workoutMode = -1;
-        private bool goalReached, previousPolice, previousRiding;
-        private float nextScan, lastZ = -1, lastTime = -1, lostSince = -1, comboUntil, policeUntil, sectionUntil;
-        private string actionCue, comboText;
-        private int previousLane;
+        private bool goalReached;
+        private float lastZ = -1, lastTime = -1, lostSince = -1;
 
         // Play time without pauses as "플레이 3:12"; display only, not part of the score.
         public static string PlayTime(float seconds)
@@ -94,17 +88,10 @@ namespace Muhanok.Presentation
             float previewFrom=CartFork.Decision-PreviewSeconds*Mathf.Max(1f,session.CurrentSpeed);
             ShowForkPreview=running && (plan?.HasFork(sequenceHere)??false) && !plan.ForkLocked(session.Runner.Z) && lap>=previewFrom && lap<CartFork.Decision;
             if(ShowForkPreview)for(int lane=-1;lane<=1;lane++)PreviewDestinations[lane+1]=plan.DestinationFor(sequenceHere,lane);
-            if(ForkCommitted)
-            {
-                int destination=plan.DestinationAt(sequenceHere);
-                if(destination!=forkDestination){forkDestination=destination;ForkCaption=MapCourse.Course(destination);bannerUntil=now+BannerSeconds;}
-            }
-            else {forkDestination=99;ForkCaption=ChoiceCaptions[Mathf.Clamp(ForkLane+1,0,2)];}
-            CourseBanner=running&&now<bannerUntil?ForkCaption:null;
+            ForkCaption=ForkCommitted?MapCourse.Course(plan.DestinationAt(sequenceHere)):ChoiceCaptions[Mathf.Clamp(ForkLane+1,0,2)];
             if (now < lastTime || session.Runner.Z < lastZ - .01f)
             {
-                nextScan = comboUntil = policeUntil = sectionUntil = strikeClearedUntil = 0; previousStrikes = 0;
-                actionCue = null; streak = 0; lostSince = -1; previousPolice = previousRiding = false;
+                strikeClearedUntil = 0; previousStrikes = 0; lostSince = -1;
             }
             lastZ = session.Runner.Z; lastTime = now;
             ShowStrike = running && session.SlipStrikes == 1 && !session.SlipPursuit;
@@ -148,7 +135,7 @@ namespace Muhanok.Presentation
             Notice = null; NoticeKind = HudNoticeKind.None;
             if (!running)
             {
-                nextScan = 0; actionCue = null; ShowPoseRecovery = ShowCamera = false; lostSince = -1;
+                ShowPoseRecovery = ShowCamera = false; lostSince = -1;
                 return;
             }
             bool lost = PlayStyleInfo.UsesCamera(style) && pose != PoseStatus.Tracking;
@@ -156,42 +143,17 @@ namespace Muhanok.Presentation
             else if (lostSince < 0) lostSince = now;
             ShowPoseRecovery = lost && now - lostSince >= .75f;
             ShowCamera = CameraEnabled && PlayStyleInfo.UsesCamera(style);
-            if (session.DodgeStreak > streak && session.DodgeStreak > 1)
-            {
-                comboText = session.DodgeStreak + " 콤보!"; comboUntil = now + 1.1f;
-            }
-            streak = session.DodgeStreak;
-            if (police && !previousPolice) policeUntil = now + 2.2f;
-            previousPolice = police;
-            if (session.Runner.Riding != previousRiding)
-            {
-                // Only boarding the cart is announced; leaving it shows no "달리기 구간" line.
-                sectionUntil = session.Runner.Riding ? now + 1.8f : 0; nextScan = 0;
-                previousRiding = session.Runner.Riding;
-            }
-            // Lane changes refresh immediately; otherwise search at most ten times a second.
-            if (previousLane != session.Runner.Lane) { previousLane = session.Runner.Lane; nextScan = 0; }
-            if (now >= nextScan)
-            {
-                nextScan = now + CueInterval; CueScans++;
-                actionCue = ActionCuePresenter.Find(session, map, style);
-            }
             bool fork = RouteSurface.ActivePlan?.ForkWindow(session.Runner.Z) ?? false;
-            NoticeKind = SelectNotice(ShowPoseRecovery, actionCue != null, fork, now < policeUntil, now < comboUntil, now < sectionUntil);
+            NoticeKind = SelectNotice(ShowPoseRecovery, fork);
             switch (NoticeKind)
             {
                 case HudNoticeKind.Tracking:
                     Notice = pose == PoseStatus.NoCamera || pose == PoseStatus.NoModel ? "카메라 연결을 확인하세요 (F1 설정)" : "몸이 보이게 서 주세요 (R 다시 맞추기)"; break;
-                case HudNoticeKind.Obstacle: Notice = actionCue; break;
                 case HudNoticeKind.Fork: Notice = style == PlayStyle.Keyboard ? "A 왼쪽   C 가운데   D 오른쪽" : "← 몸을 옮겨 경로 선택 →"; break;
-                case HudNoticeKind.Police: Notice = "경찰 접근!"; break;
-                case HudNoticeKind.Combo: Notice = comboText; break;
-                case HudNoticeKind.Section: Notice = "수레 구간"; break;
             }
         }
 
-        public static HudNoticeKind SelectNotice(bool trackingLost, bool obstacle, bool fork, bool police, bool combo, bool section)
-            => trackingLost ? HudNoticeKind.Tracking : obstacle ? HudNoticeKind.Obstacle : fork ? HudNoticeKind.Fork
-            : police ? HudNoticeKind.Police : combo ? HudNoticeKind.Combo : section ? HudNoticeKind.Section : HudNoticeKind.None;
+        public static HudNoticeKind SelectNotice(bool trackingLost, bool fork)
+            => trackingLost ? HudNoticeKind.Tracking : fork ? HudNoticeKind.Fork : HudNoticeKind.None;
     }
 }

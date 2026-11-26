@@ -32,19 +32,16 @@ MonoBehaviour:
     BananaCatchSeconds: 1.2
     SpeedRampDistance: 120
     InputBufferSeconds: 0.2
-    IntervalMode: 1
-    SprintSpeed: 6
-    SprintSpeedStep: 0.75
-    MaxSprintSpeed: 12
-    RestSpeed: 5
-    SprintSeconds: 40
-    RestSeconds: 20
+    SpeedCurve: 1
+    RunSpeedStart: 6
+    RunSpeedMax: 12
+    CartSpeedStart: 5
+    CartSpeedMax: 7
     SpeedChangeRate: 2.5
     RandomizeLayout: 1
     ExtendedRoutes: 1
     DifficultyGraceDistance: 150
     DifficultyFullDistance: 2000
-    MaxRestSpeed: 7
     ObstacleChanceStart: 0.25
     ObstacleChanceMax: 0.9
     BlockerChanceStart: 0.72

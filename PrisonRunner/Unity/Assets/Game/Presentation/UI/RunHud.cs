@@ -51,7 +51,7 @@ namespace Muhanok.Presentation
                 skin.Card(rect, Palette.A(Palette.Ground, .82f));
                 GUI.Label(rect, Model.ItemLabels[i], skin.Centered(16, FontStyle.Bold));
             }
-            if (session.Flow.State == GameFlowState.Running && data != null) { DrawPaceEdges(data.PacePressure); Strip.Draw(data.Race, data.HazardNear, Time.unscaledTime); DrawCoach(data.BananaWarning ? BananaText : data.CoachText); DrawForkPreview(data); }
+            if (session.Flow.State == GameFlowState.Running && data != null) { DrawPaceEdges(data.PacePressure); Strip.Draw(data.Race, data.HazardNear, Time.unscaledTime); DrawForkPreview(data); }
             if (session.Flow.State == GameFlowState.Running)
             {
                 if (Model.ShowSiren) DrawSiren();
@@ -60,7 +60,7 @@ namespace Muhanok.Presentation
                 // The small corner needs live video; the recovery panel also shows when the camera fails, to say why. No webcam at all: nothing.
                 if (Model.ShowCamera && data != null && data.CameraDetected && (Model.ShowPoseRecovery || PosePreview.Live(data)))
                     PosePreview.Draw(skin, Model.ShowPoseRecovery ? RecoveryCameraArea : CameraArea, data, Model.ShowPoseRecovery);
-                if (Model.ShowFork && Model.NoticeKind!=HudNoticeKind.Tracking && Model.NoticeKind!=HudNoticeKind.Obstacle) DrawFork();
+                if (Model.ShowFork && Model.NoticeKind!=HudNoticeKind.Tracking) DrawFork();
                 else if (data == null || data.StartBanner <= 0) DrawNotice(data != null && data.JointCompareOpen ? NoticeBesideJoints : NoticeArea);
             }
             if (data != null) DrawBanners(data, session.Flow.State);
@@ -73,18 +73,10 @@ namespace Muhanok.Presentation
         }
         private static readonly string[] ForkArrows={"↖","↑","↗"};
         // Below the target cadence the screen edges redden with the police pressure (pulsing gently); nothing in the middle.
-        public const string BananaText = "바나나 주의! 두 번 밟으면 잡혀요";
         public const string Recommend = "추천";
-        // Three cards before the fork, then the chosen course's banner (exercise plan 3).
+        // Three cards before the fork (exercise plan 3).
         private void DrawForkPreview(IHudData data)
         {
-            if (Model.CourseBanner != null)
-            {
-                var banner = new Rect(340, 236, 600, 70);
-                skin.Card(banner, Palette.A(Palette.Gold, .92f));
-                GUI.color = Palette.Outline; GUI.Label(banner, Model.CourseBanner, skin.Centered(34, FontStyle.Bold)); GUI.color = Color.white;
-                return;
-            }
             if (!Model.ShowForkPreview) return;
             string[] sides = { "◀ 왼쪽으로 기울이기", "가운데 유지", "오른쪽으로 기울이기 ▶" };
             for (int lane = -1; lane <= 1; lane++)
@@ -109,14 +101,6 @@ namespace Muhanok.Presentation
                 }
                 GUI.color = Color.white;
             }
-        }
-        // Coach subtitle: above the notice line, short, in the encouragement colour.
-        public static readonly Rect CoachArea = new Rect(400, 528, 480, 48);
-        private void DrawCoach(string text)
-        {
-            if (string.IsNullOrEmpty(text)) return;
-            skin.Card(CoachArea, Palette.A(Palette.Ground, .85f));
-            GUI.color = Palette.Gold; GUI.Label(CoachArea, text, skin.Centered(24, FontStyle.Bold)); GUI.color = Color.white;
         }
         private static Texture2D edgeV, edgeH;
         // A ramp from transparent to solid: vertical (rows) or horizontal (columns).
@@ -216,7 +200,7 @@ namespace Muhanok.Presentation
         {
             if (Model.Notice == null) return;
             skin.Card(area, Palette.A(Palette.Ground, .9f));
-            GUI.color = Model.NoticeKind == HudNoticeKind.Tracking || Model.NoticeKind == HudNoticeKind.Police ? Palette.Warn : Palette.Cream;
+            GUI.color = Model.NoticeKind == HudNoticeKind.Tracking ? Palette.Warn : Palette.Cream;
             GUI.Label(area, Model.Notice, skin.Centered(23, FontStyle.Bold));
             GUI.color = Color.white;
         }

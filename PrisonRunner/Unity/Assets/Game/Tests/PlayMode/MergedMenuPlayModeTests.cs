@@ -26,12 +26,8 @@ namespace Muhanok.Tests
             while((game.IsLoading||game.IsRevealing)&&Time.realtimeSinceStartup<deadline) yield return null;
             yield return null;
             Assert.AreEqual(GameFlowState.Running,game.Session.Flow.State); Assert.IsFalse(hud.RunModel.ShowWorkout);
-            game.TogglePause(); yield return null;
-            int searches=hud.RunModel.CueScans;
-            yield return new WaitForSecondsRealtime(.3f);
-            Assert.AreEqual(searches,hud.RunModel.CueScans);
-            game.TogglePause(); yield return null; yield return null;
-            Assert.Greater(hud.RunModel.CueScans,searches);
+            game.TogglePause(); yield return null; Assert.IsTrue(game.Session.Paused);
+            game.TogglePause(); yield return null; Assert.IsFalse(game.Session.Paused);
             game.TogglePause(); game.ExitToMenu(); Assert.AreEqual(1,Time.timeScale);
         }
         [UnityTest]

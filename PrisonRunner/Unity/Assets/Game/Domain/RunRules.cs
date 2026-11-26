@@ -54,15 +54,14 @@ namespace Muhanok.Domain
         public float SpeedRampDistance = 120f;
         // Jump/slide pressed shortly before landing runs on landing. Zero keeps the strict legacy rule.
         public float InputBufferSeconds = 0f;
-        // Interval mode: walking sections are sprints, the mine cart ride is the rest.
-        public bool IntervalMode = false;
-        public float SprintSpeed = 6f, SprintSpeedStep = .5f, MaxSprintSpeed = 9.5f, RestSpeed = 5f;
-        public float SprintSeconds = 40f, RestSeconds = 20f, SpeedChangeRate = 2.5f;
+        // Speed curve (extended routes only): on foot and in the cart the speed follows the difficulty curve from the start
+        // to the max value and changes smoothly at SpeedChangeRate; off, BaseSpeed/CartSpeed plus SpeedRampDistance apply.
+        public bool SpeedCurve = false;
+        public float RunSpeedStart = 6f, RunSpeedMax = 9.5f, CartSpeedStart = 5f, CartSpeedMax = 7f, SpeedChangeRate = 2.5f;
         public bool RandomizeLayout = false;
         public bool ExtendedRoutes = true;
         // Difficulty curve: nothing rises before the grace distance, everything reaches its max at the full distance.
         public float DifficultyGraceDistance = 150f, DifficultyFullDistance = 2000f;
-        public float MaxRestSpeed = 7f;
         public float ObstacleChanceStart = .25f, ObstacleChanceMax = .9f;
         // Kept equal: a failed blocker roll gives the chunk full-width rows or an animal instead, so lowering it adds hazards.
         public float BlockerChanceStart = .72f, BlockerChanceMax = .72f;
@@ -285,14 +284,12 @@ namespace Muhanok.Domain
         // Raised once when a strike times out, so the HUD can show the all-clear.
         public event Action StrikeCleared;
         public int ShieldSaves {get;private set;}
-        public int DodgeStreak {get;private set;}
-        public int BestDodgeStreak {get;private set;}
-        public void RecordDodge() { DodgeStreak++;BestDodgeStreak=Math.Max(BestDodgeStreak,DodgeStreak); }
         public bool SlipPursuit=>bananaCatchLeft>0;
-        public float TargetSpeed => Config.IntervalMode ? IntervalSpeed() : Difficulty.Speed(Score.Distance, Config, Runner.Riding);
+        private bool Curve => Config.SpeedCurve && Config.ExtendedRoutes;
+        public float TargetSpeed => Curve ? CurveSpeed(Score.Distance, Runner.Riding) : Difficulty.Speed(Score.Distance, Config, Runner.Riding);
         public float CurrentSpeed => Flow.State == GameFlowState.Running && !Paused ? MoveSpeed * Runner.SpeedMultiplier * SpeedScale : 0f;
         // On foot the cadence sets the pace (CadencePace: 0.7 walking to 1.3 sprinting); the cart keeps its own speed.
-        private float MoveSpeed => (Config.IntervalMode ? smoothSpeed : TargetSpeed) * (Runner.Riding ? 1f : CadenceScale);
+        private float MoveSpeed => (Curve ? smoothSpeed : TargetSpeed) * (Runner.Riding ? 1f : CadenceScale);
         // Set each frame from CadencePace (1 for the keyboard, the option off, or the tutorial).
         public float CadenceScale { get; set; } = 1f;
         // How close the police come because the player is below the target cadence (0..CadencePace.MaxPressure).
@@ -303,29 +300,18 @@ namespace Muhanok.Domain
         // keep their time gap if the player speeds up before reaching them).
         public float PlannedSpeed(float distance)
         {
-            float speed = Config.IntervalMode && Config.ExtendedRoutes ? Difficulty.Ramp(Config.SprintSpeed, Config.MaxSprintSpeed, distance, Config)
-                : Config.IntervalMode ? Math.Min(Config.MaxSprintSpeed, Config.SprintSpeed + Config.SprintSpeedStep * IntervalCycle) : Difficulty.Speed(distance, Config);
+            float speed = Curve ? CurveSpeed(distance, false) : Difficulty.Speed(distance, Config);
             return speed * Math.Min(CadencePace.Sprint, CadenceScale + .3f);
         }
-        // Interval rhythm comes from the route: walking chunks sprint, the cart ride rests.
-        public bool Resting => Config.IntervalMode && Runner.Riding;
-        public int IntervalCycle => RouteSurface.CycleAt(RouteSurface.SequenceAt(Runner.Z));
-        public float PhaseRemainingSeconds => RouteSurface.SegmentRemaining(Runner.Z) / Math.Max(1f, TargetSpeed);
         public CaptureReason Reason {get;private set;}
         private float bananaCatchLeft, smoothSpeed;
         private float lastHit = -100f, clock, lastStrike;
         // Play time without pauses; shown to the player, not part of the score.
         public float Elapsed => clock;
         public RunSession(RunConfig config) { Config = config; Score = new ScoreSystem(Workout); Runner = new RunnerController(config); Stair = new StairJudge(config); smoothSpeed = TargetSpeed; }
-        private float IntervalSpeed()
-        {
-            // The extended route follows the difficulty curve; the authored interval route keeps its per-lap step.
-            if (Config.ExtendedRoutes)
-                return Runner.Riding ? Difficulty.Ramp(Config.RestSpeed, Config.MaxRestSpeed, Score.Distance, Config)
-                    : Difficulty.Ramp(Config.SprintSpeed, Config.MaxSprintSpeed, Score.Distance, Config);
-            if (Runner.Riding) return Config.RestSpeed;
-            return Math.Min(Config.MaxSprintSpeed, Config.SprintSpeed + Config.SprintSpeedStep * IntervalCycle);
-        }
+        private float CurveSpeed(float distance, bool riding) => riding
+            ? Difficulty.Ramp(Config.CartSpeedStart, Config.CartSpeedMax, distance, Config)
+            : Difficulty.Ramp(Config.RunSpeedStart, Config.RunSpeedMax, distance, Config);
         public void Tick(float dt)
         {
             if (Flow.State != GameFlowState.Running || Paused) return;
@@ -359,7 +345,7 @@ namespace Muhanok.Domain
         // Reads the item state at pickup time, so a coin in the same frame as the item already counts double.
         public void CollectCoin() { Score.CoinMultiplier = Items.IsActive(ItemKind.DoubleScore) ? 2 : 1; Score.CollectCoin(); }
         public bool Hit(bool heavy)
-        {DodgeStreak=0;return Fail(CaptureReason.Collision);}
+        { return Fail(CaptureReason.Collision); }
         public bool Fail(CaptureReason reason)
         {
             if (Flow.State != GameFlowState.Running || Paused) return false;
@@ -377,7 +363,7 @@ namespace Muhanok.Domain
         public bool ForceCatch()
         {
             if (Flow.State != GameFlowState.Running || Paused || tutorial) return false;
-            DodgeStreak=0; Catch(CaptureReason.Collision); return true;
+            Catch(CaptureReason.Collision); return true;
         }
         private void Catch(CaptureReason reason)
         {
@@ -389,7 +375,6 @@ namespace Muhanok.Domain
         public bool Slip(SlipSource source=SlipSource.Floor)
         {
             if(Flow.State!=GameFlowState.Running||Paused||Runner.Riding||Invincible&&!tutorial)return false;
-            DodgeStreak=0;
             // The tutorial's banana lesson: stepping on a peel is a counted miss that restarts the step, never a strike or pursuit.
             if(tutorial&&source==SlipSource.Banana){Runner.Slip();LastSlipSource=source;lastHit=clock;TutorialMisses++;return true;}
             // The shield also absorbs one slip: no slowdown, no banana count, so no pursuit starts.
@@ -420,6 +405,6 @@ namespace Muhanok.Domain
             BigMoves[(int)move]++;
             return true;
         }
-        public void Reset() { Array.Clear(BigMoves, 0, BigMoves.Length); BigCoins = 0; Runner.Reset(); Stair.Reset(); Chase.Reset(); Score.Reset(); Workout.Reset(); Items.Reset(); Paused=false; SpeedScale=1f; CadenceScale=1f; PacePressure=0f; clock = 0f; lastHit = -100f;SlipStrikes=0;lastStrike=0f;ShieldSaves=0;DodgeStreak=BestDodgeStreak=0;bananaCatchLeft=0;Reason=CaptureReason.Collision; smoothSpeed = TargetSpeed; }
+        public void Reset() { Array.Clear(BigMoves, 0, BigMoves.Length); BigCoins = 0; Runner.Reset(); Stair.Reset(); Chase.Reset(); Score.Reset(); Workout.Reset(); Items.Reset(); Paused=false; SpeedScale=1f; CadenceScale=1f; PacePressure=0f; clock = 0f; lastHit = -100f;SlipStrikes=0;lastStrike=0f;ShieldSaves=0;bananaCatchLeft=0;Reason=CaptureReason.Collision; smoothSpeed = TargetSpeed; }
     }
 }

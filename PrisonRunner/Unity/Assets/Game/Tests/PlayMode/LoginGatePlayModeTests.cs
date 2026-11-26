@@ -139,15 +139,5 @@ namespace Muhanok.Tests
             fake.Offline=false;hud.OpenLogin();Assert.AreEqual("",Identity.ServerProblem,"The next check clears the problem");
         }
 
-        [UnityTest]
-        public IEnumerator SigningOutDoesNotPassTodaysChallengeToTheNextPlayer()
-        {
-            yield return Open();
-            game.Account.SignInMember(new AccountProfile{id="next-member",name="다음회원"},"next-token");Assert.IsTrue(game.SignedIn);
-            ((IHudData)game).SetDailyChallenge(true);
-            game.FaceLogout(false);
-            Assert.IsFalse(game.SignedIn);Assert.AreEqual(1,fake.Logouts);
-            Assert.IsFalse(((IHudData)game).DailyChallenge,"The next player does not inherit today's challenge (QA 2026-11-25 M3)");
-        }
     }
 }

@@ -15,7 +15,7 @@ namespace Muhanok.Presentation
         // card slots left to right: 2nd, 1st, 3rd
         static readonly int[] SlotRank = { 1, 0, 2 };
         static readonly float[] SlotHeight = { 138, 158, 128 };
-        static readonly string[] SourceTabs = { "회원 랭킹", "통합 랭킹" }, ModeTabs = { "전신", "상체", "키보드" }, PeriodTabs = { "전체", "오늘", "도전" };
+        static readonly string[] SourceTabs = { "회원 랭킹", "통합 랭킹" }, ModeTabs = { "전신", "상체", "키보드" }, PeriodTabs = { "전체", "오늘" };
 
         readonly OverlaySkin skin;
         readonly RankingBoard board;
@@ -117,8 +117,7 @@ namespace Muhanok.Presentation
             skin.Text(new Rect(38,150,164,30),"운동 기록",22,Palette.Gold,TextAnchor.MiddleLeft);
             if (!PlayStyleInfo.UsesCamera(data?.Player?.Style ?? PlayStyle.Keyboard))
             {
-                skin.Text(new Rect(38,190,164,26),"최고 콤보 "+session.BestDodgeStreak,16,Palette.Cream,TextAnchor.MiddleLeft,false,true);
-                skin.Text(new Rect(38,225,164,30),RunHudModel.KeyboardKcal,15,Palette.Sand,TextAnchor.MiddleLeft,false,true);
+                skin.Text(new Rect(38,190,164,30),RunHudModel.KeyboardKcal,15,Palette.Sand,TextAnchor.MiddleLeft,false,true);
                 return;
             }
             var workout = session.Workout;
@@ -231,10 +230,10 @@ namespace Muhanok.Presentation
         {
             int source = Group(new Rect(x, 104, 232, 44), SourceTabs, board.MemberTab ? 0 : 1);
             int mode = Group(new Rect(x + 252, 104, 252, 44), ModeTabs, (int)board.Mode);
-            int period = Group(new Rect(x + w - 240, 104, 240, 44), PeriodTabs, board.Challenge ? 2 : board.TodayOnly ? 1 : 0);
-            if (source >= 0) board.Select(source == 0, board.Mode, board.TodayOnly, board.Challenge);
-            if (mode >= 0) board.Select(board.MemberTab, (PlayStyle)mode, board.TodayOnly, board.Challenge);
-            if (period >= 0) board.Select(board.MemberTab, board.Mode, period == 1, period == 2);
+            int period = Group(new Rect(x + w - 160, 104, 160, 44), PeriodTabs, board.TodayOnly ? 1 : 0);
+            if (source >= 0) board.Select(source == 0, board.Mode, board.TodayOnly);
+            if (mode >= 0) board.Select(board.MemberTab, (PlayStyle)mode, board.TodayOnly);
+            if (period >= 0) board.Select(board.MemberTab, board.Mode, period == 1);
         }
 
         // One tab row; returns the pressed tab (mouse or hand pointing), -1 otherwise.
@@ -284,7 +283,7 @@ namespace Muhanok.Presentation
                 skin.Text(new Rect(r.x, cy + 12, r.width, 34), RunHudModel.Points(list[rank].Score), 28, Palette.Cream, TextAnchor.MiddleCenter);
             }
             if (list.Count == 0)
-                skin.Text(new Rect(x, 200, w, 60), board.Challenge ? "오늘의 도전 첫 기록을 남겨 보세요! (모두 같은 맵)" : board.TodayOnly ? "오늘은 아직 기록이 없어요. 첫 기록을 남겨 보세요!" : "아직 기록이 없어요. 첫 기록을 남겨 보세요!", 18, Palette.Sand, TextAnchor.MiddleCenter, false, true);
+                skin.Text(new Rect(x, 200, w, 60), board.TodayOnly ? "오늘은 아직 기록이 없어요. 첫 기록을 남겨 보세요!" : "아직 기록이 없어요. 첫 기록을 남겨 보세요!", 18, Palette.Sand, TextAnchor.MiddleCenter, false, true);
         }
 
         void DrawRows(float x, float w)

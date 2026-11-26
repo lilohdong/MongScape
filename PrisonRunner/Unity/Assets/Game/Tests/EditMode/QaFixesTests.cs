@@ -40,13 +40,6 @@ namespace Muhanok.Tests
             Assert.AreEqual(CadencePace.Run, off.Scale); Assert.AreEqual(0, off.Pressure);
         }
 
-        // H2: the coach never asks for a faster pace on the stairs.
-        [Test] public void TheCoachNeverAsksForSpeedOnTheStairs()
-        {
-            var coach = new Coach();
-            Assert.AreEqual(CoachLine.None, coach.Tick(100, .1f, new Coach.Input { Lagging = true, OnStairs = true }));
-            Assert.AreEqual(CoachLine.PaceUp, coach.Tick(101, .1f, new Coach.Input { Lagging = true }));
-        }
 
         // H1 / M5: moderate is judged after the play-style scale; a full body run without cadence counts its motion moments.
         [Test] public void ModerateMinutesFollowTheScaledIntensity()

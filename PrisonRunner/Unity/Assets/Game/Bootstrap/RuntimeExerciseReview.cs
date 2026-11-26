@@ -112,12 +112,6 @@ namespace Muhanok.Bootstrap
             yield return Shot("S3_05_Run_PacePressureEdges");
             game.Session.PacePressure = 0;
             race.Update(5000); yield return new WaitForSecondsRealtime(1.5f); yield return Shot("S3_06_Run_FirstPlace");
-            // Stage 4: coach subtitles (praise for a big jump; the pace line with the red edges).
-            game.CoachState.Reset(); game.CoachState.Tick(Time.realtimeSinceStartup, .1f, new Coach.Input { BigJump = true });
-            yield return new WaitForSecondsRealtime(.1f); ScreenCapture.CaptureScreenshot(Path.Combine(destination, "S4_01_Run_CoachPraise.png")); yield return new WaitForSecondsRealtime(2.5f);
-            game.Session.PacePressure = .5f; game.CoachState.Tick(Time.realtimeSinceStartup, .1f, new Coach.Input { Lagging = true });
-            yield return new WaitForSecondsRealtime(.1f); ScreenCapture.CaptureScreenshot(Path.Combine(destination, "S4_02_Run_CoachPace.png")); yield return new WaitForSecondsRealtime(.6f);
-            game.Session.PacePressure = 0;
             game.enabled = true;
             game.Session.Invincible = false; game.Session.ForceCatch();
             wait = Time.realtimeSinceStartup;
@@ -131,14 +125,14 @@ namespace Muhanok.Bootstrap
             yield return Shot("F1_03_Ranking_Merged");
             game.OpenMainMenu();
         }
-        // Stage 5: fork preview and signs, the course banner, a banana with its danger marker, a challenge result with the
+        // Stage 5: fork preview and signs, a banana with its danger marker, a result with the
         // weekly goal and streak, the profile's week card.
         private IEnumerator Stage5()
         {
             var owner = "review"; var now = DateTime.UtcNow;
             for (int d = 1; d <= 3; d++) game.Store.RecordExercise(owner, now.AddDays(-d), 900, 700, new double[] { 0, 400, 0, 300 });
             game.OpenStartSetup(); yield return new WaitForSecondsRealtime(.5f);
-            ((IHudData)game).SetDailyChallenge(true); yield return Shot("S5_01_Setup_DailyChallenge");
+            yield return Shot("S5_01_Setup");
             game.Hud.CloseSetup();
             game.Session.Invincible = true;
             game.StartPlayerRun(new PlayerProfile { Name = "리뷰", Weight = "65", Style = PlayStyle.FullBody, CalorieGoal = 50 });
@@ -148,8 +142,6 @@ namespace Muhanok.Bootstrap
             game.enabled = false; game.Race.Clear();
             Seek(CartFork.Decision - 22, 1); yield return new WaitForSecondsRealtime(.6f);
             yield return Shot("S5_02_Fork_Preview_Signs");
-            Seek(CartFork.Decision + 3, 1); yield return new WaitForSecondsRealtime(.15f);
-            ScreenCapture.CaptureScreenshot(Path.Combine(destination, "S5_03_Course_Banner.png")); yield return new WaitForSecondsRealtime(1.5f);
             // A banana ahead on the course.
             float peel = -1; int peelLane = 0;
             for (float z = 300; z < 3000 && peel < 0; z += 96)
@@ -164,8 +156,7 @@ namespace Muhanok.Bootstrap
             wait = Time.realtimeSinceStartup;
             while (game.Session.Flow.State != GameFlowState.Result) { if (Time.realtimeSinceStartup - wait > 30) { Fail("result did not appear"); yield break; } yield return null; }
             yield return new WaitForSecondsRealtime(1.2f);
-            yield return Shot("S5_05_Result_Challenge_WeekGoal_Streak");
-            ((IHudData)game).SetDailyChallenge(false);
+            yield return Shot("S5_05_Result_WeekGoal_Streak");
             game.ExitToMenu(); yield return new WaitForSecondsRealtime(.5f);
             game.Hud.ShowPage(MenuPage.Profile); yield return new WaitForSecondsRealtime(1f);
             yield return Shot("S5_06_Profile_WeekGoal");
