@@ -375,7 +375,7 @@ namespace Mongscape.Tests
             run.Tick(ItemCatalog.Get(ItemKind.DoubleScore).Seconds); run.CollectCoin(); Assert.AreEqual(6, run.Score.Coins);
             run.Items.Activate(ItemKind.Shield);
             Assert.IsFalse(run.Hit(true)); Assert.AreEqual(GameFlowState.Running, run.Flow.State); Assert.AreEqual(1, run.ShieldSaves);
-            Assert.IsTrue(run.Hit(true)); Assert.AreEqual(GameFlowState.Caught, run.Flow.State);
+            Assert.IsTrue(run.Hit(true)); Assert.AreEqual(GameFlowState.Running, run.Flow.State); Assert.AreEqual(1, run.Warnings);
             var items = new PowerUpState(); items.Activate(ItemKind.Magnet); items.Tick(100); Assert.IsFalse(items.IsActive(ItemKind.Magnet));
         }
         [Test] public void ShieldBlocksOneSlipButNotABrokenRail()

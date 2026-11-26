@@ -111,7 +111,7 @@ namespace Mongscape.Tests
             model.Tick(run,null,PlayStyle.Keyboard,PoseStatus.Off,true,5);Assert.IsTrue(model.ShowSiren);
             run.Paused=true;model.Tick(run,null,PlayStyle.Keyboard,PoseStatus.Off,true,6);Assert.IsFalse(model.ShowSiren);
             run.Paused=false;model.Tick(run,null,PlayStyle.Keyboard,PoseStatus.Off,true,7);Assert.IsTrue(model.ShowSiren);
-            run.Hit(true);model.Tick(run,null,PlayStyle.Keyboard,PoseStatus.Off,true,8);Assert.IsFalse(model.ShowSiren);
+            run.ForceCatch();model.Tick(run,null,PlayStyle.Keyboard,PoseStatus.Off,true,8);Assert.IsFalse(model.ShowSiren);
         }
     }
 }

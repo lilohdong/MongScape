@@ -6,9 +6,12 @@ namespace Mongscape.Domain
     public enum GameFlowState { Boot, TitleIdle, IntroTimeline, FirstPersonTakeover, Running, Caught, Result, Retry, LoadingIntro }
     public enum MotionCommand { Center, Left, Right, Jump, Crouch, KneeStep }
     public enum ObstacleKind { Crate, Pipe, Barrier, Cart, Laser }
+    // SlipPursuit: caught after the second warning (by the section's chaser); kept under its old name.
     public enum CaptureReason { Collision, BrokenRail, SlipPursuit }
-    // What made the runner slip: a plain floor hazard only slows, a banana or a missed high-knee step also counts as a strike.
-    public enum SlipSource { Floor, Banana, KneeMiss }
+    // What gave a warning (plan 6-8). Pace: the police gauge filled (cadence too low); Gauge: another chaser's gauge filled.
+    public enum WarningCause { Collision, Banana, Pace, Gauge, Spotted }
+    // What made the runner slip: a floor hazard or a missed knee step slows, a banana is also a warning, Collision is the fall after a hit.
+    public enum SlipSource { Floor, Banana, KneeMiss, Collision }
 
     public sealed class GameFlowController
     {
@@ -49,7 +52,7 @@ namespace Mongscape.Domain
         // Big movements (exercise plan 6): a jump goes this much higher, a deep slide lasts this much longer, a high knee step
         // on the stairs takes the police back this far (pressure units), a wide side step crosses in this share of the time.
         public float BigJumpHeight = 1.35f, DeepSlideFactor = 1.5f, BigKneeRelief = .08f, BigLaneTime = .5f;
-        // A single slip strike is forgiven after this many seconds without a second one.
+        // Unused since warnings last until the map is left (plan 6-8); kept for saved settings.
         public float StrikeClearSeconds=8f;
         public float SpeedRampDistance = 120f;
         // Jump/slide pressed shortly before landing runs on landing. Zero keeps the strict legacy rule.
@@ -276,12 +279,22 @@ namespace Mongscape.Domain
         // Demo invincibility (development builds only, toggled by the operator): no capture, fall or slip ends or slows the run.
         // It survives Reset so it stays on across runs until switched off. Tutorial lessons still count mistakes.
         public bool Invincible {get;set;}
+        // Warnings in the current map (plan 6-8): two slots, the second starts the chaser's pursuit and the capture.
+        // They last until the map is left; there is no timed clear any more. SlipStrikes is the old name.
+        public const int MaxWarnings = 2;
         public int SlipStrikes {get;private set;}
+        public int Warnings => SlipStrikes;
+        public WarningCause LastWarning {get;private set;}
+        // Raised for every warning that lands (not the ones a shield absorbs), with the chaser of the map: sound and HUD hooks.
+        public event Action<WarningCause, ChaserDef> Warned;
+        // Who caught the runner (valid in Caught and Result).
+        public ChaserKind CaughtBy {get;private set;}
+        // A chaser's approach gauge for the maps that fill one from their own events (lion: missed beats, warden: missed
+        // knee steps). Full gives a warning and drops back to half. The police in the mine use the pace (ApplyPace).
+        public float ChaserGauge {get;private set;}
         // What caused the latest slowdown slip (sound feedback tells a banana from a missed knee step).
         public SlipSource LastSlipSource {get;private set;}
-        // Seconds until the single active strike clears (0 when there is none).
-        public float StrikeClearRemaining=>SlipStrikes==1&&!SlipPursuit?Math.Max(0f,Config.StrikeClearSeconds-(clock-lastStrike)):0f;
-        // Raised once when a strike times out, so the HUD can show the all-clear.
+        // Raised when leaving a map empties the warning slots, so the HUD can show the all-clear.
         public event Action StrikeCleared;
         public int ShieldSaves {get;private set;}
         public bool SlipPursuit=>bananaCatchLeft>0;
@@ -322,10 +335,11 @@ namespace Mongscape.Domain
         }
         public CaptureReason Reason {get;private set;}
         private float bananaCatchLeft, smoothSpeed;
+        private ChaserDef pursuer;
         private float lastHit = -100f, clock, lastStrike;
         // Play time without pauses; shown to the player, not part of the score.
         public float Elapsed => clock;
-        public RunSession(RunConfig config) { Config = config; Score = new ScoreSystem(Workout); Runner = new RunnerController(config); Stair = new StairJudge(config); smoothSpeed = TargetSpeed; }
+        public RunSession(RunConfig config) { Config = config; Score = new ScoreSystem(Workout); Runner = new RunnerController(config); Stair = new StairJudge(config); smoothSpeed = TargetSpeed; Sections.Exited += LeaveSection; }
         private float CurveSpeed(float distance, bool riding) => riding
             ? Difficulty.Ramp(Config.CartSpeedStart, Config.CartSpeedMax, distance, Config)
             : Difficulty.Ramp(Config.RunSpeedStart, Config.RunSpeedMax, distance, Config);
@@ -356,16 +370,68 @@ namespace Mongscape.Domain
                 Chase.Hit(.55f*dt/Math.Max(.1f,Config.BananaCatchSeconds));
                 if(bananaCatchLeft<=.0001f)Fail(CaptureReason.SlipPursuit);
             }
-            else if(SlipStrikes==1&&clock-lastStrike>=Config.StrikeClearSeconds)
-            {
-                SlipStrikes=0;Chase.Hit(-.45f);StrikeCleared?.Invoke();
-            }
             else if (SlipStrikes==0&&clock - lastHit > 2f) Chase.Recover(Config.Recovery * dt);
         }
         // Reads the item state at pickup time, so a coin in the same frame as the item already counts double.
         public void CollectCoin() { Score.CoinMultiplier = Items.IsActive(ItemKind.DoubleScore) ? 2 : 1; Score.CollectCoin(); }
+        // A solid obstacle (plan 6-8): the runner falls and is slowed for a moment, and it is one warning (a shield takes the
+        // warning, the fall stays). In the zoo a fence trip is no warning: the lion closes in instead.
+        // Returns whether the hit counted (a warning, or a tutorial miss).
         public bool Hit(bool heavy)
-        { return Fail(CaptureReason.Collision); }
+        {
+            if (Flow.State != GameFlowState.Running || Paused) return false;
+            if (tutorial) { Reason = CaptureReason.Collision; lastHit = clock; TutorialMisses++; return true; }
+            if (Invincible) return false;
+            Runner.Stumble(); lastHit = clock;
+            if (Section.Kind == SectionKind.Zoo) { Runner.Slip(); LastSlipSource = SlipSource.Collision; Approach(.35f); return false; }
+            if (!Warn(WarningCause.Collision)) return false;
+            Runner.Slip(); LastSlipSource = SlipSource.Collision;
+            return true;
+        }
+        // One warning from the map's chaser. The second starts the pursuit (BananaCatchSeconds) that ends in the capture.
+        // A shield absorbs the warning. Returns whether it landed (tutorial: a counted miss).
+        public bool Warn(WarningCause cause)
+        {
+            if (Flow.State != GameFlowState.Running || Paused) return false;
+            if (tutorial) { lastHit = clock; TutorialMisses++; return true; }
+            if (Invincible || SlipPursuit) return false;
+            if (Items.ConsumeShield()) { ShieldSaves++; lastHit = clock; return false; }
+            SlipStrikes = Math.Min(MaxWarnings, SlipStrikes + 1); lastStrike = clock; lastHit = clock; LastWarning = cause;
+            if (SlipStrikes == 1) Chase.Hit(.45f);
+            if (SlipStrikes >= MaxWarnings) { pursuer = Chaser; bananaCatchLeft = Math.Max(.1f, Config.BananaCatchSeconds); }
+            Warned?.Invoke(cause, Chaser);
+            return true;
+        }
+        // Fills the map chaser's gauge (lion, warden); full = a warning and the gauge drops to half.
+        public bool Approach(float amount)
+        {
+            if (Flow.State != GameFlowState.Running || Paused || tutorial || Invincible) return false;
+            ChaserGauge = Math.Max(0f, Math.Min(1f, ChaserGauge + amount));
+            if (ChaserGauge < 1f) return false;
+            ChaserGauge = .5f;
+            return Warn(WarningCause.Gauge);
+        }
+        // The cadence each frame (plan 6-8): sets the pace and the police gauge. In the mine a full gauge means the police
+        // pounce: one warning, and the gauge drops to half. Elsewhere the pace gauge never warns (stays under .75).
+        public void ApplyPace(CadencePace pace)
+        {
+            CadenceScale = pace.Scale;
+            bool warns = Section.Kind == SectionKind.Mine && !tutorial;
+            if (warns && pace.Pressure >= 1f && Flow.State == GameFlowState.Running && !Paused && !SlipPursuit)
+            {
+                pace.Halve();
+                Warn(WarningCause.Pace);
+            }
+            PacePressure = warns ? pace.Pressure : Math.Min(CadencePace.LegacyMaxPressure, pace.Pressure);
+        }
+        // Leaving a map empties the warning slots and the gauge (not during a pursuit: that capture still happens).
+        private void LeaveSection(SectionSpan left)
+        {
+            if (SlipPursuit) return;
+            ChaserGauge = 0f;
+            if (SlipStrikes == 0) return;
+            SlipStrikes = 0; Chase.Reset(); StrikeCleared?.Invoke();
+        }
         public bool Fail(CaptureReason reason)
         {
             if (Flow.State != GameFlowState.Running || Paused) return false;
@@ -387,25 +453,26 @@ namespace Mongscape.Domain
         }
         private void Catch(CaptureReason reason)
         {
-            Reason=reason;
+            Reason=reason; CaughtBy=(reason==CaptureReason.SlipPursuit&&pursuer!=null?pursuer:Chaser).Kind;
             lastHit = clock;
             Runner.Stumble(); Chase.Hit(1f);
             Flow.Transition(GameFlowState.Caught);
         }
+        // Floor hazards slow only. A banana slows and is one warning (a shield takes both). A missed knee step slows; in the
+        // prison it also brings the warden closer (half a gauge), elsewhere it only slows (plan 6-8).
         public bool Slip(SlipSource source=SlipSource.Floor)
         {
             if(Flow.State!=GameFlowState.Running||Paused||Runner.Riding||Invincible&&!tutorial)return false;
             // The tutorial's banana lesson: stepping on a peel is a counted miss that restarts the step, never a strike or pursuit.
             if(tutorial&&source==SlipSource.Banana){Runner.Slip();LastSlipSource=source;lastHit=clock;TutorialMisses++;return true;}
-            // The shield also absorbs one slip: no slowdown, no banana count, so no pursuit starts.
-            if(Items.ConsumeShield()){ShieldSaves++;lastHit=clock;return false;}
-            Runner.Slip();LastSlipSource=source;
-            if(source!=SlipSource.Floor)
+            if(source==SlipSource.Banana)
             {
-                SlipStrikes++;lastStrike=clock;
-                if(SlipStrikes==1)Chase.Hit(.45f);
-                if(SlipStrikes>=2&&!SlipPursuit)bananaCatchLeft=Math.Max(.1f,Config.BananaCatchSeconds);
+                // The shield absorbs the peel: no slowdown and no warning.
+                if(Items.ConsumeShield()){ShieldSaves++;lastHit=clock;return false;}
+                Runner.Slip();LastSlipSource=source;Warn(WarningCause.Banana);return true;
             }
+            Runner.Slip();LastSlipSource=source;
+            if(source==SlipSource.KneeMiss&&!tutorial&&Section.Kind==SectionKind.Prison)Approach(.5f);
             return true;
         }
         public enum BigMove { Jump, Crouch, Knee, Lane }
@@ -425,6 +492,6 @@ namespace Mongscape.Domain
             BigMoves[(int)move]++;
             return true;
         }
-        public void Reset() { Array.Clear(BigMoves, 0, BigMoves.Length); BigCoins = 0; Runner.Reset(); Stair.Reset(); Chase.Reset(); Score.Reset(); Workout.Reset(); Items.Reset(); Paused=false; SpeedScale=1f; CadenceScale=1f; PacePressure=0f; clock = 0f; lastHit = -100f;SlipStrikes=0;lastStrike=0f;ShieldSaves=0;bananaCatchLeft=0;Reason=CaptureReason.Collision; Sections.Reset(); SectionSpeed = null; smoothSpeed = TargetSpeed; }
+        public void Reset() { Array.Clear(BigMoves, 0, BigMoves.Length); BigCoins = 0; Runner.Reset(); Stair.Reset(); Chase.Reset(); Score.Reset(); Workout.Reset(); Items.Reset(); Paused=false; SpeedScale=1f; CadenceScale=1f; PacePressure=0f; clock = 0f; lastHit = -100f;SlipStrikes=0;lastStrike=0f;ShieldSaves=0;bananaCatchLeft=0;pursuer=null;ChaserGauge=0f;LastWarning=WarningCause.Collision;CaughtBy=ChaserKind.Police;Reason=CaptureReason.Collision; Sections.Reset(); SectionSpeed = null; smoothSpeed = TargetSpeed; }
     }
 }

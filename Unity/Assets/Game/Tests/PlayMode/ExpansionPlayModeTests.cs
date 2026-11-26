@@ -249,7 +249,7 @@ namespace Mongscape.Tests
         [UnityTest] public IEnumerator CaptureHasAnApproachThreeBonksAndThenResultWithoutAdvancingDistance()
         {
             yield return Load();var game=Object.FindFirstObjectByType<GameBootstrap>();Seek(game,264,ZooBranch(game));
-            float z=game.Session.Runner.Z;game.Session.Hit(true);
+            float z=game.Session.Runner.Z;game.Session.ForceCatch();
             Assert.AreEqual(GameFlowState.Caught,game.Session.Flow.State);Assert.AreEqual(0,game.Capture.Strikes);
             game.enabled=true;yield return new WaitForSecondsRealtime(1.15f);
             Assert.AreEqual(GameFlowState.Caught,game.Session.Flow.State);Assert.AreEqual(z,game.Session.Runner.Z);
@@ -292,7 +292,7 @@ namespace Mongscape.Tests
             Assert.IsFalse(game.GetComponent<HUDPresenter>().RunModel.ShowSiren);
             game.Session.Paused=false;yield return null;Assert.IsTrue(game.PursuitCue.Visible);
             var avatar=game.Hero.GetComponent<FaceAvatarView>();avatar.Apply(Texture2D.whiteTexture);game.Hero.Apply(game.Session.Runner);
-            game.Session.Hit(true);game.enabled=true;yield return new WaitForSecondsRealtime(1.5f);
+            game.Session.ForceCatch();game.enabled=true;yield return new WaitForSecondsRealtime(1.5f);
             Assert.IsFalse(game.PursuitCue.Visible);Assert.AreEqual(1,game.Capture.ProneBlend,.001f);
             var head=game.Hero.RigAnimator.GetBoneTransform(HumanBodyBones.Head);var badge=game.Hero.transform.Find("PlayerFaceBadge");
             Assert.IsTrue(badge.GetComponent<Renderer>().enabled);Assert.Less(Vector3.Distance(head.position,badge.position),.8f);

@@ -77,9 +77,21 @@ namespace Mongscape.Presentation
         // A coach hint line appears.
         public void Cue() => Play(cue, CueGain);
 
+        // Chaser sound hook (plan 6-8): played when a warning lands. Files MuhanokAudio/Sfx/lion_roar and alarm_bell when
+        // present; the police use the siren swell, the others fall back to the hit sound.
+        private AudioClip[] roar, alarmBell;
+        private int lastWarnings;
+        public void ChaserCue(ChaserSound sound)
+        {
+            if (sound == ChaserSound.Siren) { if (siren != null) siren.volume = Mathf.Max(siren.volume, effectsVolume * .45f); return; }
+            if (roar == null) { roar = Load(() => hit[0], "lion_roar"); alarmBell = Load(() => hit[0], "alarm_bell"); }
+            Play(sound == ChaserSound.Roar ? roar : alarmBell, HitGain);
+        }
         private void Update()
         {
             if (session == null) return;
+            if (session.Warnings > lastWarnings && session.Flow.State == GameFlowState.Running) ChaserCue(session.Chaser.Sound);
+            lastWarnings = session.Warnings;
             var state = session.Flow.State;
             bool running = state == GameFlowState.Running && !session.Paused;
             // On foot: fast and full, a little faster each lap; the cart: slow and soft; menus: calm.
@@ -91,6 +103,8 @@ namespace Mongscape.Presentation
             level = Mathf.MoveTowards(level, target, Time.unscaledDeltaTime);
             music.volume = musicVolume;
             float danger = running ? Mathf.Max(session.SlipPursuit ? 1f : 0f, Mathf.InverseLerp(.35f, .9f, session.Chase.Pressure)) : 0f;
+            // The looping siren is the police; the lion and the warden have their own cue (ChaserCue) until they get loops.
+            if (session.Chaser.Sound != ChaserSound.Siren) danger = 0f;
             siren.volume = Mathf.MoveTowards(siren.volume, danger * effectsVolume * .45f, Time.unscaledDeltaTime);
             if (state == GameFlowState.Running)
             {
@@ -103,7 +117,7 @@ namespace Mongscape.Presentation
                 wasAirborne = airborne;
                 // A missed knee step on the stairs also slows the runner; only a real slip (banana, floor) squelches.
                 bool slowing = session.Runner.Slowing;
-                if (slowing && !wasSlowing && session.LastSlipSource != SlipSource.KneeMiss) Play(slip, SlipGain);
+                if (slowing && !wasSlowing && (session.LastSlipSource == SlipSource.Banana || session.LastSlipSource == SlipSource.Floor)) Play(slip, SlipGain);
                 wasSlowing = slowing;
             }
             if (state == GameFlowState.Caught && lastState != GameFlowState.Caught) Play(hit, HitGain);

@@ -379,13 +379,13 @@ namespace Mongscape.Bootstrap
                 Tutorial.Tick(Time.realtimeSinceStartup);
                 // The finished tutorial has already gone back to the menu (Retry); nothing of the run may follow this frame.
                 if (Session.Flow.State != GameFlowState.Running) return;
-                // The cadence sets the pace on foot; below the target for 3 s the police close in (never a capture by itself).
+                // The cadence sets the pace on foot; below the target for 3 s the police close in, a full gauge in the mine is a warning.
                 var course = MapCourse.KindAt(RouteSurface.ActivePlan, RouteSurface.SequenceAt(Session.Runner.Z));
                 // Out of view the pace holds (speed, lag and police stay as they were); on the stairs it rests (QA 2026-11-25 M6, H2).
                 pace.Tick(dt, cadenceRun && !Session.Runner.Riding, Pose.StepsPerMinute,
                     Settings != null ? Settings.Motion : null, MapCourse.TargetCadence(course, Settings != null ? Settings.Motion : null),
                     Pose.UsesCamera && Pose.Tracking, OnOrBeforeStairs());
-                Session.CadenceScale = pace.Scale; Session.PacePressure = pace.Pressure;
+                Session.ApplyPace(pace);
                 TickBigMoves();
                 float previousZ = Session.Runner.Z;
                 Session.Tick(dt); Results.Race.Update(Session.Score.Score); Map.Tick(Session.Runner.Z); Hero.Apply(Session.Runner); Map.Evaluate(previousZ);

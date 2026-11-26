@@ -143,7 +143,7 @@ namespace Mongscape.DevTools
                     if(gap.gameObject.activeInHierarchy&&!gap.Passed&&gap.transform.position.z>=z&&gap.transform.position.z-z<speed*.8f)run.Runner.Command(gap.RequiredLean<0?MotionCommand.Left:MotionCommand.Right);
                 return;
             }
-            bool seekBanana=result.animalsSeen==7&&z>900&&run.SlipStrikes<2&&(run.SlipStrikes==0||run.StrikeClearRemaining>1.5f);// the second contact must land before the first strike clears
+            bool seekBanana=result.animalsSeen==7&&z>900&&run.SlipStrikes<2;// warnings last until the map is left
             if(deliberatePeel!=null&&(deliberatePeel.Passed||!deliberatePeel.gameObject.activeInHierarchy||deliberatePeel.transform.position.z<z))deliberatePeel=null;
             if(seekBanana&&deliberatePeel==null)
                 foreach(var chunk in game.Map.Active)foreach(var peel in chunk.Chunk.DynamicFloorItems)

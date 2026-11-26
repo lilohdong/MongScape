@@ -20,7 +20,7 @@ namespace Mongscape.Tests
             Assert.IsFalse(run.Slip(SlipSource.Banana)); Assert.IsFalse(run.Slip(SlipSource.KneeMiss));
             Assert.AreEqual(GameFlowState.Running, run.Flow.State); Assert.AreEqual(0, run.SlipStrikes); Assert.IsFalse(run.Runner.Slowing);
             run.Reset(); Assert.IsTrue(run.Invincible, "Stays on across runs");
-            run.Invincible = false; Assert.IsTrue(run.Hit(true)); Assert.AreEqual(GameFlowState.Caught, run.Flow.State);
+            run.Invincible = false; Assert.IsTrue(run.Hit(true)); Assert.IsTrue(run.Hit(true)); run.Tick(2f); Assert.AreEqual(GameFlowState.Caught, run.Flow.State);
         }
         [Test] public void OperatorCatchEndsTheRunEvenWhileInvincibleOrShielded()
         {
@@ -166,11 +166,15 @@ namespace Mongscape.Tests
             chase.Hit(2); Assert.AreEqual(1, chase.Pressure); chase.Recover(1); Assert.IsTrue(chase.IsCaught);
             chase.Reset(); Assert.IsFalse(chase.IsCaught);
         }
-        [TestCase(false)] [TestCase(true)] public void OneSolidCollisionEndsTheRunAndFreezesDistance(bool heavy)
+        [TestCase(false)] [TestCase(true)] public void ACollisionIsOneWarningWithAFallAndTheSecondEndsTheRun(bool heavy)
         {
-            var run=Running();run.Tick(.2f);float z=run.Runner.Z;
-            Assert.IsTrue(run.Hit(heavy));Assert.AreEqual(GameFlowState.Caught,run.Flow.State);
-            run.Tick(3);Assert.AreEqual(z,run.Runner.Z);Assert.IsFalse(run.Hit(heavy));
+            var run=Running();run.Tick(.2f);
+            Assert.IsTrue(run.Hit(heavy));Assert.AreEqual(GameFlowState.Running,run.Flow.State);Assert.AreEqual(1,run.Warnings);
+            Assert.IsTrue(run.Runner.Stumbling);Assert.IsTrue(run.Runner.Slowing,"The fall slows the runner for a moment");
+            Assert.AreEqual(WarningCause.Collision,run.LastWarning);
+            run.Tick(.5f);Assert.IsTrue(run.Hit(heavy));Assert.IsTrue(run.SlipPursuit);
+            run.Tick(2f);Assert.AreEqual(GameFlowState.Caught,run.Flow.State);Assert.AreEqual(ChaserKind.Police,run.CaughtBy);
+            float z=run.Runner.Z;run.Tick(3);Assert.AreEqual(z,run.Runner.Z);Assert.IsFalse(run.Hit(heavy));
         }
         [Test] public void FloorSlipSlowsWithoutKillingAndRecoversWhilePauseFreezesTimer()
         {
@@ -204,12 +208,11 @@ namespace Mongscape.Tests
             run.Paused=false;run.Tick(.61f);Assert.AreEqual(GameFlowState.Caught,run.Flow.State);Assert.AreEqual(CaptureReason.SlipPursuit,run.Reason);
             run.Reset();Assert.AreEqual(0,run.SlipStrikes);Assert.IsFalse(run.SlipPursuit);Assert.AreEqual(0,run.Chase.Pressure);
         }
-        [Test] public void SingleStrikeClearsAfterEightSecondsAndRemovesItsPressure()
+        [Test] public void AWarningNoLongerTimesOut()
         {
             var run=Running();Assert.IsTrue(run.Slip(SlipSource.Banana));
-            Assert.AreEqual(.45f,run.Chase.Pressure,.001f);Assert.AreEqual(run.Config.StrikeClearSeconds,run.StrikeClearRemaining,.01f);
-            run.Tick(7.5f);Assert.AreEqual(1,run.SlipStrikes);Assert.AreEqual(.45f,run.Chase.Pressure,.001f);Assert.AreEqual(.5f,run.StrikeClearRemaining,.05f);
-            run.Tick(.6f);Assert.AreEqual(0,run.SlipStrikes);Assert.AreEqual(0,run.Chase.Pressure,.001f);Assert.AreEqual(0,run.StrikeClearRemaining);
+            Assert.AreEqual(.45f,run.Chase.Pressure,.001f);
+            run.Tick(30f);Assert.AreEqual(1,run.SlipStrikes);Assert.AreEqual(.45f,run.Chase.Pressure,.001f);
         }
         [Test] public void SecondStrikeWithinTheWindowStartsPursuitAndCatches()
         {
@@ -217,24 +220,17 @@ namespace Mongscape.Tests
             run.Slip(SlipSource.Banana);Assert.IsTrue(run.SlipPursuit);run.Tick(2);
             Assert.AreEqual(GameFlowState.Caught,run.Flow.State);Assert.AreEqual(CaptureReason.SlipPursuit,run.Reason);
         }
-        [Test] public void StrikeAfterClearingCountsAsAFirstStrikeAgain()
-        {
-            var run=Running();run.Slip(SlipSource.Banana);run.Tick(8.5f);Assert.AreEqual(0,run.SlipStrikes);
-            run.Tick(3);run.Runner.SetStartZ(80);run.Slip(SlipSource.Banana);
-            Assert.AreEqual(1,run.SlipStrikes);Assert.IsFalse(run.SlipPursuit);Assert.AreEqual(GameFlowState.Running,run.Flow.State);
-            run.Tick(.1f);Assert.AreEqual(GameFlowState.Running,run.Flow.State);
-        }
-        [Test] public void KneeMissCountsLikeABananaAndFloorSlipsDoNot()
+        [Test] public void KneeMissesAndFloorSlipsInTheMineOnlySlow()
         {
             var run=Running();run.Slip(SlipSource.Floor);Assert.AreEqual(0,run.SlipStrikes);
-            Assert.IsTrue(run.Slip(SlipSource.KneeMiss));Assert.AreEqual(1,run.SlipStrikes);Assert.AreEqual(.45f,run.Chase.Pressure,.001f);
-            run.Slip(SlipSource.Banana);Assert.AreEqual(2,run.SlipStrikes);Assert.IsTrue(run.SlipPursuit);
-            run.Reset();run.Slip(SlipSource.Banana);run.Slip(SlipSource.KneeMiss);Assert.IsTrue(run.SlipPursuit);
+            Assert.IsTrue(run.Slip(SlipSource.KneeMiss));Assert.AreEqual(0,run.SlipStrikes);Assert.IsTrue(run.Runner.Slowing);
+            run.Slip(SlipSource.Banana);Assert.AreEqual(1,run.SlipStrikes);Assert.IsFalse(run.SlipPursuit);
         }
-        [Test] public void ShieldAbsorbsAKneeMissWithoutAStrike()
+        [Test] public void AShieldIsOnlySpentOnAWarning()
         {
             var run=Running();run.Items.Activate(ItemKind.Shield);
-            Assert.IsFalse(run.Slip(SlipSource.KneeMiss));Assert.AreEqual(0,run.SlipStrikes);Assert.AreEqual(1,run.ShieldSaves);
+            run.Slip(SlipSource.KneeMiss);run.Slip(SlipSource.Floor);Assert.IsTrue(run.Items.IsActive(ItemKind.Shield));
+            Assert.IsFalse(run.Hit(true));Assert.AreEqual(0,run.SlipStrikes);Assert.AreEqual(1,run.ShieldSaves);Assert.IsTrue(run.Runner.Stumbling);
         }
         [Test] public void RepeatedPuddlesDoNotCountAsBananas()
         {

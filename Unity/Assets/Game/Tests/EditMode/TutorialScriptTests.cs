@@ -85,7 +85,7 @@ namespace Mongscape.Tests
             run.SpeedScale = 0; float z = run.Runner.Z; run.Tick(.5f); Assert.AreEqual(z, run.Runner.Z, "A held tutorial runner does not move");
             Assert.IsTrue(run.Slip(SlipSource.Banana)); Assert.AreEqual(3, run.TutorialMisses, "A banana in the tutorial is a counted miss"); Assert.AreEqual(0, run.SlipStrikes, "never a strike");
             run.IsTutorial = false; Assert.AreEqual(0, run.TutorialMisses);
-            Assert.IsTrue(run.Hit(true)); Assert.AreEqual(GameFlowState.Caught, run.Flow.State);
+            Assert.IsTrue(run.Hit(true)); Assert.AreEqual(1, run.Warnings, "Outside the tutorial a hit is a warning");
         }
 
         [Test]
