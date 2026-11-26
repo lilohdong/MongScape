@@ -209,7 +209,7 @@ HTTPS 구성이면 `up`에 3장과 같은 `--env-file .env -f compose.yaml -f co
 
 ## 8. 계정 API (스키마 v3)
 
-모든 요청은 `Content-Type: application/json` POST입니다(`GET /health` 제외). 인증이 필요한 경로는 `Authorization: Bearer <token>`을 보냅니다. 오류는 `{ok:false, message}`와 상태 코드 400(값 오류·코인 부족)·401(인증 없음/만료)·404·409(닉네임 중복·이미 등록된 얼굴·이미 해금)·429(시도 제한)입니다.
+모든 요청은 `Content-Type: application/json` POST입니다(`GET /health` 제외). 인증이 필요한 경로는 `Authorization: Bearer <token>`을 보냅니다. 오류는 `{ok:false, message}`와 상태 코드 400(값 오류, 원숭이 부족)·401(인증 없음/만료)·404·409(닉네임 중복·이미 등록된 얼굴·이미 해금)·429(시도 제한)입니다.
 
 | 경로 | 인증 | 요청 → 응답 |
 | --- | --- | --- |
@@ -219,7 +219,8 @@ HTTPS 구성이면 `up`에 3장과 같은 `--env-file .env -f compose.yaml -f co
 | `/profile` | 필요 | `{}` → `{ok, profile}` |
 | `/profile/update` | 필요 | `{name?, weight?, style?, goal?, tutorial_done?}`(보낸 필드만 변경) → `{ok, profile}` |
 | `/runs` | 필요 | `{id, distance, score, kcal, goal, activities:[5], mode, coins, play_seconds, moderate_seconds, score_version}` → `{ok, coins}`(적립 후 잔액) |
-| `/shop/buy` | 필요 | `{item}` → `{ok, profile}` |
+| `/traits` | - | `{}` → `{ok, traits:[{id, key, costs:[단계별 원숭이 수]}]}`. 특성 가격표는 여기 한 곳 |
+| `/traits/unlock` | 필요 | `{trait, level}` → `{ok, profile}`. 앞 단계가 있어야 다음 단계 |
 | `/leaderboard` | 선택 | `{mode, today?, week?}` → `{ok, entries:[{rank, name, score, distance, created_at}], me?:{rank, score, distance}}` |
 | `/stats` | 필요 | `{}` → `{ok, today_kcal, total_kcal, best_score:[전신, 상체, 키보드], previous_best, week_kcal, week_seconds, last_week_kcal, last_week_seconds, week_moderate_seconds, last_week_moderate_seconds}` |
 | `/logout`, `/delete`, `/history` | 필요 | 기존과 같음. `/delete`는 프로필·특징값·세션·기록 삭제 |
@@ -227,7 +228,7 @@ HTTPS 구성이면 `up`에 3장과 같은 `--env-file .env -f compose.yaml -f co
 - `profile`: `{id, name, weight, style, goal, coins, unlocked, tutorial_done}`. `/enroll`·`/login` 응답은 이전 클라이언트를 위해 `id`, `name`도 최상위에 둡니다.
 - 닉네임: 앞뒤 공백 제거 후 1~10자(유니코드 코드 포인트 기준, 이모지 1개 = 1자), 제어·서식(U+200B 등)·사용자 정의 문자 등 유니코드 C 범주 금지. 게임의 입력 검사도 같은 규칙입니다. 공백을 지우고 소문자로 바꾼 값이 같으면 같은 닉네임입니다(`Min Su` = `minsu`).
 - 값 범위: `weight` 10~350(게임의 몸무게 입력과 같음, null이면 65), `style`·`mode` 0 전신/1 상체/2 키보드(`mode` 10~12는 같은 방식의 오늘의 도전), `goal` 1~5000, `coins` 0~5000 정수, `score_version` 1~3, `play_seconds`·`moderate_seconds` 0~86400(없으면 0).
-- 아이템 가격: 0 자석 30, 1 코인 2배 60, 2 방패 100코인.
+- `coins`는 구한 원숭이 수입니다(칼럼 이름은 그대로). 특성: 1 보호막 5/15/30, 2 예민한 귀 10/20, 3 두꺼운 털 20, 4 부르는 소리 5/15, 5 손재주 10/20/30, 6 의리 25, 7 땀방울 5/15. 해금한 단계는 `unlocked`에 `특성*10+단계`로 쌓입니다(0~2는 예전 상점 아이템, 무시).
 - `/runs`: 같은 기록 ID를 다시 보내면 저장·적립 없이 현재 잔액을 돌려줍니다. 기록 삽입과 코인 적립은 한 트랜잭션입니다. `mode`를 보내지 않은 이전 클라이언트의 기록도 저장하지만(모드 NULL) 랭킹에는 들어가지 않습니다.
 - `/leaderboard`: 해당 모드의 `score_version=3` 기록 중 회원마다 최고 점수 1개로 상위 50명을 만듭니다. 동점이면 먼저 세운 기록이 앞섭니다. `today:true`는 한국 시간(KST) 0시 이후, `week:true`는 이번 주 월요일 0시(KST) 이후 기록만 봅니다. `name`은 현재 닉네임입니다. `me`는 유효한 토큰이 있고 해당 모드 기록이 있을 때만 들어가며, 만료된 토큰은 오류 없이 무시합니다.
 - `/stats`: `today_kcal`은 KST 0시 이후, `total_kcal`은 전체 기록의 칼로리 합계입니다. `best_score`는 `score_version=3` 기록만, `previous_best`는 이전 시즌(`score_version=2`)만 보며 없으면 0입니다. `week_*`는 이번 주(월요일 0시 KST부터), `last_week_*`는 지난주 합계이고 `week_moderate_seconds`(5 MET 이상 시간)는 주간 목표 150분 막대에 씁니다.
