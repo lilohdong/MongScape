@@ -1,0 +1,96 @@
+{
+  "song": "mine",
+  "bpm": 132,
+  "time_signature": [
+    4,
+    4
+  ],
+  "bars": 32,
+  "loop_seconds": 58.1818,
+  "loop_samples": 2565818,
+  "sample_rate": 44100,
+  "playback": "Start every layer with AudioSource.PlayScheduled at the same dspTime, loop = true. A state only sets layer volumes.",
+  "song_gain_db": 8.6,
+  "reference_state": "base",
+  "target_lufs": -18.0,
+  "sections": [
+    {
+      "name": "A1",
+      "bars": [
+        1,
+        8
+      ]
+    },
+    {
+      "name": "A2",
+      "bars": [
+        9,
+        16
+      ]
+    },
+    {
+      "name": "B",
+      "bars": [
+        17,
+        28
+      ]
+    },
+    {
+      "name": "bridge",
+      "bars": [
+        29,
+        32
+      ]
+    }
+  ],
+  "layers": {
+    "base": {
+      "file": "mine_base.ogg",
+      "meaning": "Slap bass staccato, banjo, guitar chug, fiddle, harmonica (bridge only), hi-hat chug and agogo, high strings in B",
+      "alone": {
+        "lufs": -18.1,
+        "true_peak_dbtp": -2.7
+      }
+    },
+    "tension": {
+      "file": "mine_tension.ogg",
+      "meaning": "Taiko, snare, toms, low short brass stabs: police close behind",
+      "alone": {
+        "lufs": -20.6,
+        "true_peak_dbtp": -2.1
+      }
+    }
+  },
+  "states": {
+    "base": {
+      "meaning": "Mine start and mine fork, police far (default)",
+      "layers": {
+        "base": 1,
+        "tension": 0
+      },
+      "lufs": -18.1,
+      "true_peak_dbtp": -2.7
+    },
+    "chase": {
+      "meaning": "Police close behind (raise the tension layer with chase pressure)",
+      "layers": {
+        "base": 1,
+        "tension": 1
+      },
+      "lufs": -16.2,
+      "true_peak_dbtp": -1.2
+    }
+  },
+  "fades": {
+    "in_chase": 0.5,
+    "in_base": 1.5
+  },
+  "layer_eq": {
+    "tension": [
+      {
+        "low_shelf_hz": 80,
+        "gain_db": -4.0
+      }
+    ]
+  }
+}

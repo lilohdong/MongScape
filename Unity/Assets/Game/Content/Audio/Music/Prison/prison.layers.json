@@ -1,0 +1,117 @@
+{
+  "song": "prison",
+  "bpm": 96,
+  "time_signature": [
+    4,
+    4
+  ],
+  "bars": 16,
+  "loop_seconds": 40.0,
+  "loop_samples": 1764000,
+  "sample_rate": 44100,
+  "playback": "Start every layer with AudioSource.PlayScheduled at the same dspTime, loop = true. A state only sets layer volumes.",
+  "song_gain_db": 7.6,
+  "reference_state": "stairs",
+  "target_lufs": -18.0,
+  "sections": [
+    {
+      "name": "A",
+      "bars": [
+        1,
+        8
+      ]
+    },
+    {
+      "name": "B",
+      "bars": [
+        9,
+        16
+      ]
+    }
+  ],
+  "layers": {
+    "base": {
+      "file": "prison_base.ogg",
+      "meaning": "Bass pulse, low string pad, clock tick (side stick), sparse piano and low clarinet motif",
+      "alone": {
+        "lufs": -19.7,
+        "true_peak_dbtp": -6.1
+      }
+    },
+    "steps": {
+      "file": "prison_steps.ogg",
+      "meaning": "One low drum on every beat: the stair pace (96 per minute)",
+      "alone": {
+        "lufs": -24.7,
+        "true_peak_dbtp": -7.7
+      }
+    },
+    "tension": {
+      "file": "prison_tension.ogg",
+      "meaning": "Snare, toms, kick and hi-hat: the guard chase after the first alarm",
+      "alone": {
+        "lufs": -25.4,
+        "true_peak_dbtp": -9.5
+      }
+    },
+    "hide": {
+      "file": "prison_hide.ogg",
+      "meaning": "Played alone while hiding under the searchlight: low drone, heartbeat timpani, soft clock tick",
+      "alone": {
+        "lufs": -25.9,
+        "true_peak_dbtp": -12.8
+      }
+    }
+  },
+  "states": {
+    "flat": {
+      "meaning": "Short flat stretch between sets (catch your breath)",
+      "layers": {
+        "base": 1,
+        "steps": 0,
+        "tension": 0,
+        "hide": 0
+      },
+      "lufs": -19.7,
+      "true_peak_dbtp": -6.1
+    },
+    "stairs": {
+      "meaning": "Stairs, knee raises (most heard state)",
+      "layers": {
+        "base": 1,
+        "steps": 1,
+        "tension": 0,
+        "hide": 0
+      },
+      "lufs": -18.7,
+      "true_peak_dbtp": -3.6
+    },
+    "hide": {
+      "meaning": "Hiding under the searchlight while the lock is picked",
+      "layers": {
+        "base": 0,
+        "steps": 0,
+        "tension": 0,
+        "hide": 1
+      },
+      "lufs": -25.9,
+      "true_peak_dbtp": -12.8
+    },
+    "chase": {
+      "meaning": "Guard chase: the stairs after the first alarm",
+      "layers": {
+        "base": 1,
+        "steps": 1,
+        "tension": 1,
+        "hide": 0
+      },
+      "lufs": -17.7,
+      "true_peak_dbtp": -1.7
+    }
+  },
+  "fades": {
+    "in_hide": 0.3,
+    "out_hide": 1.0,
+    "default": 0.5
+  }
+}

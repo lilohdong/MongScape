@@ -19,6 +19,10 @@ Factory Kit, Furniture Kit, Modular Cave Kit, Nature Kit, Survival Kit은 CC0 �
 
 필요한 파일만 다듬어(모노, 앞뒤 무음 제거, 피크 -1 dBFS) 넣었습니다. 쓰는 효과음은 `Unity/Assets/Game/Content/Audio/Resources/MuhanokAudio/Sfx/`, 2차용으로 골라 둔 효과음은 `Unity/Assets/Game/Content/Audio/SfxV2/`에 있고, 파일별 원본 팩, 원본 파일 이름, 원본 SHA256은 각 폴더의 `SOURCES.json`에 있습니다. Kenney 라이선스 원문은 `Unity/Assets/Game/Content/Audio/Kenney-License.txt`에 보존합니다. 다시 만드는 방법은 `Tools/Audio/make_sfx.py`를 보세요.
 
+## 배경음
+
+배경음(메인 메뉴, 광산, 감옥, 동물원, 결과)은 프로젝트가 코드로 직접 작곡했고, MIDI를 GeneralUser GS 2.0.3(S. Christian Collins, https://github.com/mrbumpy409/GeneralUser-GS) 사운드폰트로 렌더했습니다. 라이선스는 "your own music creation, private or commercial"에 제한 없이 쓸 수 있다고 정하며, 사운드폰트 파일은 저장소와 게임에 넣지 않습니다. 렌더 도구 FluidSynth(LGPL-2.1)도 만들 때만 씁니다. 자세한 내용: `Tools/Music/LICENSES.md`.
+
 ## Adobe Mixamo
 
 게임 빌드는 Running With Intention, Jumping In Place, Low Crouching Idle, Brief Stumble While Jogging 동작을 사용합니다. 출처는 https://www.mixamo.com/ 이며 다운로드 설정과 원본 해시는 [References/MixamoDownloads/Provenance.json](References/MixamoDownloads/Provenance.json)에 있습니다.

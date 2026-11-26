@@ -1,0 +1,28 @@
+{
+  "song": "zoo_chase_v1",
+  "bpm": 160,
+  "loop": false,
+  "length_seconds": 61.5,
+  "playback": "Played once per zoo visit, in sync with zoo_chase_v1.beatmap.json (beat 0 = first sample).",
+  "layers": {
+    "full": {
+      "file": "zoo_chase_v1.ogg",
+      "meaning": "The whole approved song (no separate layers)"
+    }
+  },
+  "states": {
+    "run": {
+      "meaning": "Zoo run",
+      "layers": {
+        "full": 1
+      },
+      "lufs": -18.0,
+      "true_peak_dbtp": -1.8
+    }
+  },
+  "source_render": {
+    "lufs": -19.7,
+    "true_peak_dbtp": -0.9
+  },
+  "game_copy": "+1.9 dB, peak limiter at 0.79 (sample peak)"
+}

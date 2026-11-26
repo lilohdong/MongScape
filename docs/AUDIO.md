@@ -1,6 +1,6 @@
 # 사운드
 
-효과음은 Kenney CC0 오디오 팩에서 골라 넣었고, 파일이 없으면 예전처럼 코드로 합성한 소리로 대신합니다. 배경음은 아직 코드 합성 음악이며, 새 곡(메인 메뉴, 광산, 감옥, 동물원, 결과)은 따로 들어옵니다.
+효과음은 Kenney CC0 오디오 팩에서 골라 넣었고, 파일이 없으면 예전처럼 코드로 합성한 소리로 대신합니다. 배경음 5곡(메인 메뉴, 광산, 감옥, 동물원, 결과)은 직접 작곡해 `Unity/Assets/Game/Content/Audio/Music/`에 넣었습니다. 게임 연결 전이라 지금 게임은 아직 코드 합성 음악을 냅니다.
 
 ## 효과음 (지금 게임에서 쓰는 것)
 
@@ -57,6 +57,22 @@
 | 음악 아래 은은하게 | 0 아래 | jump, land, footstep, lock_click |
 
 `lock_open`, `lock_click`은 감옥 숨기 상태(드론만 남음) 기준으로 봅니다.
+
+## 배경음
+
+| 곡 | 폴더 | 층 (파일) | 상태 | 루프 | 음량 (기준 상태) |
+| --- | --- | --- | --- | --- | --- |
+| 메인 메뉴 | `Music/Menu` | base, rhythm | full, calm | 68.57초 | full -20.0 LUFS |
+| 광산 | `Music/Mine` | base, tension | base, chase | 58.18초 | base -18.0 LUFS, chase +1.9 LU |
+| 감옥 | `Music/Prison` | base, steps, tension, hide | flat, stairs, hide, chase | 40.0초 | stairs -18.7 LUFS, hide -25.9 |
+| 결과 | `Music/Result` | base, rhythm | full, calm | 28.8초 | full -20.0 LUFS |
+| 동물원 | `Music/Zoo` | 한 파일 + 박자표 `zoo_chase_v1.beatmap.json` | run | 반복 없음 61.5초 | -18.0 LUFS |
+
+- 곡마다 `<곡>.layers.json`에 층의 뜻, 상태별 층 음량, 상태별 측정값(LUFS, 트루 피크), 페이드 시간이 있습니다. 모든 상태 트루 피크 -1 dBTP 이하.
+- 재생: 한 곡의 층을 모두 `AudioSource.PlayScheduled`로 같은 시각에 시작하고 반복, 상태가 바뀌면 층 음량만 페이드. Load Type은 Streaming으로 맞춰 두었습니다.
+- 감옥 페이드: 숨기로 0.3초, 숨기에서 나올 때 1.0초, 나머지 0.5초. 광산: chase로 0.5초, base로 1.5초.
+- 작곡, 렌더, 음량 기준, 다시 만들기: [Tools/Music/README.md](../Tools/Music/README.md). 라이선스: [Tools/Music/LICENSES.md](../Tools/Music/LICENSES.md).
+- 검수: 사운드 담당 측정 검수 통과(광산 2회차, 나머지 1회차), 오너 청취 통과.
 
 ## 출처와 다시 만들기
 
