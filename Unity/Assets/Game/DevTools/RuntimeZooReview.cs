@@ -34,7 +34,7 @@ namespace Mongscape.DevTools
             var settings=((ISettingsHost)game).Settings;settings.ApplyPreset(QualityPreset.Balanced);settings.Fullscreen=false;
             settings.PerformanceOverlay=false;settings.AutoPerformance=false;settings.MusicVolume=settings.EffectsVolume=0;game.ApplySettings(false);
             Screen.SetResolution(1280,720,false);
-            game.StartPlayerRun(new PlayerProfile{Name="Zoo QA",Weight="70",Style=PlayStyle.Keyboard});
+            game.KeyStepsOverride=120f;game.StartPlayerRun(new PlayerProfile{Name="Zoo QA",Weight="70",Style=PlayStyle.Keyboard});
             yield return new WaitUntil(()=>!game.IsLoading&&!game.IsRevealing);game.enabled=false;
             result.gpu=SystemInfo.graphicsDeviceName;result.width=Screen.width;result.height=Screen.height;
             float[] targets={-1,-1,-1};ResetMap();

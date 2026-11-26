@@ -78,7 +78,7 @@ namespace Mongscape.DevTools
             hud.ShowIdentity();yield return Shot("08_Face_Login");hud.ShowPage(MenuPage.Setup);
 
             run:
-            game.StartPlayerRun(new PlayerProfile { Name = "탈옥왕", Weight = "65", Style = PlayStyle.Keyboard,CalorieGoal=180 });
+            game.KeyStepsOverride = 120f; game.StartPlayerRun(new PlayerProfile { Name = "탈옥왕", Weight = "65", Style = PlayStyle.Keyboard,CalorieGoal=180 });
             while (game.IsLoading || game.IsRevealing || game.Session.Flow.State != GameFlowState.Running) yield return null;
             // Nobody steers: a shield kept active lets the run go on long enough for the HUD and pause shots.
             shielded = true; StartCoroutine(KeepShield());

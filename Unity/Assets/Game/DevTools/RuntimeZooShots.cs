@@ -33,7 +33,8 @@ namespace Mongscape.DevTools
             settings.MusicVolume = settings.EffectsVolume = 0; game.ApplySettings(false);
             Screen.SetResolution(1280, 720, false);
             game.Session.Config.ExtendedRoutes = true;
-            game.StartPlayerRun(new PlayerProfile { Name = "Zoo QA", Weight = "70", Style = PlayStyle.Keyboard });
+            // F and J held at a running pace until the normal shots are taken, then walking so the lion closes in.
+            game.KeyStepsOverride = 120f; game.StartPlayerRun(new PlayerProfile { Name = "Zoo QA", Weight = "70", Style = PlayStyle.Keyboard });
             yield return new WaitUntil(() => !game.IsLoading && !game.IsRevealing);
             zoo = game.GetComponent<ZooMapView>();
             var plan = new RoutePlan(game.Session.Config, 723); ZooMapView.Register(plan);
@@ -50,7 +51,7 @@ namespace Mongscape.DevTools
             yield return new WaitUntil(() => zoo.Chase.Hits >= 1); yield return Capture("zoo_pass_1");
             yield return new WaitUntil(() => NextAhead(ZooNoteKind.ArmsUp) is float a && a < 6f); yield return Capture("zoo_bars_ahead");
             yield return new WaitUntil(() => NextAhead(ZooNoteKind.Jump) is float b && b < 6f); yield return Capture("zoo_fence_ahead");
-            keepUp = false;
+            keepUp = false; game.KeyStepsOverride = 60f;
             yield return new WaitUntil(() => zoo.Chase.MirrorVisible); yield return new WaitForSeconds(.6f); yield return Capture("zoo_mirror");
             yield return new WaitUntil(() => zoo.Chase.Roaring); yield return new WaitForSeconds(1.2f); yield return Capture("zoo_roar");
             yield return new WaitUntil(() => zoo.Chase.Bites > 0); yield return new WaitForSeconds(.35f); yield return Capture("zoo_pounce");
