@@ -165,7 +165,7 @@ namespace Mongscape.DevTools
         private void LogFailure(string message,string stack,LogType type){if(type==LogType.Exception&&failure==null)failure=message;}
         private void Update(){if(reviewStarted>0&&Time.realtimeSinceStartup-reviewStarted>180)Fail("UI review timeout");}
         private void OnDestroy(){UnityEngine.Application.logMessageReceived-=LogFailure;}
-        private sealed class ReviewAccountGateway : IAccountGateway
+        internal sealed class ReviewAccountGateway : IAccountGateway
         {
             private readonly AccountProfile profile=new AccountProfile{id="ui-review",name="탈옥왕",weight=65,style=(int)PlayStyle.Keyboard,goal=180,coins=240,unlocked=new[]{11,12,21,41,71}};
             private AccountReply Reply()=>new AccountReply{ok=true,profile=profile};

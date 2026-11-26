@@ -29,16 +29,17 @@ namespace Mongscape.Presentation
             pickingMode = PickingMode.Ignore; UiTokens.Fill(this);
             upper = UiTokens.Box(X, UpperY, W, UpperH); UiTokens.Radius(upper, 20);
             upper.style.flexDirection = FlexDirection.Row; upper.style.alignItems = Align.Center; upper.style.paddingLeft = 22; upper.style.paddingRight = 24;
-            upperRank = UiTokens.Label("", 52, UiTokens.TextDim); upperRank.style.width = 96;
+            // Two and three digit ranks widen their column instead of running into the name.
+            upperRank = UiTokens.Label("", 52, UiTokens.TextDim); upperRank.style.minWidth = 96; upperRank.style.marginRight = 14; upperRank.style.flexShrink = 0;
             upperName = UiTokens.Label("", 44, UiTokens.TextDim); upperName.style.flexGrow = 1; upperName.style.flexShrink = 1; upperName.style.overflow = Overflow.Hidden; upperName.style.textOverflow = TextOverflow.Ellipsis;
-            upperScore = UiTokens.Label("", 52, UiTokens.TextDim, TextAnchor.MiddleRight); upperScore.style.marginLeft = 16;
+            upperScore = UiTokens.Label("", 52, UiTokens.TextDim, TextAnchor.MiddleRight); upperScore.style.marginLeft = 16; upperScore.style.flexShrink = 0;
             trophy = new ShapeElement(UiIcons.Trophy(UiTokens.Accent)); trophy.style.width = 64; trophy.style.height = 64; trophy.style.display = DisplayStyle.None;
             upper.Add(upperRank); upper.Add(trophy); upper.Add(upperName); upper.Add(upperScore);
 
             mine = UiTokens.Box(X, MineY, W, MineH); UiTokens.Radius(mine, 24); mine.style.backgroundColor = UiTokens.Accent;
             mine.style.flexDirection = FlexDirection.Row; mine.style.alignItems = Align.Center; mine.style.paddingLeft = 22; mine.style.paddingRight = 24;
             mine.style.overflow = Overflow.Hidden;
-            mineRank = UiTokens.Label("", 72, UiTokens.Panel, TextAnchor.MiddleLeft, false); mineRank.style.width = 128;
+            mineRank = UiTokens.Label("", 72, UiTokens.Panel, TextAnchor.MiddleLeft, false); mineRank.style.minWidth = 128; mineRank.style.marginRight = 12; mineRank.style.flexShrink = 0;
             var me = new ShapeElement(UiIcons.Monkey()); me.style.width = 64; me.style.height = 64;
             mineScore = UiTokens.Label("", 64, UiTokens.Panel, TextAnchor.MiddleRight, false); mineScore.style.flexGrow = 1;
             mine.Add(mineRank); mine.Add(me); mine.Add(mineScore);

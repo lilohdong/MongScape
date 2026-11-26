@@ -45,7 +45,7 @@ namespace Mongscape.DevTools
                 else if (step == 2)
                 {
                     hitClock += Time.deltaTime;
-                    if (hitClock >= .7f && hits < 2) { hitClock = 0; game.Session.Hit(true); hits++;Check(game.Session.Warnings==hits&&(hits<2||game.Session.SlipPursuit),"Collision is not one warning"); }
+                    if (hitClock >= game.Session.Config.WarningGraceSeconds + .2f && hits < 2) { hitClock = 0; game.Session.Hit(true); hits++;Check(game.Session.Warnings==hits&&(hits<2||game.Session.SlipPursuit),"Collision is not one warning"); }
                     if (game.Session.Flow.State == GameFlowState.Result) { game.Retry(); step = 3; }
                 }
                 else if (step == 3)

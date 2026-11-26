@@ -394,7 +394,8 @@ namespace Mongscape.Presentation
                 float scroll = SnapScroll(rowY + MineH / 2 - viewH / 2, count * RowPitch + (MineH - RowH) - viewH);
                 content.style.top = -scroll;
                 ShowWholeRows(scroll, viewH);
-                target = PanelTop + 18 + rowY - scroll - (MineH - RowH) / 2;
+                // My taller row fills its own slot (the rows below are shifted by the difference), so it covers no neighbour.
+                target = PanelTop + 18 + rowY - scroll;
             }
             else
             {
