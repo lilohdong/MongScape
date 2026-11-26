@@ -17,7 +17,8 @@ namespace Mongscape.Presentation
         VisualElement scorePanel, chase, chaseFill, chaseCap, flash, lost, lostPulse, poseWindow, mirror, mirrorRing;
         Image mirrorImage;
         Image poseImage;
-        ShapeElement skeleton, lostDrawing, shield;
+        ShapeElement skeleton, lostDrawing, shield, gesture;
+        float gestureProgress;
         readonly VisualElement[] slots = new VisualElement[2], slotRings = new VisualElement[2];
         readonly ShapeElement[] slotIcons = new ShapeElement[2];
         readonly bool[] slotFull = new bool[2];
@@ -120,6 +121,14 @@ namespace Mongscape.Presentation
             skeleton = new ShapeElement(DrawSkeleton); UiTokens.Fill(skeleton);
             poseWindow.Add(poseImage); poseWindow.Add(skeleton);
             frame.Add(poseWindow);
+            // X arms held (plan 6-7a): a 96 px circle on the pose window's top-left corner fills clockwise in accent.
+            gesture = UiIcons.Make(1920 - 36 - 294 - 48, 1080 - 36 - 218 - 48, 96, (p, r) =>
+            {
+                UiIcons.Circle(p, r.center, r.width / 2, UiTokens.A(UiTokens.Panel, .92f));
+                if (gestureProgress > 0) UiIcons.Ring(p, r.center, r.width * .4f, r.width * .14f, UiTokens.Accent, -90, -90 + 360 * Mathf.Clamp01(gestureProgress));
+                UiIcons.PauseBars(UiTokens.Text)(p, new Rect(r.x + r.width * .25f, r.y + r.height * .25f, r.width * .5f, r.height * .5f));
+            });
+            gesture.style.display = DisplayStyle.None; frame.Add(gesture);
 
             // Middle: tracking lost (style guide 6-4).
             lost = new VisualElement { pickingMode = PickingMode.Ignore }; UiTokens.Fill(lost); lost.style.backgroundColor = UiTokens.Dim(UiTokens.Deep, .62f);
@@ -214,6 +223,9 @@ namespace Mongscape.Presentation
             UpdateEdges(session, running);
             UpdateMirror();
             UpdatePose(model);
+            gestureProgress = data?.Pause?.GestureProgress ?? 0;
+            UiTokens.Show(gesture, running && gestureProgress > 0);
+            if (gestureProgress > 0) gesture.MarkDirtyRepaint();
             UiTokens.Show(lost, running && (model.ShowPoseRecovery || PreviewLost));
             if (lost.style.display == DisplayStyle.Flex) lostPulse.MarkDirtyRepaint();
 

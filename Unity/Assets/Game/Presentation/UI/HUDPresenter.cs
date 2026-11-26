@@ -93,7 +93,7 @@ namespace Mongscape.Presentation
             menu = new MainMenuScreen(overlaySkin); credits = new CreditsScreen(overlaySkin); tutorialOffer = new TutorialOfferScreen(overlaySkin); gate = new LoginGateScreen(overlaySkin); profile = new ProfileScreen(overlaySkin); board = new LeaderboardScreen(overlaySkin, Ranking);
             calibration = new CalibrationPanel(overlaySkin, skin);
             runView = new RunHudView(gameObject);
-            pauseView = new PauseView(gameObject) { Resume = () => PauseRun?.Invoke(), Recalibrate = () => { Data?.Recalibrate(); PauseRun?.Invoke(); }, Main = () => ToMenu?.Invoke() };
+            pauseView = new PauseView(gameObject) { Resume = () => PauseRun?.Invoke(), Recalibrate = () => Recalibrate?.Invoke(), Main = () => ToMenu?.Invoke() };
             helpView = new HelpView(gameObject) { Back = OpenMainMenu };
             weekView = new WeekView(gameObject) { Back = () => ShowPage(MenuPage.Profile) };
             resultView = new ResultView(gameObject) { Retry = () => retry?.Invoke(), Calibrate = OpenCalibration, Main = () => ToMenu?.Invoke() };
@@ -197,7 +197,7 @@ namespace Mongscape.Presentation
                 && !(Data != null && Data.RunCalibration != RunCalibrationState.None && session.Flow.State == GameFlowState.Running);
             runView.Root.Visible = showRun;
             pauseView.Root.Visible = inRun && session.Paused && !Hidden && !Loading && !Revealing;
-            if (pauseView.Root.Visible) { pauseView.Root.Layout(); pauseView.Place(PlayStyleInfo.UsesCamera(Data?.Player?.Style ?? PlayStyle.Keyboard)); }
+            if (pauseView.Root.Visible) { pauseView.Root.Layout(); pauseView.Place(PlayStyleInfo.UsesCamera(Data?.Player?.Style ?? PlayStyle.Keyboard)); pauseView.SetFlow(Data?.Pause, Time.unscaledTime); }
             if (session == null || Hidden || Loading || Revealing) return;
             if (inRun)
                 runModel.Tick(session, Map, Data?.Player?.Style ?? PlayStyle.Keyboard, Data?.PoseStatus ?? PoseStatus.Off, PoliceAlert?.Invoke() ?? false, Time.unscaledTime);
@@ -227,7 +227,7 @@ namespace Mongscape.Presentation
             else if (state == GameFlowState.TitleIdle) DrawMenu();
             else if (state == GameFlowState.Running || state == GameFlowState.Caught)
             {
-                if (session.Paused) pauseView.Gestures.Pass();
+                if (session.Paused) { if (pauseView.ShowsButtons) pauseView.Gestures.Pass(); }
                 // Camera runs hold on the calibration screen until the player is measured, then the countdown starts.
                 else if (Data != null && Data.RunCalibration != RunCalibrationState.None && state == GameFlowState.Running) calibration.DrawRun(Data);
                 // The running HUD is the UI Toolkit RunHudView (drawn by its own panel).
