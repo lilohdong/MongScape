@@ -60,7 +60,7 @@ namespace Mongscape.Presentation
                 follower.Root = GameObject.CreatePrimitive(PrimitiveType.Capsule); follower.Root.name = "TroopMonkey_" + index;
                 Destroy(follower.Root.GetComponent<Collider>()); follower.Root.transform.SetParent(transform, false);
                 follower.Root.transform.localScale = new Vector3(.4f, .5f, .4f);
-                var shader = Shader.Find("Universal Render Pipeline/Lit");
+                var shader = RuntimeShader.Find("Universal Render Pipeline/Lit");
                 if (shader != null) follower.Root.GetComponent<Renderer>().sharedMaterial = new Material(shader) { color = new Color(.55f, .36f, .2f) };
             }
             foreach (var r in follower.Root.GetComponentsInChildren<Renderer>(true)) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
