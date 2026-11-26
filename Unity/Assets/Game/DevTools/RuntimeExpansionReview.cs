@@ -60,7 +60,7 @@ namespace Mongscape.DevTools
             yield return PointAt(ElementCenter(root,root.Q<Button>("tab-body")),.95f);
             window.Close(false);GesturePointer.Reset();
             game.OpenStartSetup();yield return new WaitForSecondsRealtime(.3f);yield return Capture("02_Setup");game.enabled=true;
-            game.StartPlayerRun(new PlayerProfile{Name="QA",Style=PlayStyle.Keyboard,Weight="70",CalorieGoal=50});
+            game.KeyStepsOverride=120f;game.StartPlayerRun(new PlayerProfile{Name="QA",Style=PlayStyle.Keyboard,Weight="70",CalorieGoal=50});
             yield return new WaitUntil(()=>!game.IsLoading&&!game.IsRevealing);game.enabled=false;
             yield return new WaitForSecondsRealtime(2.5f);
             Seek(116,0);yield return new WaitForSecondsRealtime(.8f);yield return Capture("03_Three_Unknown_Paths");

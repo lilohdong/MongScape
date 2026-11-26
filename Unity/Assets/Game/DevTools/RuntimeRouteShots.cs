@@ -42,7 +42,7 @@ namespace Mongscape.DevTools
             Screen.SetResolution(1920, 1080, false);
             game.UseAccountServices(new RuntimeUiReview.ReviewAccountGateway());
             Seed();
-            game.StartPlayerRun(new PlayerProfile { Name = "", Weight = "70", Style = PlayStyle.Keyboard });
+            game.KeyStepsOverride = 120f; game.StartPlayerRun(new PlayerProfile { Name = "", Weight = "70", Style = PlayStyle.Keyboard });
             yield return new WaitUntil(() => !game.IsLoading && !game.IsRevealing && game.Session.Flow.State == GameFlowState.Running);
             zoo = game.GetComponent<ZooMapView>();
             game.Session.Invincible = true; driving = true; Time.timeScale = 1.5f;

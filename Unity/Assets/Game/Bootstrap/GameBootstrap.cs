@@ -53,7 +53,9 @@ namespace Mongscape.Bootstrap
         // Keyboard running: F and J in turn give the same steps a minute as running in place (no calories).
         private readonly KeyStepCadence keySteps = new KeyStepCadence();
         private bool keyRun;
-        private float StepRate => keyRun ? keySteps.StepsPerMinute(Time.realtimeSinceStartupAsDouble) : Pose.StepsPerMinute;
+        private float StepRate => keyRun ? KeyStepsOverride ?? keySteps.StepsPerMinute(Time.realtimeSinceStartupAsDouble) : Pose.StepsPerMinute;
+        // Capture tools (no hands on the keys): a fixed keyboard steps a minute in place of F and J.
+        public float? KeyStepsOverride { get; set; }
         private bool PaceTracked => keyRun || Pose.UsesCamera && Pose.Tracking;
         // Big movements (exercise plan 6).
         private int seenBigJumps, seenBigKnees, seenBigLanes;
