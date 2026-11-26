@@ -237,7 +237,7 @@ namespace Mongscape.Presentation
         void UpdateWarnings(RunSession session)
         {
             int w = Mathf.Clamp(WarningCount(session), 0, 2);
-            if (w > warnings) { for (int i = warnings; i < w; i++) slotFilledAt[i] = now; flashAt = now; flashColor = UiTokens.Danger; }
+            if (w > warnings) { for (int i = warnings; i < w; i++) slotFilledAt[i] = now; flashAt = now; flashColor = session.LastWarning == WarningCause.Spotted ? UiTokens.Alarm : UiTokens.Danger; }
             else if (w < warnings) clearAt = now;
             warnings = w;
             for (int i = 0; i < 2; i++)
@@ -258,16 +258,15 @@ namespace Mongscape.Presentation
         }
 
         // Warnings this map (two slots). The v2 warning rules count slips and police catches; the HUD only reads the number.
-        public static int WarningCount(RunSession session) => PreviewWarnings ?? session.SlipStrikes;
+        public static int WarningCount(RunSession session) => PreviewWarnings ?? session.Warnings;
         // Review captures only (DevTools): show a state the synthetic run cannot reach on its own.
         public static int? PreviewWarnings; public static bool PreviewLost; public static float? PreviewChase;
 
         void UpdateChase(RunSession session, bool running)
         {
-            // Mine only (the zoo uses the mirror, the prison guard chase is drawn the same way once it exists).
-            var plan = RouteSurface.ActivePlan;
-            var kind = MapCourse.KindAt(plan, RouteSurface.SequenceAt(session.Runner.Z));
-            bool mine = kind == ExerciseKind.Warmup || kind == ExerciseKind.Balance;
+            // The mine's police (pace pressure); the prison guard's gauge once it starts filling. The zoo uses the mirror.
+            var kind = session.Section.Kind;
+            bool mine = kind == SectionKind.Mine || (kind == SectionKind.Prison && session.ChaserGauge > 0) || PreviewChase.HasValue;
             UiTokens.Show(chase, running && mine);
             if (!running || !mine) return;
             float v = ChaseFraction(session);
@@ -276,7 +275,7 @@ namespace Mongscape.Presentation
             chaseFill.style.backgroundColor = v > .7f ? UiTokens.Danger : UiTokens.Warn;
             chaseCap.style.left = Mathf.Clamp(554 * shown - 40, -8, 470);
         }
-        public static float ChaseFraction(RunSession session) => PreviewChase ?? Mathf.Clamp01(session.PolicePressure);
+        public static float ChaseFraction(RunSession session) => PreviewChase ?? Mathf.Clamp01(session.Section.Kind == SectionKind.Prison ? session.ChaserGauge : session.PolicePressure);
 
         void UpdateEdges(RunSession session, bool running)
         {
