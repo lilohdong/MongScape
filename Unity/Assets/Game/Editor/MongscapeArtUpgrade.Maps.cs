@@ -350,9 +350,8 @@ namespace Mongscape.Editor
         {
             var scene=EditorSceneManager.OpenScene("Assets/Game/Scenes/GameScene.unity");
             var game=UnityEngine.Object.FindFirstObjectByType<GameBootstrap>();
-            game.Settings.Run.SlipSeconds=2.4f;game.Settings.Run.SlipSpeedMultiplier=.5f;game.Settings.Run.CartSpeed=10.5f;EditorUtility.SetDirty(game.Settings);
             game.HandsPrefab=AssetDatabase.LoadAssetAtPath<GameObject>(Art+"/Prefabs/FP_Hands.prefab");
-            game.CartRidePrefab=CreateRideCart();game.Settings.Run.BananaCatchSeconds=1.2f;
+            game.CartRidePrefab=CreateRideCart();
             game.TitleLogo=ConfigureTitleLogoTexture();
             game.LoadingImage=ConfigureLoadingTexture();
             var stage=GameObject.Find("Mine Title Stage"); Clear(stage.transform); rng=new System.Random(71); Mine(stage.transform,-24,0,1);

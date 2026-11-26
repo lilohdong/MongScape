@@ -119,7 +119,7 @@ namespace Mongscape.Presentation.Map
                 var chunk = pool.Rent(type);
                 chunk.PlaceOnRoute(sequence);
                 // Odds for where this chunk starts, not where the runner is: chunks are spawned up to 96 m ahead.
-                chunk.Prepare(sequence, session.Difficulty.Odds(sequence * RouteSurface.Length, session.Config), random, Pacer, session.PlannedSpeed(sequence * RouteSurface.Length));
+                chunk.Prepare(sequence, session.OddsAt(sequence * RouteSurface.Length), random, Pacer, session.PlannedSpeed(sequence * RouteSurface.Length));
                 chunk.gameObject.SetActive(true); active.Add(new ActiveChunk(type, chunk));
                 Decorator?.Decorate(chunk, sequence, type, random);
                 // After the decorators: they may swap or hide exercise rows (lane blocks, the tutorial's lessons).
