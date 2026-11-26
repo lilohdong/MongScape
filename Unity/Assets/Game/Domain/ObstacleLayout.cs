@@ -62,6 +62,13 @@ namespace Mongscape.Domain
         public static bool IsCart(int type) => type == 1 || type == 2;
         // Mine, corridor and zoo walks may swap their rows for lane blockers and banana rows on the extended route.
         public static bool LaneBlockType(int type) => type == 0 || type == 4 || type == 5 || type == 12;
+        // A stretch without hazards (the prison branch, plan 6-8): the terrain stays, every row, blocker, banana and animal goes.
+        public void ClearHazards()
+        {
+            for (int i = 0; i < Slots.Count; i++) Slots[i] = slots != null && i < slots.Count && slots[i].Terrain;
+            for (int i = 0; i < FloorItems.Count; i++) FloorItems[i] = false;
+            Blockers.Clear(); Bananas.Clear(); Animal = false;
+        }
         // The rail-gap window containing a cart-chunk local z, or -1.
         public static int RailGapAt(float localZ)
         {

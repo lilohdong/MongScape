@@ -169,6 +169,104 @@ namespace Mongscape.Tests
             course.Tick(Dt, -1, 5f, false, 0f); Assert.IsNull(course.Speed); Assert.AreEqual(PrisonPhase.None, course.Phase);
         }
 
+        // ---- In a run (RunSession + RoutePlan) ----
+        private const float L = RouteSurface.Length;
+        private static RunSession PrisonRun()
+        {
+            var plan = new RoutePlan(new RunConfig(), 3);
+            int lane = -1;
+            for (int l = -1; l <= 1; l++) if (plan.DestinationFor(CartFork.FirstChunk, l) == 0) lane = l;
+            plan.UpdateChoice(CartFork.Decision + 1, lane);
+            RouteSurface.UsePlan(plan);
+            var run = new RunSession(new RunConfig());
+            run.Flow.Transition(GameFlowState.TitleIdle); run.Flow.Transition(GameFlowState.IntroTimeline);
+            run.Flow.Transition(GameFlowState.FirstPersonTakeover); run.Flow.Transition(GameFlowState.Running);
+            run.Runner.SetStartZ(CartFork.DestinationChunk * L + .5f);
+            return run;
+        }
+        private static float PrisonEnd => (CartFork.DestinationChunk + PrisonCourse.Chunks.Length) * L;
+        // Plays the prison with the keyboard: knee steps on the stairs (unless skipped), S at the doors (unless standing).
+        private static void Play(RunSession run, System.Func<RunSession, bool> step, System.Func<RunSession, bool> hide, System.Action<RunSession> each = null)
+        {
+            for (int i = 0; i < 4000 && run.Runner.Z < PrisonEnd && run.Flow.State == GameFlowState.Running; i++)
+            {
+                if (StairJudge.StepDue(run.Runner) && step(run)) run.Runner.Command(MotionCommand.KneeStep);
+                if (run.Prison.Holding && hide(run)) run.Runner.Command(MotionCommand.Crouch);
+                run.Tick(Dt);
+                each?.Invoke(run);
+            }
+        }
+
+        [Test] public void KeyboardEscapeOpensEveryCellAndTheRoof()
+        {
+            try
+            {
+                var run = PrisonRun();
+                int holds = 0; float heldAt = -1; bool moved = false;
+                run.Prison.HoldStarted += _ => { holds++; heldAt = run.Runner.Z; };
+                Play(run, _ => true, _ => true, r => { if (r.Prison.Holding && heldAt > 0 && System.Math.Abs(r.Runner.Z - heldAt) > .01f) moved = true; });
+                Assert.AreEqual(GameFlowState.Running, run.Flow.State);
+                Assert.GreaterOrEqual(run.Runner.Z, PrisonEnd);
+                Assert.AreEqual(3, holds, "one hold per set");
+                Assert.IsFalse(moved, "the runner stands still at the door");
+                Assert.AreEqual(4, run.Prison.Rescued, "three cells and the roof");
+                Assert.AreEqual(0, run.Warnings);
+                // Roughly 3 x (10 s stairs + hold + flat) plus the roof.
+                Assert.Greater(run.Elapsed, 45f); Assert.Less(run.Elapsed, 90f);
+            }
+            finally { RouteSurface.UsePlan(null); }
+        }
+
+        [Test] public void AlarmIsAWarningAndAMissedBeatOnTheChasedStairsIsACapture()
+        {
+            try
+            {
+                var run = PrisonRun();
+                Play(run, r => !(r.Prison.Set == 1 && r.Prison.Phase == PrisonPhase.Stairs), r => r.Prison.Set != 0);
+                Assert.AreEqual(1, run.Prison.Alarms);
+                Assert.AreEqual(GameFlowState.Caught, run.Flow.State);
+                Assert.AreEqual(ChaserKind.Warden, run.CaughtBy);
+                Assert.AreEqual(1, run.Prison.Set, "caught on the chased stairs");
+            }
+            finally { RouteSurface.UsePlan(null); }
+        }
+
+        [Test] public void AnOrdinaryMissedBeatOnlySlows()
+        {
+            try
+            {
+                var run = PrisonRun();
+                bool slowed = false;
+                Play(run, r => r.Prison.Set != 0, _ => true, r => slowed |= r.Runner.Slowing && r.Prison.Phase == PrisonPhase.Stairs);
+                Assert.IsTrue(slowed);
+                Assert.AreEqual(GameFlowState.Running, run.Flow.State);
+                Assert.AreEqual(0, run.Warnings);
+                Assert.AreEqual(4, run.Prison.Rescued);
+            }
+            finally { RouteSurface.UsePlan(null); }
+        }
+
+        [Test] public void PrisonChunksHaveNoHazards()
+        {
+            var plan = new RoutePlan(new RunConfig(), 3);
+            int lane = -1;
+            for (int l = -1; l <= 1; l++) if (plan.DestinationFor(CartFork.FirstChunk, l) == 0) lane = l;
+            plan.UpdateChoice(CartFork.Decision + 1, lane);
+            for (int i = 0; i < PrisonCourse.Chunks.Length; i++)
+            {
+                Assert.AreEqual(i, PrisonCourse.BranchIndex(plan, CartFork.DestinationChunk + i));
+                Assert.AreEqual(PrisonCourse.Chunks[i], plan.TypeAt(CartFork.DestinationChunk + i));
+            }
+            Assert.AreEqual(-1, PrisonCourse.BranchIndex(plan, CartFork.DestinationChunk - 1));
+            Assert.AreEqual(-1, PrisonCourse.BranchIndex(plan, CartFork.DestinationChunk + PrisonCourse.Chunks.Length));
+            var layout = new ObstacleLayout();
+            var slots = new System.Collections.Generic.List<ObstacleSlot>();
+            for (int i = 0; i < 6; i++) slots.Add(new ObstacleSlot(i < 3 ? ObstacleKind.Crate : ObstacleKind.Pipe, i % 3 - 1, i < 3 ? 7 : 19, true));
+            layout.Plan(new System.Random(1), 4, 9, slots, new System.Collections.Generic.List<LanePlacement>(), new HazardOdds(1, 1, 1, 1), true, false);
+            layout.ClearHazards();
+            Assert.IsFalse(layout.Slots.Contains(true)); Assert.AreEqual(0, layout.Blockers.Count); Assert.AreEqual(0, layout.Bananas.Count); Assert.IsFalse(layout.Animal);
+        }
+
         [Test] public void BeginClearsTheVisit()
         {
             var course = new PrisonCourse(); course.Begin(1);

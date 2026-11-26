@@ -14,6 +14,8 @@ namespace Mongscape.Domain
         // nobody has to begin stepping before the stairs. The runner's own step clock (animation, coins, lessons) is untouched.
         private float sinceEntry = float.MaxValue;
         public StairJudge(RunConfig tuning) { config = tuning; }
+        // Shrinks the allowed gap between steps (the prison's stair beat gets a little faster each visit); 1 = KneeStepGap.
+        public float GapScale { get; set; } = 1f;
         // Inside the judged span of a stair chunk.
         public bool InStair { get; private set; }
         // 0 at the start of the judged span, 1 at its end.
@@ -30,7 +32,7 @@ namespace Mongscape.Domain
             inChunk = true; lastZ = localZ;
             InStair = localZ >= From && localZ <= To;
             StairProgress = InStair ? Math.Max(0f, Math.Min(1f, (localZ - From) / (To - From))) : 0f;
-            float gap = Math.Max(.01f, config.KneeStepGap);
+            float gap = Math.Max(.01f, config.KneeStepGap * GapScale);
             float since = Math.Min(runner.SinceKneeStep, sinceEntry);
             KneeUrgency = InStair ? Math.Max(0f, Math.Min(1f, since / gap)) : 0f;
             if (InStair && !failed && since > gap) { failed = true; return true; }

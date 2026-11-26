@@ -339,7 +339,45 @@ namespace Mongscape.Domain
         private float lastHit = -100f, clock, lastStrike;
         // Play time without pauses; shown to the player, not part of the score.
         public float Elapsed => clock;
-        public RunSession(RunConfig config) { Config = config; Score = new ScoreSystem(Workout); Runner = new RunnerController(config); Stair = new StairJudge(config); smoothSpeed = TargetSpeed; Sections.Exited += LeaveSection; }
+        public RunSession(RunConfig config)
+        {
+            Config = config; Score = new ScoreSystem(Workout); Runner = new RunnerController(config); Stair = new StairJudge(config); smoothSpeed = TargetSpeed; Sections.Exited += LeaveSection;
+            Sections.Entered += span => { if (span.Kind == SectionKind.Prison && span.Branch) Prison.Begin(span.Visit); };
+            // Seen by the searchlight (plan 2-3a): one warning, rung by the warden's alarm bell (ChaserDef.Warden).
+            Prison.Alarm += set => Warn(WarningCause.Spotted);
+        }
+        // The prison branch (PrisonCourse): fixed sets of stairs, a searchlight hold at a cell door and a flat stretch.
+        public readonly PrisonCourse Prison = new PrisonCourse();
+        // Fed each frame by the input: crouched under the line (pose), and how deep (0..1). A negative depth is the keyboard:
+        // holding S (the runner's crouch) hides and the lock fills at the base rate.
+        public bool HidePose { get; set; }
+        public float HideDepth { get; set; } = -1f;
+        private bool Hiding => HideDepth < 0f ? Runner.Crouching : HidePose;
+        // How far the runner may move this tick: up to the prison door while it holds there.
+        private float PrisonStep(float dt, float move)
+        {
+            int sequence = RouteSurface.SequenceAt(Runner.Z);
+            int branch = tutorial ? -1 : PrisonCourse.BranchIndex(RouteSurface.ActivePlan, sequence);
+            float local = Runner.Z - sequence * RouteSurface.Length;
+            float stop = Prison.Tick(dt, branch, local, branch >= 0 && Hiding, HideDepth);
+            Stair.GapScale = branch >= 0 ? Prison.GapScale : 1f;
+            // MET hints (plan 5-5): a half squat while hiding, fast stairs on later visits or with the warden behind.
+            var hints = Workout.Hints;
+            hints.DeepCrouch = branch >= 0 && Prison.Holding && Hiding && HideDepth >= .9f;
+            hints.FastStairs = branch >= 0 && Prison.Phase == PrisonPhase.Stairs && (Prison.WardenChasing || Prison.Visit >= 2);
+            Workout.Hints = hints;
+            if (branch < 0) return move;
+            SectionSpeed = Prison.Speed;
+            if (Prison.Holding)
+            {
+                smoothSpeed = 0f;
+                // The body holds the hide; keep the runner's crouch (animation, camera) going with it.
+                if (Hiding) Runner.Command(MotionCommand.Crouch);
+            }
+            if (stop >= float.MaxValue || dt <= 0f) return move;
+            float per = dt * Math.Max(.01f, Runner.SpeedMultiplier);
+            return Math.Min(move, Math.Max(0f, stop - local) / per);
+        }
         private float CurveSpeed(float distance, bool riding) => riding
             ? Difficulty.Ramp(Config.CartSpeedStart, Config.CartSpeedMax, distance, Config)
             : Difficulty.Ramp(Config.RunSpeedStart, Config.RunSpeedMax, distance, Config);
@@ -351,7 +389,7 @@ namespace Mongscape.Domain
             smoothSpeed = smoothSpeed < target ? Math.Min(target, smoothSpeed + Config.SpeedChangeRate * dt) : Math.Max(target, smoothSpeed - Config.SpeedChangeRate * 1.6f * dt);
             Items.Tick(dt); Score.CoinMultiplier = Items.IsActive(ItemKind.DoubleScore) ? 2 : 1;
             float z = Runner.Z;
-            Runner.Tick(dt, MoveSpeed * SpeedScale);
+            Runner.Tick(dt, PrisonStep(dt, MoveSpeed * SpeedScale));
             Score.Advance(Runner.Z - z);
             var before = Sections.Current;
             Sections.Update(RouteSurface.ActivePlan, Runner.Z);
@@ -473,7 +511,9 @@ namespace Mongscape.Domain
                 Runner.Slip();LastSlipSource=source;Warn(WarningCause.Banana);return true;
             }
             Runner.Slip();LastSlipSource=source;
-            if(source==SlipSource.KneeMiss&&!tutorial&&Section.Kind==SectionKind.Prison)Approach(.5f);
+            // In the prison a missed knee beat only slows (plan 2-3a), except on the stairs the warden chases after an alarm:
+            // there it is a capture on the spot.
+            if(source==SlipSource.KneeMiss&&!tutorial&&Section.Kind==SectionKind.Prison&&Prison.WardenChasing)Fail(CaptureReason.SlipPursuit);
             return true;
         }
         public enum BigMove { Jump, Crouch, Knee, Lane }
@@ -493,6 +533,6 @@ namespace Mongscape.Domain
             BigMoves[(int)move]++;
             return true;
         }
-        public void Reset() { Array.Clear(BigMoves, 0, BigMoves.Length); BigCoins = 0; Runner.Reset(); Stair.Reset(); Chase.Reset(); Score.Reset(); Workout.Reset(); Items.Reset(); Paused=false; SpeedScale=1f; CadenceScale=1f; PacePressure=0f; clock = 0f; lastHit = -100f;SlipStrikes=0;lastStrike=0f;ShieldSaves=0;bananaCatchLeft=0;pursuer=null;ChaserGauge=0f;LastWarning=WarningCause.Collision;CaughtBy=ChaserKind.Police;Reason=CaptureReason.Collision; Sections.Reset(); SectionSpeed = null; smoothSpeed = TargetSpeed; }
+        public void Reset() { Array.Clear(BigMoves, 0, BigMoves.Length); BigCoins = 0; Runner.Reset(); Stair.Reset(); Chase.Reset(); Score.Reset(); Workout.Reset(); Items.Reset(); Paused=false; SpeedScale=1f; CadenceScale=1f; PacePressure=0f; clock = 0f; lastHit = -100f;SlipStrikes=0;lastStrike=0f;ShieldSaves=0;bananaCatchLeft=0;pursuer=null;ChaserGauge=0f;LastWarning=WarningCause.Collision;CaughtBy=ChaserKind.Police;Reason=CaptureReason.Collision; Sections.Reset(); SectionSpeed = null; Prison.Reset(); Stair.GapScale = 1f; HidePose = false; HideDepth = -1f; smoothSpeed = TargetSpeed; }
     }
 }

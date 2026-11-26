@@ -18,6 +18,15 @@ namespace Mongscape.Domain
         // Chunk order of the branch, from the destination chunk on (11 chunks: the extended lap's destination length).
         public const int Sets = 3;
         public static readonly int[] Chunks = { 7, 4, 5, 7, 5, 4, 7, 4, 5, 6, RouteSurface.PrisonExit };
+        // RoutePlan branch hook: the same fixed sets on every lap (the visit makes them harder, not the layout).
+        public static int[] Branch(int lap) => (int[])Chunks.Clone();
+        // Index of a route chunk inside a chosen prison branch, or -1.
+        public static int BranchIndex(RoutePlan plan, int sequence)
+        {
+            if (plan == null || !plan.Extended || !plan.HasFork(sequence) || plan.DestinationAt(sequence) != 0) return -1;
+            int index = plan.LocalSequence(sequence) - CartFork.DestinationChunk;
+            return index >= 0 && index < Chunks.Length ? index : -1;
+        }
         // Where the runner stops in the cell chunk (local metres): the door is drawn beside this point.
         public const float DoorZ = 12f;
         // Seconds the searchlight takes to reach the door after the runner stops (hiding early is free).

@@ -404,6 +404,9 @@ namespace Mongscape.Bootstrap
                     Pose.UsesCamera && Pose.Tracking, OnOrBeforeStairs());
                 Session.ApplyPace(pace);
                 TickBigMoves();
+                // Prison hiding (plan 2-3a): the body's held crouch and its depth; the keyboard (S) hides with the runner's crouch.
+                bool hideBody = Pose.UsesCamera && Pose.Tracking;
+                Session.HidePose = hideBody && Pose.Reading.Crouch; Session.HideDepth = hideBody ? Pose.Reading.CrouchDepth : -1f;
                 float previousZ = Session.Runner.Z;
                 Session.Tick(dt); Results.Race.Update(Session.Score.Score); Map.Tick(Session.Runner.Z); Hero.Apply(Session.Runner); Map.Evaluate(previousZ);
                 Map.AnimateGates(Session.Runner.Z);
