@@ -80,7 +80,7 @@ namespace Mongscape.Bootstrap
         // Guests on one PC share an empty owner id, so a guest sees no course tip, no streak, and the minutes of this run only
         // instead of the PC's week (QA 2026-11-25 L3).
         ExerciseKind IHudData.Recommended => Account.IsMember ? Store.Exercise.Recommend(ExerciseOwner, System.DateTime.UtcNow) : ExerciseKind.Warmup;
-        double IHudData.WeekMinutes => Account.IsMember ? Store.Exercise.WeekModerateMinutes(ExerciseOwner, System.DateTime.UtcNow) : Session.Workout.ModerateSeconds / 60;
+        double IHudData.WeekMinutes => Account.IsMember ? Store.Exercise.WeekModerateMinutes(ExerciseOwner, System.DateTime.UtcNow) : Session.Workout.GoalSeconds / 60;
         int IHudData.Streak => Account.IsMember ? Store.Exercise.Streak(ExerciseOwner, System.DateTime.UtcNow) : 0;
         int IHudData.LastStreakCoins => Results.LastStreakCoins;
         bool IHudData.JointCompareOpen => Tutorial != null && Tutorial.ComparingJoints;

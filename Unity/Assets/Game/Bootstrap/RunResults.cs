@@ -50,7 +50,7 @@ namespace Mongscape.Bootstrap
             LastRank = Store.Record(LastEntry, session.Workout.EstimatedKcal);
             // Weekly goal and streak: camera runs only. The streak is this PC's; a member's weekly minutes also go to the
             // server with the run (moderate_seconds). Members get the streak coins with this run.
-            LastStreakCoins = PlayStyleInfo.UsesCamera(mode) ? Store.RecordExercise(ExerciseOwner, DateTime.UtcNow, session.Workout.ActiveSeconds, session.Workout.ModerateSeconds, kindSeconds) : 0;
+            LastStreakCoins = PlayStyleInfo.UsesCamera(mode) ? Store.RecordExercise(ExerciseOwner, DateTime.UtcNow, session.Workout.ActiveSeconds, session.Workout.GoalSeconds, kindSeconds) : 0;
             if (!Account.IsMember) LastStreakCoins = 0;
             LastTodayRank = Store.Board.RankOf(LastEntry, true, mode);
             if (!Account.IsMember) return;

@@ -9,15 +9,25 @@ namespace Mongscape.Tests
     // Exercise plan stage 2: intensity MET from the cadence, score version 3 (a new ranking season), the result report.
     public sealed class IntensityScoreTests
     {
-        [Test] public void MetFollowsTheCadenceStageAndBigMovesAddOne()
+        [Test] public void MetComesFromTheCompendiumTable()
         {
-            Assert.AreEqual(0, IntensityMet.Of(CadenceStage.Standing, true, 1));
-            Assert.AreEqual(3.5, IntensityMet.Of(CadenceStage.Walk, false, 1));
-            Assert.AreEqual(5, IntensityMet.Of(CadenceStage.Run, false, 1));
-            Assert.AreEqual(7, IntensityMet.Of(CadenceStage.Sprint, false, 1));
-            Assert.AreEqual(8, IntensityMet.Of(CadenceStage.Sprint, true, 1));
-            Assert.AreEqual(3, IntensityMet.Of(CadenceStage.Run, false, IntensityMet.Scale(PlayStyle.UpperBody)), 1e-9, "Upper body is 0.6 of the table");
-            Assert.AreEqual(0, IntensityMet.Scale(PlayStyle.Keyboard));
+            var none = new MetHints();
+            MetActivity Full(SectionKind s, CadenceStage c, int motion = 0, MetHints h = default) => IntensityMet.Classify(PlayStyle.FullBody, s, c, true, motion != 0, motion, h);
+            Assert.AreEqual(MetActivity.Standing, Full(SectionKind.Mine, CadenceStage.Standing));
+            Assert.AreEqual(4.0, IntensityMet.Of(Full(SectionKind.Mine, CadenceStage.Walk)));
+            Assert.AreEqual(4.8, IntensityMet.Of(Full(SectionKind.Mine, CadenceStage.Run)));
+            Assert.AreEqual(7.5, IntensityMet.Of(Full(SectionKind.Mine, CadenceStage.Sprint)));
+            Assert.AreEqual(7.5, IntensityMet.Of(Full(SectionKind.Zoo, CadenceStage.Run)));
+            Assert.AreEqual(5.0, IntensityMet.Of(Full(SectionKind.Zoo, CadenceStage.Run, 0, new MetHints { MissingBeats = true })));
+            Assert.AreEqual(4.5, IntensityMet.Of(Full(SectionKind.Prison, CadenceStage.Walk, 3)));
+            Assert.AreEqual(6.8, IntensityMet.Of(Full(SectionKind.Prison, CadenceStage.Walk, 3, new MetHints { FastStairs = true })));
+            Assert.AreEqual(3.8, IntensityMet.Of(Full(SectionKind.Prison, CadenceStage.Standing, 2, new MetHints { DeepCrouch = true })));
+            Assert.AreEqual(2.8, IntensityMet.Of(Full(SectionKind.Prison, CadenceStage.Standing, 2)));
+            Assert.AreEqual(3.0, IntensityMet.Of(IntensityMet.Classify(PlayStyle.UpperBody, SectionKind.Mine, CadenceStage.Sprint, true, false, 0, none)));
+            Assert.AreEqual(2.8, IntensityMet.Of(IntensityMet.Classify(PlayStyle.UpperBody, SectionKind.Prison, CadenceStage.Walk, true, true, 3, none)));
+            Assert.AreEqual(MetActivity.Standing, IntensityMet.Classify(PlayStyle.Keyboard, SectionKind.Mine, CadenceStage.Sprint, true, true, 1, none));
+            Assert.AreEqual("22240", IntensityMet.Code(MetActivity.MineGeneral)); Assert.AreEqual("07040", IntensityMet.Code(MetActivity.Standing));
+            Assert.IsTrue(IntensityMet.IsModerate(3)); Assert.IsFalse(IntensityMet.IsModerate(2.8)); Assert.IsTrue(IntensityMet.IsVigorous(6));
         }
 
         [Test] public void StandingStillCountsNothingAndOtherMovesCountAsWalking()
@@ -26,7 +36,7 @@ namespace Mongscape.Tests
             w.TickIntensity(10, true, true, CadenceStage.Standing, false, false, 0);
             Assert.AreEqual(0, w.ActiveSeconds, "No grace period: standing is not exercise");
             w.TickIntensity(2, true, true, CadenceStage.Standing, true, false, 1);
-            Assert.AreEqual(2, w.ActiveSeconds); Assert.AreEqual(7, w.MetSeconds, 1e-9, "A jump with still feet counts as walking (3.5 MET)");
+            Assert.AreEqual(2, w.ActiveSeconds); Assert.AreEqual(8, w.MetSeconds, 1e-9, "A jump with still feet counts as mine play (4.0 MET)");
             w.TickIntensity(5, true, false, CadenceStage.Sprint, true, false, 0);
             w.TickIntensity(5, false, true, CadenceStage.Sprint, true, false, 0);
             w.TickIntensity(double.NaN, true, true, CadenceStage.Sprint, true, false, 0);
@@ -38,25 +48,26 @@ namespace Mongscape.Tests
             var walk = new WorkoutEstimate(); var sprint = new WorkoutEstimate();
             walk.TickIntensity(600, true, true, CadenceStage.Walk, false, false, 0);
             sprint.TickIntensity(600, true, true, CadenceStage.Sprint, false, false, 0);
-            // 65 kg, 10 minutes: 3.5 MET -> 39.8 kcal, 7 MET -> 79.6 kcal.
-            Assert.AreEqual(3.5 * 3.5 * 65 / 200 * 10, walk.EstimatedKcal, 1e-6);
-            Assert.AreEqual(7 * 3.5 * 65 / 200 * 10, sprint.EstimatedKcal, 1e-6);
+            // 65 kg, 10 minutes: 4.0 MET (22240) -> 45.5 kcal, 7.5 MET (22320) -> 85.3 kcal.
+            Assert.AreEqual(4.0 * 3.5 * 65 / 200 * 10, walk.EstimatedKcal, 1e-6);
+            Assert.AreEqual(7.5 * 3.5 * 65 / 200 * 10, sprint.EstimatedKcal, 1e-6);
             Assert.Greater(RunScore.From(1000, sprint), RunScore.From(1000, walk));
-            Assert.AreEqual(Math.Round(1000 + 7 * 3.5 * 65 / 200 * 10 * 100, MidpointRounding.AwayFromZero), RunScore.From(1000, sprint));
+            Assert.AreEqual(Math.Round(1000 + 7.5 * 3.5 * 65 / 200 * 10 * 100, MidpointRounding.AwayFromZero), RunScore.From(1000, sprint));
             Assert.AreEqual(600, sprint.StageSeconds(CadenceStage.Sprint)); Assert.AreEqual(0, sprint.StageSeconds(CadenceStage.Walk));
-            Assert.AreEqual(600, sprint.ModerateSeconds); Assert.AreEqual(0, walk.ModerateSeconds, "Walking is below 5 MET");
+            Assert.AreEqual(600, walk.ModerateSeconds, "4.0 MET is moderate (3 or more)"); Assert.AreEqual(600, walk.GoalSeconds);
+            Assert.AreEqual(600, sprint.VigorousSeconds); Assert.AreEqual(1200, sprint.GoalSeconds, "A vigorous minute counts two");
+            Assert.AreEqual(600, sprint.SecondsAt(Intensity.Vigorous)); Assert.AreEqual(600, walk.SecondsAt(Intensity.Moderate));
+            Assert.AreEqual(600, sprint.SecondsIn(MetActivity.Vigorous));
         }
 
-        [Test] public void UpperBodyScoresLessForTheSameCadenceAndItsArmsAreNotModerate()
+        [Test] public void UpperBodyUsesItsOwnCodeAndFillsTheWeeklyGoal()
         {
-            var full = new WorkoutEstimate(); var upper = new WorkoutEstimate { StyleScale = IntensityMet.Scale(PlayStyle.UpperBody) };
+            var full = new WorkoutEstimate(); var upper = new WorkoutEstimate { Style = PlayStyle.UpperBody };
             full.TickIntensity(60, true, true, CadenceStage.Run, false, false, 0); upper.TickIntensity(60, true, true, CadenceStage.Run, false, false, 0);
-            Assert.AreEqual(full.EstimatedKcal * .6, upper.EstimatedKcal, 1e-9);
-            // QA 2026-11-25 M5: moderate is judged after the play-style scale; arm swings at a run are 3 MET, a sprint 4.2.
-            Assert.AreEqual(0, upper.ModerateSeconds, "Upper-body running is 3 MET");
-            upper.TickIntensity(60, true, true, CadenceStage.Sprint, false, true, 0);
-            Assert.AreEqual(0, upper.ModerateSeconds, "Even a big sprint moment (4.8 MET) is under 5");
-            Assert.AreEqual(60, full.ModerateSeconds);
+            Assert.AreEqual(4.8 * 60, full.MetSeconds, 1e-9); Assert.AreEqual(3.0 * 60, upper.MetSeconds, 1e-9, "22200 upper body video game");
+            Assert.AreEqual(60, upper.ModerateSeconds, "Arm swings at 3.0 MET are moderate (plan 5-2, 5-5)");
+            upper.TickIntensity(60, true, true, CadenceStage.Walk, true, false, 3);
+            Assert.AreEqual(3.0 * 60 + 2.8 * 60, upper.MetSeconds, 1e-9); Assert.AreEqual(60, upper.ModerateSeconds, "Pull-downs are light (02115)");
         }
 
         [Test] public void WeightChangesCaloriesButNotTheScore()

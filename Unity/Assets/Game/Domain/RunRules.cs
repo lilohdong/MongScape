@@ -356,6 +356,7 @@ namespace Mongscape.Domain
             var before = Sections.Current;
             Sections.Update(RouteSurface.ActivePlan, Runner.Z);
             if (!before.SameStay(Sections.Current)) SectionSpeed = null;
+            Workout.Section = Section.Kind;
             // Stair chunks: a missed knee rhythm counts as a slip strike; in the tutorial it is a counted miss that restarts the step.
             int chunk = RouteSurface.SequenceAt(Runner.Z);
             bool onStair = RouteSurface.IsStair(RouteSurface.TypeAt(chunk));

@@ -239,7 +239,7 @@ namespace Mongscape.Bootstrap
         {
             if(Session.Flow.State!=GameFlowState.TitleIdle||hud.Loading||!Session.Workout.SetWeight(weight)) return;
             menuCamera=false;
-            playerRun=false; cadenceRun=false; Results.ClearRace(); Session.Workout.Met=PlayStyleInfo.Met(player.Style);Session.Workout.StyleScale=IntensityMet.Scale(player.Style);
+            playerRun=false; cadenceRun=false; Results.ClearRace(); Session.Workout.Met=PlayStyleInfo.Met(player.Style);Session.Workout.Style=player.Style;
             Session.Workout.CadenceCounts=true;
             StartCoroutine(PrepareRun(723));
         }
@@ -256,7 +256,7 @@ namespace Mongscape.Bootstrap
             player=profile; playerRun=true; KeyboardGameInput.SetTextInput(false);
             // The best to beat is read before the run (and before its save).
             Accounts.RefreshMemberStats();
-            Session.Workout.Met=PlayStyleInfo.Met(profile.Style);Session.Workout.StyleScale=IntensityMet.Scale(profile.Style);
+            Session.Workout.Met=PlayStyleInfo.Met(profile.Style);Session.Workout.Style=profile.Style;
             Session.Workout.SetGoal(profile.CalorieGoal);
             cadenceRun = PlayStyleInfo.UsesCamera(profile.Style) && userSettings.CadenceSpeed;
             // Cadence off: stepping in place earns no calories, only jumps, crouches, knee raises and lane changes do.
@@ -272,7 +272,7 @@ namespace Mongscape.Bootstrap
             if(Session.Flow.State!=GameFlowState.TitleIdle||hud.Loading) return;
             tutorialOffered=true; playerRun=false; KeyboardGameInput.SetTextInput(false);
             if(!PlayableStyle(player.Style)) player.Style=PlayStyle.Keyboard;
-            Session.Workout.SetWeight(""); Session.Workout.Met=PlayStyleInfo.Met(player.Style);Session.Workout.StyleScale=IntensityMet.Scale(player.Style);
+            Session.Workout.SetWeight(""); Session.Workout.Met=PlayStyleInfo.Met(player.Style);Session.Workout.Style=player.Style;
             menuCamera=false; Pose.SetStyle(player.Style);
             cadenceRun=PlayStyleInfo.UsesCamera(player.Style)&&userSettings.CadenceSpeed; Results.ClearRace(); Session.Workout.CadenceCounts=userSettings.CadenceSpeed;
             Session.IsTutorial=true; Tutorial.Begin(player.Style,Session.Config.ExtendedRoutes,userSettings.CadenceSpeed,tutorialShort); tutorialShort=false;

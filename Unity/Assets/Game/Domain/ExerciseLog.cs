@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Mongscape.Domain
 {
-    // One player's exercise on one KST day: active seconds, moderate seconds (5 MET or more by the cadence stage), and the
+    // One player's exercise on one KST day: active seconds, goal seconds (3 MET or more, a vigorous second counted twice), and the
     // active seconds per course (ExerciseKind). Owner is the member id, or "" for guests of this PC.
     [Serializable]
     public sealed class ExerciseDay

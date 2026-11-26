@@ -20,17 +20,17 @@ namespace Mongscape.Tests
             Assert.AreEqual(0, w.EstimatedKcal);
             w.TickIntensity(10, true, true, CadenceStage.Sprint, true, false, 1);
             Assert.AreEqual(10, w.ActiveSeconds); Assert.AreEqual(10, w.MoveSeconds);
-            Assert.AreEqual(IntensityMet.Move * 10, w.MetSeconds, 1e-9, "A jump moment counts at the motion MET, not the sprint MET");
+            Assert.AreEqual(4.0 * 10, w.MetSeconds, 1e-9, "A jump moment counts as mine play (22240), not the sprint MET");
             Assert.AreEqual(0, w.StageSeconds(CadenceStage.Sprint));
             Assert.AreEqual(10, w.ModerateSeconds, "A motion moment of a full body run counts toward the weekly goal (QA H1)");
             w.TickIntensity(4, true, true, CadenceStage.Standing, true, true, 2);
-            Assert.AreEqual(IntensityMet.Move * 10 + (IntensityMet.Move + IntensityMet.BigMove) * 4, w.MetSeconds, 1e-9, "A deep crouch adds 1");
+            Assert.AreEqual(4.0 * 14, w.MetSeconds, 1e-9, "A big crouch adds no MET (plan 5-5)");
             w.TickIntensity(5, true, false, CadenceStage.Run, true, false, 1);
             Assert.AreEqual(14, w.ActiveSeconds, "Out of view still counts nothing");
-            var upper = new WorkoutEstimate { CadenceCounts = false, StyleScale = IntensityMet.Scale(PlayStyle.UpperBody) };
+            var upper = new WorkoutEstimate { CadenceCounts = false, Style = PlayStyle.UpperBody };
             upper.TickIntensity(10, true, true, CadenceStage.Run, true, false, 1);
-            Assert.AreEqual(IntensityMet.Move * .6 * 10, upper.MetSeconds, 1e-9);
-            Assert.AreEqual(0, upper.ModerateSeconds, "The upper body's moments are 3 MET, under moderate (QA M5)");
+            Assert.AreEqual(3.0 * 10, upper.MetSeconds, 1e-9);
+            Assert.AreEqual(10, upper.ModerateSeconds, "The upper body's moments are 3 MET, moderate");
             w.Reset(); Assert.AreEqual(0, w.MoveSeconds); Assert.IsFalse(w.CadenceCounts, "Reset keeps the option");
         }
 
@@ -60,9 +60,9 @@ namespace Mongscape.Tests
             session.Workout.TickIntensity(120, true, true, CadenceStage.Run, false, false, 0);
             session.Workout.TickIntensity(30, true, true, CadenceStage.Walk, false, false, 0);
             var run = AccountRun.Create(session, PlayStyle.FullBody, 0);
-            Assert.AreEqual(120, run.moderate_seconds, 1e-9);
+            Assert.AreEqual(150, run.moderate_seconds, 1e-9, "Goal seconds: jogging 4.8 and walking 4.0 are both moderate");
             string json = JsonUtility.ToJson(run);
-            StringAssert.Contains("\"moderate_seconds\":120", json);
+            StringAssert.Contains("\"moderate_seconds\":150", json);
             StringAssert.DoesNotContain("cadence", json, "Runs with and without the option share one ranking");
         }
 
