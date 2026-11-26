@@ -13,13 +13,13 @@ namespace Mongscape.Presentation
         private readonly Dictionary<int, GUIStyle> styles = new Dictionary<int, GUIStyle>();
         private readonly Dictionary<int, GUIStyle> centeredStyles = new Dictionary<int, GUIStyle>();
         private GUIStyle button, flatButton, panelStyle, inputStyle;
-        private Texture2D panelTexture, coinIcon, distanceIcon;
+        private Texture2D panelTexture, monkeyIcon, distanceIcon;
         public GUIStyle Large => Style(74, FontStyle.Bold);
         public GUIStyle Small => Style(20, FontStyle.Normal);
         public GUIStyle Label => Style(25, FontStyle.Bold);
         public GUIStyle Button => button ??= new GUIStyle(GUI.skin.button) { font = Font, fontSize = 22 };
         public GUIStyle Input => inputStyle ??= InputStyle();
-        public Texture2D CoinIcon => coinIcon ??= CreateHudIcon(false);
+        public Texture2D MonkeyIcon => monkeyIcon ??= CreateHudIcon(false);
         public Texture2D DistanceIcon => distanceIcon ??= CreateHudIcon(true);
         // The game font has one heavy weight, so "Bold" never adds a synthetic bold; the weight only keeps call sites readable.
         public GUIStyle Style(int size, FontStyle weight)
@@ -95,7 +95,7 @@ namespace Mongscape.Presentation
         public void Dispose()
         {
             if (panelTexture != null) Object.Destroy(panelTexture);
-            if (coinIcon != null) Object.Destroy(coinIcon);
+            if (monkeyIcon != null) Object.Destroy(monkeyIcon);
             if (distanceIcon != null) Object.Destroy(distanceIcon);
         }
         private static Texture2D CreateHudIcon(bool crown)

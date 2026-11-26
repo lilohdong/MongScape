@@ -1,0 +1,83 @@
+/*
+   Mongscape trait screen (UI style guide "특성", mockup ui-review/mockups/14_traits.png). Reference 1920x1080.
+     panel #2A1D14   panel-edge #97693D   accent #FFD36B   text #FAF5DE   text-dim #C7B08F   cool #7FC0D8   deep #0E171F
+   Cards 420x200, 30px apart; level dots 56x28 (filled cool, empty text-dim 3px outline); the cost sits at the bottom left
+   and turns text-dim when the monkeys held are not enough. TraitsWindow.cs builds the tree and sets these classes.
+*/
+
+.traits-root {
+    position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+    background-color: rgba(14, 23, 31, 0.72);
+    padding: 50px 110px 40px 110px;
+}
+
+.traits-header { flex-direction: row; justify-content: space-between; align-items: center; height: 110px; }
+.traits-title { font-size: 88px; color: rgb(255, 211, 107); -unity-text-align: middle-left; }
+.traits-held {
+    flex-direction: row; align-items: center; width: 330px; height: 100px; padding-left: 40px;
+    background-color: rgba(42, 29, 20, 0.92); border-radius: 50px; border-width: 4px; border-color: rgb(151, 105, 61);
+}
+.traits-held-icon { width: 76px; height: 76px; }
+.traits-held-count { font-size: 72px; color: rgb(250, 245, 222); margin-left: 24px; }
+
+.traits-columns { flex-direction: row; justify-content: center; margin-top: 30px; flex-grow: 1; }
+.traits-column { width: 420px; margin: 0 15px; align-items: stretch; }
+.traits-branch { font-size: 60px; color: rgb(199, 176, 143); -unity-text-align: middle-center; height: 70px; margin-bottom: 10px; }
+
+.trait-card {
+    height: 200px; margin: 0 0 30px 0; padding: 18px 24px 14px 24px;
+    background-color: rgba(42, 29, 20, 0.95); border-radius: 28px; border-width: 5px; border-color: rgb(151, 105, 61);
+    flex-direction: column; justify-content: space-between; -unity-text-align: upper-left;
+}
+.trait-card:hover, .trait-card-chosen { background-color: rgba(255, 211, 107, 0.95); }
+.trait-card:hover .trait-name, .trait-card-chosen .trait-name, .trait-card:hover .trait-cost, .trait-card-chosen .trait-cost { color: rgb(42, 29, 20); }
+.trait-card-full { border-color: rgb(127, 192, 216); }
+.trait-card-top { flex-direction: row; align-items: center; }
+.trait-icon-badge { width: 100px; height: 100px; border-radius: 50px; background-color: rgba(14, 23, 31, 0.9); align-items: center; justify-content: center; }
+.trait-icon { width: 76px; height: 76px; }
+.trait-card-side { margin-left: 26px; }
+.trait-name { font-size: 52px; color: rgb(250, 245, 222); -unity-text-align: middle-left; }
+.traits-dots { flex-direction: row; margin-top: 8px; }
+.trait-dot {
+    width: 56px; height: 28px; margin-right: 16px; border-radius: 14px;
+    background-color: rgba(14, 23, 31, 0.4); border-width: 3px; border-color: rgb(199, 176, 143);
+}
+.trait-dot-large { width: 72px; height: 36px; border-radius: 18px; }
+.trait-dot-full { background-color: rgb(127, 192, 216); border-width: 0; }
+.trait-cost-row { flex-direction: row; align-items: center; }
+.traits-cost-icon { width: 48px; height: 48px; }
+.trait-cost { font-size: 48px; color: rgb(250, 245, 222); margin-left: 12px; }
+.trait-cost-short { color: rgb(199, 176, 143); }
+.trait-done { font-size: 40px; color: rgb(127, 192, 216); }
+
+.traits-back {
+    position: absolute; left: 110px; bottom: 30px; width: 300px; height: 120px;
+    flex-direction: row; align-items: center; justify-content: center;
+    background-color: rgba(42, 29, 20, 0.94); border-radius: 32px; border-width: 5px; border-color: rgb(151, 105, 61);
+}
+.traits-back:hover { background-color: rgb(255, 211, 107); }
+.traits-back-icon { width: 56px; height: 56px; }
+.traits-back-label { font-size: 64px; color: rgb(250, 245, 222); margin-left: 24px; }
+.traits-back:hover .traits-back-label { color: rgb(42, 29, 20); }
+
+.traits-detail-shade {
+    position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+    background-color: rgba(14, 23, 31, 0.6); align-items: center; justify-content: center;
+}
+.traits-detail {
+    width: 1000px; padding: 40px 56px;
+    background-color: rgba(42, 29, 20, 0.97); border-radius: 36px; border-width: 5px; border-color: rgb(151, 105, 61);
+}
+.traits-detail-name { font-size: 80px; color: rgb(255, 211, 107); }
+.traits-detail-text { font-size: 48px; color: rgb(250, 245, 222); margin-top: 24px; white-space: normal; }
+.traits-detail-cost-row { flex-direction: row; align-items: center; margin-top: 24px; height: 60px; }
+.traits-detail-cost { font-size: 56px; color: rgb(250, 245, 222); margin-left: 12px; }
+.traits-detail-note { font-size: 40px; color: rgb(199, 176, 143); margin-top: 12px; white-space: normal; }
+.traits-detail-buttons { flex-direction: row; justify-content: space-between; margin-top: 30px; }
+.traits-button {
+    width: 400px; height: 130px; font-size: 60px; border-radius: 32px; border-width: 5px;
+    color: rgb(250, 245, 222); background-color: rgba(42, 29, 20, 0.94); border-color: rgb(151, 105, 61);
+}
+.traits-button:hover { background-color: rgb(255, 211, 107); color: rgb(42, 29, 20); }
+.traits-button-main { background-color: rgb(255, 211, 107); color: rgb(42, 29, 20); }
+.traits-button:disabled { opacity: 0.5; }

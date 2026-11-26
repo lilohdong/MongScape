@@ -11,9 +11,8 @@ namespace Mongscape.Presentation
     // Sample in Update, then render cached values for all of Unity's GUI events.
     public sealed class RunHudModel
     {
-        public string Coins { get; private set; } = "0";
-        // The double-coin item marks the coin counter with "×2" while it lasts.
-        public bool CoinBoost { get; private set; }
+        // Monkeys rescued and still following this run.
+        public string Monkeys { get; private set; } = "0";
         public string Workout { get; private set; } = "";
         public bool ShowWorkout { get; private set; }
         public string GoalLabel { get; private set; } = "";
@@ -52,7 +51,7 @@ namespace Mongscape.Presentation
         public readonly int[] PreviewDestinations = new int[3];
         private static readonly string[] ChoiceCaptions={"왼쪽 선택","가운데 선택","오른쪽 선택"};
         private readonly int[] itemSeconds = new int[ItemCatalog.All.Length];
-        private int coins = -1, kcal = -1;
+        private int monkeys = -1, kcal = -1;
         private double goal = -1;
         private int workoutMode = -1;
         private bool goalReached;
@@ -104,8 +103,7 @@ namespace Mongscape.Presentation
             KneeWarning = ShowStair && session.KneeUrgency > KneeWarnUrgency;
             StairProgress = ShowStair ? Mathf.Clamp01(session.StairProgress) : 0f;
             ShowStrikeCleared = running && now < strikeClearedUntil && !ShowStrike;
-            if (session.Score.Coins != coins) { coins = session.Score.Coins; Coins = coins.ToString(); }
-            CoinBoost = session.Items.IsActive(ItemKind.DoubleScore);
+            if (session.Troop.Kept != monkeys) { monkeys = session.Troop.Kept; Monkeys = monkeys.ToString(); }
             // Keyboard runs and the tutorial count no calories, so the goal card only shows for camera runs (QA 2026-11-25 L9).
             ShowWorkout = PlayStyleInfo.UsesCamera(style) && !session.IsTutorial;
             int mode = ShowWorkout ? 2 : 0;

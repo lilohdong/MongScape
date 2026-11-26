@@ -24,15 +24,10 @@ namespace Mongscape.Presentation
             if (skin.FlatButton(new Rect(1190, 24, 64, 56), "Ⅱ", false)) pause?.Invoke();
             if (Event.current.type != EventType.Repaint) { GUI.color = Color.white; return; }
             progress.Draw(session, data?.BestScore ?? -1);
-            skin.Card(new Rect(24, 24, Model.CoinBoost ? 176 : 128, 48), Palette.A(Palette.Ground, .82f));
-            GUI.DrawTexture(new Rect(35, 33, 29, 29), skin.CoinIcon);
-            GUI.Label(new Rect(75, 30, 75, 36), Model.Coins, skin.Style(26, FontStyle.Bold));
-            if (Model.CoinBoost)
-            {
-                GUI.color = new Color(Palette.Gold.r, Palette.Gold.g, Palette.Gold.b, fade);
-                GUI.Label(new Rect(150, 30, 46, 36), "×2", skin.Style(26, FontStyle.Bold));
-                GUI.color = new Color(1, 1, 1, fade);
-            }
+            // Rescued monkeys of this run (the troop follows the runner; this is the full count).
+            skin.Card(new Rect(24, 24, 128, 48), Palette.A(Palette.Ground, .82f));
+            GUI.DrawTexture(new Rect(35, 33, 29, 29), skin.MonkeyIcon);
+            GUI.Label(new Rect(75, 30, 75, 36), Model.Monkeys, skin.Style(26, FontStyle.Bold));
             if (Model.ShowWorkout)
             {
                 skin.Card(new Rect(870, 120, 300, 104), Palette.A(Palette.Ground, .82f));

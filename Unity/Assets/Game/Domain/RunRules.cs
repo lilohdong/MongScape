@@ -453,7 +453,7 @@ namespace Mongscape.Domain
         // While the call item lasts, a monkey in the runner's lane is rescued without reaching out (plan 3-0).
         public bool CallActive => Items.IsActive(ItemKind.Call);
         // Monkeys this run brings home: the kept troop plus the sweat trait's bonus for the run's moderate time.
-        public int MonkeysEarned => Troop.Kept + (tutorial ? 0 : Traits.SweatMonkeys(Workout.ModerateSeconds));
+        public int MonkeysEarned => Troop.Kept + (tutorial ? 0 : Traits.SweatMonkeys(Workout.GoalSeconds));
         public enum WarningGuard { None, Shield, Loyalty }
         public int LoyaltySaves { get; private set; }
         private bool thickFurLeft, loyaltyLeft;

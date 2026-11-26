@@ -17,7 +17,7 @@ namespace Mongscape.Presentation
         private const float DuckDb = 5f, DuckHold = .4f, DuckRelease = .5f;
         private float duckUntil = -1f, duck = 1f;
         private const string SfxFolder = "MuhanokAudio/Sfx/";
-        private AudioClip crack, coin;
+        private AudioClip crack;
         private AudioClip[] jump, land, hit, bonk, cue, item, shield, beep, go, step, slip;
         private AudioClip[] warning, caught, newRecord, forkBlocked, gateDown, rescue;
         // Effects that wait a moment (warning after a slip, caught after the hit).
@@ -29,7 +29,7 @@ namespace Mongscape.Presentation
         // Read on the audio thread.
         private volatile float tempo = 96f, energy = .3f, level;
         private double phase;
-        private int lastCoins, lastItems, lastShields;
+        private int lastRescued, lastItems, lastShields;
         private bool wasAirborne, wasSlowing;
         private GameFlowState lastState;
         private MusicPlayer loops;
@@ -49,7 +49,6 @@ namespace Mongscape.Presentation
             siren = Source("Siren", true); siren.clip = Siren(); siren.loop = true; siren.volume = 0; siren.Play();
             effects = Source("Effects", false);
             varied = Source("Varied effects", false);
-            coin = Tone(.12f, f => 1046 + (f > .05f ? 520 : 0), .5f);
             beep = Load(() => Tone(.15f, f => 660, .4f), "count_beep");
             go = Load(() => Tone(.35f, f => 990, .45f), "count_go");
             jump = Load(() => Tone(.18f, f => 300 + f * 2600, .35f), "jump");
@@ -181,7 +180,8 @@ namespace Mongscape.Presentation
             siren.volume = Mathf.MoveTowards(siren.volume, danger * effectsVolume * .45f, Time.unscaledDeltaTime);
             if (state == GameFlowState.Running)
             {
-                if (session.Score.Coins > lastCoins) effects.PlayOneShot(coin, effectsVolume * .6f);
+                // Every rescue (mine wall, call item, prison cell, roof) goes through RunSession.Rescue and grows the troop.
+                if (session.Troop.Rescued > lastRescued) MonkeyRescued();
                 if (session.Items.Collected > lastItems) Play(item, ItemGain);
                 if (session.ShieldSaves > lastShields) Play(shield, ShieldGain);
                 bool airborne = session.Runner.Y > .05f;
@@ -200,7 +200,7 @@ namespace Mongscape.Presentation
                 resultAt = -1f;
                 if (state == GameFlowState.Result && NewBest != null && NewBest()) { Play(newRecord, NewRecordGain); Duck(); }
             }
-            lastCoins = session.Score.Coins; lastItems = session.Items.Collected; lastShields = session.ShieldSaves; lastState = state;
+            lastRescued = session.Troop.Rescued; lastItems = session.Items.Collected; lastShields = session.ShieldSaves; lastState = state;
         }
 
         // Audio thread: 16-step pattern in A minor pentatonic with kick, hat, bass and lead.

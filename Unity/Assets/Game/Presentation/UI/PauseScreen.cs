@@ -29,7 +29,7 @@ namespace Mongscape.Presentation
             // A member's best for this play style; guests have none.
             int best = data?.BestScore ?? -1;
             if (best >= 0) Row(ref row, "최고", RunHudModel.Points(Mathf.Max(best, session.Score.Score)));
-            Row(ref row, "코인", session.Score.Coins.ToString(Num));
+            Row(ref row, "원숭이", session.Troop.Kept.ToString(Num));
             Row(ref row, "위치", RouteSurface.AreaAt(session.Runner.Z));
             bool workout = PlayStyleInfo.UsesCamera(data?.Player?.Style ?? PlayStyle.Keyboard);
             Row(ref row, "칼로리", workout ? session.Workout.EstimatedKcal.ToString("F1", Num) + " / " + session.Workout.GoalKcal.ToString("F0", Num) + " kcal" : RunHudModel.KeyboardKcal);

@@ -275,7 +275,7 @@ namespace Mongscape.DevTools
             public void FetchProfile(string token, Action<AccountReply> done) => done?.Invoke(Reply());
             public void UpdateProfile(string token, AccountProfileUpdate update, Action<AccountReply> done) => done?.Invoke(Reply());
             public void SaveRun(string token, AccountRun run, Action<AccountReply> done) { savedRuns++; done?.Invoke(new AccountReply { ok = true, coins = Profile.coins }); }
-            public void Buy(string token, ItemKind item, Action<AccountReply> done) => done?.Invoke(Reply());
+            public void UnlockTrait(string token, TraitId trait, int level, Action<AccountReply> done) => done?.Invoke(Reply());
             public void Leaderboard(string token, PlayStyle mode, bool today, Action<LeaderboardReply> done)
                 => done?.Invoke(new LeaderboardReply { ok = true, entries = new[] { new LeaderboardRow { rank = 1, name = "달리기왕", score = 5120 }, new LeaderboardRow { rank = 2, name = "점프맨", score = 4380 } } });
             public void Stats(string token, Action<StatsReply> done) => done?.Invoke(new StatsReply

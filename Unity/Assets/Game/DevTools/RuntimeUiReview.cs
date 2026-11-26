@@ -56,11 +56,11 @@ namespace Mongscape.DevTools
             hud.SignUp.Toggle(ConsentItem.Biometric); yield return Shot("03a_SignUp_ConsentPartial");
             hud.SignUp.ToggleAll(); hud.SignUp.Agree(); yield return Shot("03b_SignUp_Nickname");
             game.OpenMainMenu(); yield return Shot("03c_MainMenu_Guest");
-            hud.ShowPage(MenuPage.Shop); yield return Shot("03d_Shop_Guest");
+            game.OpenTraits(); yield return Shot("03d_Traits_Guest"); game.CloseTraits();
 
             Seed(data);
             hud.ShowPage(MenuPage.Profile); yield return Shot("04_Profile");
-            hud.ShowPage(MenuPage.Shop); yield return Shot("05_Shop");
+            game.OpenTraits(); yield return Shot("05_Traits"); game.CloseTraits();
             // The review data is on this PC (keyboard runs); the member tab would ask the server.
             hud.ShowPage(MenuPage.Ranking); hud.Ranking.Select(false, PlayStyle.Keyboard, false); yield return Shot("06_Ranking");
             game.OpenMainMenu(); yield return Shot("07_MainMenu");
@@ -134,7 +134,7 @@ namespace Mongscape.DevTools
             for (int i = 0; i < todayRuns.Length; i++) game.Store.Record(new RankingEntry { Name = "탈옥왕", Distance = todayRuns[i], Score = (int)todayRuns[i], ScoreVersion = RunScore.Version, Style = "키보드", Ticks = today.AddMinutes(-i * 7).Ticks }, todayRuns[i] / 25);
             for (int i = 0; i < earlier.Length; i++) game.Store.Record(new RankingEntry { Name = "탈옥왕", Distance = earlier[i], Score = (int)earlier[i] + 300, ScoreVersion = RunScore.Version, Style = "전신", Ticks = yesterday.AddMinutes(-i * 9).Ticks }, earlier[i] / 18);
             // This synthetic token only reaches ReviewAccountGateway; it also exercises member stats panels.
-            game.Account.SignInMember(new AccountProfile { id = "ui-review", name = "탈옥왕", weight = 65, style = (int)PlayStyle.Keyboard, goal = 180, coins = 80, unlocked = new[] { (int)ItemKind.Magnet } }, "synthetic-ui-review");
+            game.Account.SignInMember(new AccountProfile { id = "ui-review", name = "탈옥왕", weight = 65, style = (int)PlayStyle.Keyboard, goal = 180, coins = 18, unlocked = new[] { 11, 12, 21, 41, 71 } }, "synthetic-ui-review");
         }
         private IEnumerator Shot(string name)
         {
@@ -155,7 +155,7 @@ namespace Mongscape.DevTools
         private void OnDestroy(){UnityEngine.Application.logMessageReceived-=LogFailure;}
         private sealed class ReviewAccountGateway : IAccountGateway
         {
-            private readonly AccountProfile profile=new AccountProfile{id="ui-review",name="탈옥왕",weight=65,style=(int)PlayStyle.Keyboard,goal=180,coins=240,unlocked=new[]{(int)ItemKind.Magnet}};
+            private readonly AccountProfile profile=new AccountProfile{id="ui-review",name="탈옥왕",weight=65,style=(int)PlayStyle.Keyboard,goal=180,coins=240,unlocked=new[]{11,12,21,41,71}};
             private AccountReply Reply()=>new AccountReply{ok=true,profile=profile};
             public void Health(Action<AccountResult> done)=>done?.Invoke(new AccountResult{ok=true});
             public void NameCheck(string name,Action<AccountReply> done)=>done?.Invoke(new AccountReply{ok=true,available=true});
@@ -164,7 +164,7 @@ namespace Mongscape.DevTools
             public void FetchProfile(string token,Action<AccountReply> done)=>done?.Invoke(Reply());
             public void UpdateProfile(string token,AccountProfileUpdate update,Action<AccountReply> done)=>done?.Invoke(Reply());
             public void SaveRun(string token,AccountRun run,Action<AccountReply> done)=>done?.Invoke(new AccountReply{ok=true,coins=profile.coins});
-            public void Buy(string token,ItemKind item,Action<AccountReply> done)=>done?.Invoke(Reply());
+            public void UnlockTrait(string token,TraitId trait,int level,Action<AccountReply> done)=>done?.Invoke(Reply());
             public void Leaderboard(string token,PlayStyle mode,bool today,Action<LeaderboardReply> done)=>done?.Invoke(new LeaderboardReply{ok=true});
             public void Stats(string token,Action<StatsReply> done)=>done?.Invoke(new StatsReply{ok=true,today_kcal=52.1,total_kcal=310,best_score=new[]{900,800,640}});
             public void Logout(string token,Action<AccountReply> done)=>done?.Invoke(new AccountReply{ok=true});

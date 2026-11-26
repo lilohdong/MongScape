@@ -46,7 +46,9 @@ namespace Mongscape.Bootstrap
         bool IHudData.TutorialRun => Session.IsTutorial;
         bool IHudData.PoseRecording => Pose.Recording;
         bool IHudData.BodyActive => Pose.Tracking && Pose.Reading.Active;
-        PlayerWallet IHudData.Wallet => Account.Wallet;
+        int IHudData.Monkeys => Account.Monkeys;
+        TraitLevels IHudData.Traits => Account.Traits;
+        bool IHudData.TraitsForSale => Account.IsMember;
         Leaderboard IHudData.Board => Store.Board;
         PlayerStats IHudData.Stats => Store.Stats;
         RankingEntry IHudData.LastEntry => Results.LastEntry;
@@ -83,7 +85,7 @@ namespace Mongscape.Bootstrap
         ExerciseKind IHudData.Recommended => Account.IsMember ? Store.Exercise.Recommend(ExerciseOwner, System.DateTime.UtcNow) : ExerciseKind.Warmup;
         double IHudData.WeekMinutes => Account.IsMember ? Store.Exercise.WeekModerateMinutes(ExerciseOwner, System.DateTime.UtcNow) : Session.Workout.GoalSeconds / 60;
         int IHudData.Streak => Account.IsMember ? Store.Exercise.Streak(ExerciseOwner, System.DateTime.UtcNow) : 0;
-        int IHudData.LastStreakCoins => Results.LastStreakCoins;
+        int IHudData.LastMonkeys => Results.LastMonkeys;
         bool IHudData.JointCompareOpen => Tutorial != null && Tutorial.ComparingJoints;
 
         // A new member (or back to a guest) replaces the player and the face badge; coin or setting updates do not.
@@ -102,7 +104,8 @@ namespace Mongscape.Bootstrap
         }
 
         // IIdentityData: the account flow does the work.
-        void IHudData.Unlock(ItemKind kind, System.Action<bool, string> done) => Accounts.Unlock(kind, done);
+        void IHudData.UnlockTrait(TraitId trait, System.Action<bool, string> done) => Accounts.UnlockTrait(trait, done);
+        void IHudData.LoadTraitPrices() => Accounts.LoadTraitPrices();
         public bool IdentityBusy => Accounts.IdentityBusy;
         public bool SignedIn => Account.IsMember;
         public string IdentityMessage => Accounts.IdentityMessage;

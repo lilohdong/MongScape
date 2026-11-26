@@ -53,7 +53,7 @@ namespace Mongscape.Bootstrap
         private int seenBigJumps, seenBigKnees, seenBigLanes;
         private bool wasDeep;
         private double bigUntil = -10, deepSince = -10;
-        // Exercise plan 8: active seconds per course this run (for the weekly balance) and the streak coins of the last run.
+        // Exercise plan 8: active seconds per course this run (for the weekly balance).
         private readonly double[] kindSeconds = new double[4];
         // Account and face login (AccountFlow); the account is the only source of the current player.
         public AccountFlow Accounts { get; private set; }
@@ -68,6 +68,7 @@ namespace Mongscape.Bootstrap
         private UserSettings userSettings, settingsDefaults;
         private GraphicsSettingsApplier graphics;
         private SettingsWindow settingsWindow;
+        private TraitsWindow traitsWindow;
         private PerformanceOverlay overlay;
         private FaceAvatarView faceAvatar;
         public PoliceCaptureSequence Capture { get; private set; }
@@ -184,8 +185,19 @@ namespace Mongscape.Bootstrap
             settingsWindow.Configure(this);
             settingsWindow.Closed += () => hud.Hidden = false;
             hud.OpenSettings = OpenSettings;
+            var traits = new GameObject("TraitsWindow"); traits.transform.SetParent(transform, false);
+            traitsWindow = traits.AddComponent<TraitsWindow>();
+            traitsWindow.Configure(this);
+            traitsWindow.Closed += () => hud.Hidden = false;
+            hud.OpenTraits = OpenTraits;
             ApplySettings(false);
         }
+        public void OpenTraits()
+        {
+            if (traitsWindow == null || traitsWindow.IsOpen || hud.Loading || Session.Flow.State == GameFlowState.Running) return;
+            hud.Hidden = true; traitsWindow.Open();
+        }
+        public void CloseTraits() { if (traitsWindow != null) traitsWindow.Close(); }
         public void OpenSettings()
         {
             if (settingsWindow == null || settingsWindow.IsOpen || hud.Loading) return;
@@ -273,7 +285,7 @@ namespace Mongscape.Bootstrap
             StartCoroutine(PrepareRun(Settings != null && Settings.Run.RandomizeLayout ? Random.Range(1, int.MaxValue) : 723));
         }
         // Tutorial (main menu, after sign-up or the "게임 시작" offer): the same scene and map on a fixed lesson course.
-        // It never reaches the result screen, so nothing goes to the ranking, coins or calories.
+        // It never reaches the result screen, so nothing goes to the ranking, monkeys or calories.
         public void StartTutorial()
         {
             if(Session.Flow.State!=GameFlowState.TitleIdle||hud.Loading) return;
@@ -318,6 +330,7 @@ namespace Mongscape.Bootstrap
             Pose.Recalibrate(); runCalibrated = false; calibrationDoneAt = -1;
             yield return new WaitForSecondsRealtime(.25f);
             RouteSurface.UsePlan(Session.IsTutorial?TutorialCourse.Plan(Session.Config):new RoutePlan(Session.Config, seed));
+            Session.ApplyTraits(Session.IsTutorial ? RunTraits.None : Account.TraitsForRun());
             Session.Reset(); moveTally.Reset(); pace.Reset(); ResetBigMoves(); System.Array.Clear(kindSeconds, 0, 4); keyboard.Clear(); poseInput.Clear(); hud.LoadingProgress=.42f;
             yield return new WaitForSecondsRealtime(.25f);
             Map.Reset(seed); Map.AnimateGates(Session.Runner.Z); hud.LoadingProgress=.78f;
@@ -647,11 +660,7 @@ namespace Mongscape.Bootstrap
             Accounts.UseServices(accountGateway, faces);
             if (store != null) Store = store;
         }
-        // Items placed on the map: what the member unlocked (none for guests).
-        public System.Collections.Generic.List<ItemKind> RunItems()
-        {
-            if (Session != null && Session.IsTutorial) return new System.Collections.Generic.List<ItemKind>();
-            return Account.RunItems();
-        }
+        // Items placed on the map: what the run's traits unlock (none for guests and in the tutorial).
+        public System.Collections.Generic.List<ItemKind> RunItems() => ItemCatalog.Available(Session != null ? Session.Traits : RunTraits.None);
     }
 }

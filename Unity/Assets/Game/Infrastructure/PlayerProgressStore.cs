@@ -22,10 +22,10 @@ namespace Mongscape.Infrastructure
         public PlayerStats Stats { get; private set; } = new PlayerStats();
         // Weekly goal, streak and course balance per player (exercise plan 8); this PC only for now.
         public readonly ExerciseLog Exercise = new ExerciseLog();
-        // Adds a finished run's exercise time and saves; returns the streak coins it earned (see ExerciseLog.Add).
-        public int RecordExercise(string owner, DateTime utcNow, double active, double moderate, double[] kinds)
+        // Adds a finished run's exercise time and saves.
+        public void RecordExercise(string owner, DateTime utcNow, double active, double moderate, double[] kinds)
         {
-            int coins = Exercise.Add(owner, utcNow, active, moderate, kinds); SaveRecords(); return coins;
+            Exercise.Add(owner, utcNow, active, moderate, kinds); SaveRecords();
         }
         public PlayerProgressStore(string root = null)
         {
