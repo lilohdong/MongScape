@@ -247,8 +247,13 @@ namespace Mongscape.Presentation
             var left = UiTokens.Box(0, 0, 620, 560); var right = UiTokens.Box(680, 0, 600, 560);
             moreBody.Add(left); moreBody.Add(right);
             var workout = session?.Workout;
-            Section(left, WorkoutReport.IntensityTitle(workout));
-            if (camera) foreach (var row in WorkoutReport.Intensity(workout)) Pair(left, row.label, WorkoutReport.Clock(row.seconds));
+            Section(left, "강도별 시간");
+            if (camera && workout != null)
+            {
+                Pair(left, "저강도", WorkoutReport.Clock(workout.SecondsAt(Intensity.Light)));
+                Pair(left, "중강도", WorkoutReport.Clock(workout.SecondsAt(Intensity.Moderate)));
+                Pair(left, "고강도", WorkoutReport.Clock(workout.SecondsAt(Intensity.Vigorous)));
+            }
             else Pair(left, "키보드", "운동 제외");
             Section(right, "동작 횟수");
             if (camera) foreach (var row in WorkoutReport.Moves(workout)) Pair(right, row.Key, row.Value);
@@ -392,7 +397,8 @@ namespace Mongscape.Presentation
         void RenderWeek(float t)
         {
             bool upper = data?.Player?.Style == PlayStyle.UpperBody;
-            double runMinutes = (session?.Workout.ModerateSeconds ?? 0) / 60.0;
+            // Moderate plus vigorous counted twice (Workout.GoalSeconds).
+            double runMinutes = (session?.Workout.GoalSeconds ?? 0) / 60.0;
             UiTokens.Show(weekBox, camera);
             if (!camera) return;
             // Guests share one PC, so the weekly total is for members; a guest sees this run's minutes (owner 02:20).
