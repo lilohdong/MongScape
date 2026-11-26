@@ -130,24 +130,13 @@ namespace Mongscape.Tests
             }
             finally{RouteSurface.UsePlan(null);}
         }
-        [Test] public void DestinationsAreShuffledAndEveryDirectionCanDrawEveryMap()
+        [Test] public void DestinationsAreFixedLeftZooMiddlePrisonRightMine()
         {
-            for(int lane=-1;lane<=1;lane++)
+            for(int seed=1;seed<=20;seed++)for(int lane=-1;lane<=1;lane++)
             {
-                var seen=new System.Collections.Generic.HashSet<int>();
-                for(int seed=1;seed<=40;seed++)
-                {
-                    var a=new RoutePlan(new RunConfig(),seed);var b=new RoutePlan(new RunConfig(),seed);
-                    a.UpdateChoice(144,lane);b.UpdateChoice(144,lane);
-                    Assert.AreEqual(a.DestinationAt(6),b.DestinationAt(6));seen.Add(a.DestinationAt(6));
-                }
-                CollectionAssert.AreEquivalent(new[]{-1,0,1},seen);
-            }
-            for(int seed=0;seed<20;seed++)
-            {
-                var outcomes=new System.Collections.Generic.HashSet<int>();
-                for(int lane=-1;lane<=1;lane++){var p=new RoutePlan(new RunConfig(),seed);p.UpdateChoice(144,lane);outcomes.Add(p.DestinationAt(6));}
-                Assert.AreEqual(3,outcomes.Count,"Three doors must have distinct hidden destinations");
+                var p=new RoutePlan(new RunConfig(),seed);
+                Assert.AreEqual(lane,p.DestinationFor(CartFork.FirstChunk,lane),"plan 3-2: left zoo, middle prison, right mine");
+                p.UpdateChoice(144,lane);Assert.AreEqual(lane,p.DestinationAt(6));
             }
         }
         [Test] public void CompactForkHasNoStraightWaitAfterTheSplit()

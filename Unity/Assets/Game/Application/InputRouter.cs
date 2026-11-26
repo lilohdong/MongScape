@@ -12,8 +12,8 @@ namespace Mongscape.Application
         {
             if (session.Flow.State != GameFlowState.Running || session.Paused) { keyboard.Clear(); pose.Clear(); return; }
             // Both sources remain available; no stale commands survive title/retry.
-            for (int i = 0; i < 8 && keyboard.TryRead(out var command); i++) session.Runner.Command(command);
-            for (int i = 0; i < 8 && pose.TryRead(out var command); i++) session.Runner.Command(command);
+            for (int i = 0; i < 8 && keyboard.TryRead(out var command); i++) session.Command(command);
+            for (int i = 0; i < 8 && pose.TryRead(out var command); i++) session.Command(command);
         }
     }
 }

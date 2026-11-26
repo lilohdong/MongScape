@@ -150,7 +150,8 @@ namespace Mongscape.Presentation
             {
                 case HudNoticeKind.Tracking:
                     Notice = pose == PoseStatus.NoCamera || pose == PoseStatus.NoModel ? "카메라 연결을 확인하세요 (F1 설정)" : "몸이 보이게 서 주세요 (R 다시 맞추기)"; break;
-                case HudNoticeKind.Fork: Notice = style == PlayStyle.Keyboard ? "A 왼쪽   C 가운데   D 오른쪽" : "← 몸을 옮겨 경로 선택 →"; break;
+                // No text while running (plan 6-0): the fork keeps its kind for the arrows but shows no instruction.
+                case HudNoticeKind.Fork: Notice = null; break;
             }
         }
 

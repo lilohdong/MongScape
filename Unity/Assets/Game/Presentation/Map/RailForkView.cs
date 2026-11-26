@@ -10,12 +10,17 @@ namespace Mongscape.Presentation.Map
         private const int Samples=49;
         public const float ExitHalfWidth=3f, ExitHeight=4.6f;
         private static readonly Dictionary<int,Mesh> decks=new Dictionary<int,Mesh>(), tunnels=new Dictionary<int,Mesh>(), supports=new Dictionary<int,Mesh>();
-        private static Material deckMaterial,railMaterial,ravineMaterial,selectedRailMaterial,dimRailMaterial,signMaterial;
+        private static Material deckMaterial,railMaterial,ravineMaterial,selectedRailMaterial,dimRailMaterial,signMaterial,blockedMaterial;
+        private static Mesh crossMesh;
+        // Map signs: bottom of the frame on the lintel height of the tunnel mouths. The X sign stands on the rail.
+        public const float SignHeight=4.1f, BlockedSignZ=14f;
         private static Mesh signBoard;
         private static readonly Mesh[] signArrows=new Mesh[3];
-        private readonly Renderer[] signs=new Renderer[3];
-        // Where each branch leads (exercise plan 3): course name, exercise, two moves and the intensity dots.
-        private readonly TextMesh[] signTexts=new TextMesh[3];
+        // Per branch: the sign root and, under it, the three map signs (zoo, prison, mine: art v2, one word and an icon, no
+        // other text) and the X sign for the rail closed this lap (plan 3-2). Without the art a plain board with an arrow stands in.
+        private readonly Transform[] signs=new Transform[3];
+        private readonly GameObject[,] mapSigns=new GameObject[3,3];
+        private readonly GameObject[] blockedSigns=new GameObject[3];
         private int visualLane=99;
         public int HighlightedBranch {get;private set;}
         private static readonly Material[] branchMaterials=new Material[3];
@@ -79,27 +84,21 @@ namespace Mongscape.Presentation.Map
             signMaterial=new Material(shader){name="Fork sign backing",color=new Color(.12f,.075f,.04f)};
             var plate=new RouteMesh();plate.Box(new Vector3(0,-.35f,0),new Vector3(2.4f,1.65f,.12f));signBoard=plate.Build("Fork direction board");
             for(int branch=-1;branch<=1;branch++)signArrows[branch+1]=BuildArrow(branch);
+            blockedMaterial=new Material(shader){name="Fork closed cross",color=new Color(1,.04f,.02f)};
+            var cross=new RouteMesh();cross.Box(Vector3.zero,new Vector3(1.3f,.22f,.05f));crossMesh=cross.Build("Fork closed cross");
             for(int i=0;i<3;i++)branchMaterials[i]=new Material(shader){name="Fork rail "+i,color=colors[i]};
             ravineMaterial=new Material(shader){name="Fork stone",color=new Color(.13f,.115f,.095f)};
         }
         private void Create()
         {
             Materials();
+            var art=MineArt.Load();
             for(int branch=-1;branch<=1;branch++)
             {
                 var marker=new GameObject("DirectionMarker_"+branch);marker.transform.SetParent(transform,false);
-                marker.AddComponent<MeshFilter>().sharedMesh=signBoard;
-                var board=marker.AddComponent<MeshRenderer>();board.sharedMaterial=signMaterial;board.shadowCastingMode=ShadowCastingMode.Off;
-                var arrow=new GameObject("DirectionArrow");arrow.transform.SetParent(marker.transform,false);arrow.transform.localPosition=Vector3.back*.075f;
-                arrow.AddComponent<MeshFilter>().sharedMesh=signArrows[branch+1];
-                var icon=arrow.AddComponent<MeshRenderer>();icon.sharedMaterial=branchMaterials[branch+1];icon.shadowCastingMode=ShadowCastingMode.Off;
-                signs[branch+1]=icon;
-                arrow.transform.localPosition=new Vector3(0,.12f,-.075f);arrow.transform.localScale=Vector3.one*.55f;
-                var label=new GameObject("DestinationText");label.transform.SetParent(marker.transform,false);label.transform.localPosition=new Vector3(0,-.62f,-.08f);
-                var text=label.AddComponent<TextMesh>();text.anchor=TextAnchor.MiddleCenter;text.alignment=TextAlignment.Center;text.fontSize=64;text.characterSize=.038f;text.lineSpacing=.95f;
-                text.color=new Color(1,.93f,.78f);
-                var font=Mongscape.Presentation.UiFont.Main;if(font!=null){text.font=font;label.GetComponent<MeshRenderer>().sharedMaterial=font.material;}
-                signTexts[branch+1]=text;
+                signs[branch+1]=marker.transform;
+                for(int map=-1;map<=1;map++)mapSigns[branch+1,map+1]=Sign(art==null?null:map<0?art.SignZoo:map==0?art.SignPrison:art.SignMine,marker.transform,"MapSign_"+map,map);
+                blockedSigns[branch+1]=Sign(art?.SignBlocked,marker.transform,"BlockedSign",2);
             }
             var surface=new GameObject("TraversableDeck");surface.transform.SetParent(transform,false);
             deck=surface.AddComponent<MeshFilter>();surface.AddComponent<MeshRenderer>().sharedMaterial=deckMaterial;
@@ -128,6 +127,27 @@ namespace Mongscape.Presentation.Map
                 lamp.type=LightType.Point;lamp.color=new Color(1,.66f,.31f);lamp.intensity=4;lamp.range=13;lamp.shadows=LightShadows.None;lamps[i]=lamp;
             }
         }
+        // A sign model facing the approaching cart (art faces +Z), or a plain dark board with an arrow (map) or a red cross.
+        private static GameObject Sign(GameObject model,Transform parent,string name,int map)
+        {
+            GameObject sign;
+            if(model!=null)
+            {
+                sign=Instantiate(model,parent);sign.name=name;sign.transform.localRotation=Quaternion.Euler(0,180,0);
+                foreach(var c in sign.GetComponentsInChildren<Collider>(true))Destroy(c);
+                foreach(var r in sign.GetComponentsInChildren<Renderer>(true))r.shadowCastingMode=ShadowCastingMode.Off;
+            }
+            else
+            {
+                sign=new GameObject(name);sign.transform.SetParent(parent,false);
+                var board=new GameObject("Board");board.transform.SetParent(sign.transform,false);board.transform.localPosition=new Vector3(0,1.2f,0);
+                board.AddComponent<MeshFilter>().sharedMesh=signBoard;var plate=board.AddComponent<MeshRenderer>();plate.sharedMaterial=signMaterial;plate.shadowCastingMode=ShadowCastingMode.Off;
+                var icon=new GameObject("Icon");icon.transform.SetParent(board.transform,false);icon.transform.localPosition=new Vector3(0,-.3f,-.075f);
+                icon.AddComponent<MeshFilter>().sharedMesh=map==2?crossMesh:signArrows[1];
+                var paint=icon.AddComponent<MeshRenderer>();paint.sharedMaterial=map==2?blockedMaterial:railMaterial;paint.shadowCastingMode=ShadowCastingMode.Off;
+            }
+            sign.SetActive(false);return sign;
+        }
         private void Configure(MongscapeMapChunk chunk,int localSequence)
         {
             environment=chunk.transform.Find("EnvironmentRoot");
@@ -147,13 +167,17 @@ namespace Mongscape.Presentation.Map
             float lampZ=localSequence==CartFork.FirstChunk?23:18;
             float signZ=localSequence==CartFork.FirstChunk?21:18;
             var plan=RouteSurface.ActivePlan;
+            // The map signs hang over the three tunnel mouths of the first fork chunk; the X stands on the closed rail in front of
+            // its sealed tunnel in the last one (past the choice, so no cart ever runs through it).
+            bool first=localSequence==CartFork.FirstChunk;
+            int blocked=plan!=null?plan.BlockedLane(chunk.Sequence):RoutePlan.NoBlockedLane;
             for(int branch=-1;branch<=1;branch++)
             {
-                var marker=signs[branch+1].transform.parent;
-                marker.localPosition=new Vector3(CartFork.Offset(localSequence*24+signZ,branch),3.35f,signZ);
-                if(plan!=null&&plan.HasFork(chunk.Sequence)){int destination=plan.DestinationFor(chunk.Sequence,branch);var kind=MapCourse.KindOf(destination);
-                    signTexts[branch+1].text=MapCourse.Name(destination)+" · "+MapCourse.Label(kind)+"\n"+MapCourse.Moves(kind)+"\n"+MapCourse.DotText(kind);}
-                else signTexts[branch+1].text="";
+                float z=first?signZ:BlockedSignZ;
+                signs[branch+1].localPosition=new Vector3(CartFork.Offset(localSequence*24+z,branch),first?SignHeight:0,z);
+                int destination=plan!=null&&plan.HasFork(chunk.Sequence)?plan.DestinationFor(chunk.Sequence,branch):int.MinValue;
+                for(int map=-1;map<=1;map++)mapSigns[branch+1,map+1].SetActive(first&&destination==map);
+                blockedSigns[branch+1].SetActive(!first&&branch==blocked);
             }
             for(int branch=-1;branch<=1;branch++)lampGlass[branch+1].localPosition=new Vector3(CartFork.Offset(localSequence*24+lampZ,branch)-1.1f,3.6f,lampZ-.25f);
             for(int branch=-1;branch<=1;branch++)for(int side=0;side<2;side++)
@@ -174,7 +198,6 @@ namespace Mongscape.Presentation.Map
             {
                 bool chosen=branch==lane;
                 var material=chosen?selectedRailMaterial:locked?dimRailMaterial:branchMaterials[branch+1];
-                signs[branch+1].sharedMaterial=material;
                 for(int side=0;side<2;side++)
                 {
                     var rail=rails[(branch+1)*2+side];rail.sharedMaterial=material;

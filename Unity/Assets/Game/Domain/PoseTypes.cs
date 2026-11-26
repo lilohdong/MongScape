@@ -120,6 +120,9 @@ namespace Mongscape.Domain
         // (a flick of the wrists is not a swing). Raised from .3 after QA 2026-11-25.
         public float ArmPumpAmplitude = .6f, ArmSwingAmplitude = .5f, ArmSwingElbow = .15f;
         public float LostSeconds = 2.5f, BaselineDrift = .01f;
+        // Mine rescue reach (plan 3-0): a wrist this many shoulder widths out to the side of the shoulder centre, and no more than
+        // ReachHeight shoulder widths above or below the shoulder line. Both wrists out is a T (the upper-body jump), not a reach.
+        public float ReachWidths = 1.2f, ReachHeight = .7f;
     }
 
     public enum CadenceStage { Standing, Walk, Run, Sprint }
@@ -146,6 +149,8 @@ namespace Mongscape.Domain
         // How deep the held crouch is (prison hiding, plan 2-3a): 0 standing, about .3 just under the line, up to .7 lower,
         // 1 at a half squat (CrouchDeep).
         public float CrouchDepth;
-        public void Clear() { Lane = 0; JumpEdge = KneeStep = Crouch = Active = BigJump = BigKnee = BigLane = CrouchDeep = ArmsCrossed = false; CrouchDepth = 0f; }
+        // One arm out to the side, held: -1 toward the screen's left, 1 toward its right, 0 none (the mine rescue).
+        public int Reach;
+        public void Clear() { Lane = 0; JumpEdge = KneeStep = Crouch = Active = BigJump = BigKnee = BigLane = CrouchDeep = ArmsCrossed = false; CrouchDepth = 0f; Reach = 0; }
     }
 }

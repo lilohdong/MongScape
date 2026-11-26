@@ -4,7 +4,8 @@ using Mongscape.Core;
 namespace Mongscape.Domain
 {
     public enum GameFlowState { Boot, TitleIdle, IntroTimeline, FirstPersonTakeover, Running, Caught, Result, Retry, LoadingIntro }
-    public enum MotionCommand { Center, Left, Right, Jump, Crouch, KneeStep }
+    // ReachLeft/ReachRight: one arm out to that side of the screen (the mine rescue, plan 3-0), sent again while held.
+    public enum MotionCommand { Center, Left, Right, Jump, Crouch, KneeStep, ReachLeft, ReachRight }
     public enum ObstacleKind { Crate, Pipe, Barrier, Cart, Laser }
     // SlipPursuit: caught after the second warning (by the section's chaser); kept under its old name.
     public enum CaptureReason { Collision, BrokenRail, SlipPursuit }
@@ -184,6 +185,7 @@ namespace Mongscape.Domain
                 if(command==MotionCommand.Center)next=0;
             }
             else if(Riding&&command==MotionCommand.Center)next=0;
+            next = SkipBlockedRail(next);
             if (next != Lane) { laneFrom = X; laneTime = 0f; Lane = next; }
             if (command == MotionCommand.Jump && !Riding)
             {
@@ -196,6 +198,21 @@ namespace Mongscape.Domain
                 else crouchBuffer = config.InputBufferSeconds;
             }
             if (command == MotionCommand.KneeStep && !Riding) { lastKneeStep = clock; KneeSteps++; }
+        }
+        // Leans toward the closed rail of the fork (plan 3-2): the cart does not go; the view jolts and plays the blocked sound.
+        public int BlockedLeans { get; private set; }
+        // At the fork the previous lap's rail is closed: a lean into it stays put, a lean across a closed middle rail goes on
+        // to the far one.
+        private int SkipBlockedRail(int next)
+        {
+            var plan = RouteSurface.ActivePlan;
+            if (next == Lane || !Riding || plan == null || !plan.ForkWindow(Z)) return next;
+            int sequence = RouteSurface.SequenceAt(Z);
+            if (!plan.IsBlocked(sequence, next)) return next;
+            int beyond = LaneRules.Move(next, Math.Sign(next - Lane));
+            if (beyond != next && !plan.IsBlocked(sequence, beyond)) return beyond;
+            BlockedLeans++;
+            return Lane;
         }
         public void Stumble() { stumbleLeft = config.StumbleSeconds; }
         // A big jump while still rising: the arc reaches BigJumpHeight times the normal height.
@@ -250,7 +267,7 @@ namespace Mongscape.Domain
             crouchLeft = 0f; deepSlide = false;
             verticalSpeed = (float)Math.Sqrt(2f * config.Gravity * config.JumpHeight);
         }
-        public void Reset() { deepSlide = false; Lane = 0; X = Y = 0f; Z = 2f; laneFrom = verticalSpeed = crouchLeft = stumbleLeft = slowLeft = jumpBuffer = crouchBuffer = 0f; laneTime = 1f; clock = 0f; lastKneeStep = NoKneeStep; KneeSteps = 0; }
+        public void Reset() { deepSlide = false; Lane = 0; X = Y = 0f; Z = 2f; laneFrom = verticalSpeed = crouchLeft = stumbleLeft = slowLeft = jumpBuffer = crouchBuffer = 0f; laneTime = 1f; clock = 0f; lastKneeStep = NoKneeStep; KneeSteps = 0; BlockedLeans = 0; }
     }
 
     public sealed class RunSession
@@ -339,6 +356,15 @@ namespace Mongscape.Domain
         private float lastHit = -100f, clock, lastStrike;
         // Play time without pauses; shown to the player, not part of the score.
         public float Elapsed => clock;
+        // Monkeys stuck in the mine walls (plan 3-0): reach toward them in their lane to rescue them.
+        public readonly MineRescueJudge MineRescue = new MineRescueJudge();
+        // A reach command from the keys or the pose (the other commands go to the runner).
+        public void Command(MotionCommand command)
+        {
+            if (command == MotionCommand.ReachLeft) MineRescue.Reach(-1);
+            else if (command == MotionCommand.ReachRight) MineRescue.Reach(1);
+            else Runner.Command(command);
+        }
         public RunSession(RunConfig config)
         {
             Config = config; Score = new ScoreSystem(Workout); Runner = new RunnerController(config); Stair = new StairJudge(config); smoothSpeed = TargetSpeed; Sections.Exited += LeaveSection;
@@ -395,6 +421,7 @@ namespace Mongscape.Domain
             Sections.Update(RouteSurface.ActivePlan, Runner.Z);
             if (!before.SameStay(Sections.Current)) SectionSpeed = null;
             Workout.Section = Section.Kind;
+            if (!tutorial) MineRescue.Tick(dt, RouteSurface.ActivePlan, Runner.Z, Runner.Lane, MoveSpeed * Runner.SpeedMultiplier * SpeedScale);
             // Stair chunks: a missed knee rhythm counts as a slip strike; in the tutorial it is a counted miss that restarts the step.
             int chunk = RouteSurface.SequenceAt(Runner.Z);
             bool onStair = RouteSurface.IsStair(RouteSurface.TypeAt(chunk));
@@ -533,6 +560,6 @@ namespace Mongscape.Domain
             BigMoves[(int)move]++;
             return true;
         }
-        public void Reset() { Array.Clear(BigMoves, 0, BigMoves.Length); BigCoins = 0; Runner.Reset(); Stair.Reset(); Chase.Reset(); Score.Reset(); Workout.Reset(); Items.Reset(); Paused=false; SpeedScale=1f; CadenceScale=1f; PacePressure=0f; clock = 0f; lastHit = -100f;SlipStrikes=0;lastStrike=0f;ShieldSaves=0;bananaCatchLeft=0;pursuer=null;ChaserGauge=0f;LastWarning=WarningCause.Collision;CaughtBy=ChaserKind.Police;Reason=CaptureReason.Collision; Sections.Reset(); SectionSpeed = null; Prison.Reset(); Stair.GapScale = 1f; HidePose = false; HideDepth = -1f; smoothSpeed = TargetSpeed; }
+        public void Reset() { Array.Clear(BigMoves, 0, BigMoves.Length); BigCoins = 0; Runner.Reset(); Stair.Reset(); Chase.Reset(); Score.Reset(); Workout.Reset(); Items.Reset(); Paused=false; SpeedScale=1f; CadenceScale=1f; PacePressure=0f; clock = 0f; lastHit = -100f;SlipStrikes=0;lastStrike=0f;ShieldSaves=0;bananaCatchLeft=0;pursuer=null;ChaserGauge=0f;LastWarning=WarningCause.Collision;CaughtBy=ChaserKind.Police;Reason=CaptureReason.Collision; Sections.Reset(); SectionSpeed = null; Prison.Reset(); MineRescue.Reset(); Stair.GapScale = 1f; HidePose = false; HideDepth = -1f; smoothSpeed = TargetSpeed; }
     }
 }

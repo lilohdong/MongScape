@@ -18,7 +18,7 @@ namespace Mongscape.Tests
             var choices=new System.Collections.Generic.List<int>();
             RoutePlan Chosen(int? next)
             {
-                var plan=new RoutePlan(config,723);int lap=0;
+                var plan=new RoutePlan(config,723){RepeatAllowed=true};int lap=0;
                 foreach(int lane in choices)plan.UpdateChoice(lap++*RoutePlan.ExtendedLapChunks*RouteSurface.Length+CartFork.Decision+1,lane);
                 if(next.HasValue)plan.UpdateChoice(lap*RoutePlan.ExtendedLapChunks*RouteSurface.Length+CartFork.Decision+1,next.Value);
                 return plan;

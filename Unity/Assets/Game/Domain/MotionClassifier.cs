@@ -115,6 +115,7 @@ namespace Mongscape.Domain
             lostSince = -1;
             if (!calibrated) { Calibrate(frame.Aspect, now); return Reading; }
             Status = PoseStatus.Tracking;
+            UpdateReach();
             if (style == PlayStyle.UpperBody) TrackUpper(frame.Aspect, now); else TrackFull(frame.Aspect, now);
             UpdateCadence(now);
             Reading.ArmsCrossed = ArmsCrossed();
@@ -337,6 +338,22 @@ namespace Mongscape.Domain
             if (Reading.Lane == 0 && !airborne && !Reading.Crouch && now - lastKneeStep >= KneeStepActiveSeconds && Math.Abs(offset) < exit * .5f) Drift();
         }
 
+        // One wrist far out to one side near shoulder height (plan 3-0). The image is mirrored like the screen, so the side is the
+        // screen side where the monkey is.
+        private void UpdateReach()
+        {
+            float width = ShoulderWidth;
+            if (width < 1e-4f) { Reading.Reach = 0; return; }
+            int left = ReachSide(PoseJoint.LeftWrist, width), right = ReachSide(PoseJoint.RightWrist, width);
+            Reading.Reach = left != 0 && right != 0 ? (left == right ? left : 0) : left + right;
+        }
+        private int ReachSide(int wrist, float width)
+        {
+            if (!ActionSeen(wrist)) return 0;
+            float dx = px[wrist] - ShoulderX, dy = py[wrist] - ShoulderY;
+            if (Math.Abs(dx) < tuning.ReachWidths * width || Math.Abs(dy) > tuning.ReachHeight * width) return 0;
+            return Math.Sign(dx);
+        }
         private void EmitKneeStep(double now) { Reading.KneeStep = true; lastKneeStep = now; }
         private bool jumpBigDone, kneeBigDone, laneBigDone, pullUp, pullDownBig;
         // Inner knee angle in degrees from hip-knee-ankle (the lower of both legs); 180 when the legs are not all in view.

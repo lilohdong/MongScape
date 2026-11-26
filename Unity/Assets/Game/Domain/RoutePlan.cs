@@ -12,7 +12,6 @@ namespace Mongscape.Domain
         private readonly List<int> cycles = new List<int>(64);
         // bases[i] = summed rise of chunks 0..i-1 (entry height of chunk i); always one longer than types.
         private readonly List<float> bases = new List<float>(65) { 0f };
-        private readonly Random random;
         private readonly RunConfig config;
         private readonly int seed;
         private int cycle;
@@ -23,6 +22,8 @@ namespace Mongscape.Domain
         private readonly Dictionary<int, int> choices = new Dictionary<int, int>();
         private readonly List<int[]> destinations = new List<int[]>();
         public bool Extended => config != null && config.ExtendedRoutes;
+        // Seeds the per-lap placements that are not part of the chunk order (the mine monkeys).
+        public int Seed => seed;
         // One lap: the 7-chunk mine start and cart fork, then 11 chunks of the chosen destination.
         public const int ExtendedLapChunks = 18;
         public int LocalSequence(int sequence) { Ensure(sequence); return sequence - starts[cycles[sequence]]; }
@@ -91,8 +92,15 @@ namespace Mongscape.Domain
             int c = cycles[s], start = starts[c];
             float local = z - start * RouteSurface.Length;
             if (local < CartFork.Decision || choices.ContainsKey(c) || !ForkCycle(c)) return;
-            lane = Math.Max(-1, Math.Min(1, lane)); choices[c] = lane;
-            // The three directions are shuffled each lap; the signs and the preview show where each leads (exercise plan 3).
+            lane = Math.Max(-1, Math.Min(1, lane));
+            // The previous lap's map is closed (plan 3-2): standing in front of its rail picks one of the two open ones at random.
+            int blocked = BlockedLane(s);
+            if (lane == blocked)
+            {
+                int pick = new Random(unchecked(seed * 7349 + c * 1543 + 29)).Next(2), seen = 0;
+                for (int open = -1; open <= 1; open++) if (open != blocked && seen++ == pick) lane = open;
+            }
+            choices[c] = lane;
             int destination = destinations[c][lane + 1];
             int[] lap = CustomLap(destination, c) ?? ExtendedLap(destination);
             if (!branchLayouts.ContainsKey(destination)) PlaceStairs(c, start, lap, destination);
@@ -126,6 +134,20 @@ namespace Mongscape.Domain
         // Chunks in a lap (18 unless a branch layout changed it).
         public int LapChunks(int lapIndex) { while (lapIndex + 1 >= starts.Count) AppendLap(); return starts[lapIndex + 1] - starts[lapIndex]; }
         public int LapStart(int lapIndex) { while (lapIndex >= starts.Count) AppendLap(); return starts[lapIndex]; }
+        public const int NoBlockedLane = int.MinValue;
+        // Development and test scans that need the same map lap after lap (the zoo checks) switch the closed rail off.
+        public bool RepeatAllowed { get; set; }
+        // Plan 3-2: the map of the previous lap cannot be chosen again at this lap's fork (NoBlockedLane on the first fork).
+        public int BlockedLane(int sequence)
+        {
+            if (!Extended || RepeatAllowed) return NoBlockedLane;
+            int c = CycleAt(sequence);
+            if (c < 1 || !ForkCycle(c) || !choices.TryGetValue(c - 1, out int previousLane)) return NoBlockedLane;
+            int previous = destinations[c - 1][previousLane + 1];
+            for (int lane = -1; lane <= 1; lane++) if (destinations[c][lane + 1] == previous) return lane;
+            return NoBlockedLane;
+        }
+        public bool IsBlocked(int sequence, int lane) => lane == BlockedLane(sequence);
         public int DestinationAt(int sequence)
         {
             int c = CycleAt(sequence);
@@ -193,14 +215,14 @@ namespace Mongscape.Domain
         public RoutePlan(RunConfig tuning, int seed)
         {
             this.seed = seed;
-            config = tuning; random = new Random(seed);
+            config = tuning;
             SetBranchLayout(SectionKind.Prison, PrisonCourse.Branch);
             Append(Extended ? ExtendedLap(0) : AuthoredLap);
         }
         private RoutePlan(RunConfig tuning, int seed, int[] warmup)
         {
             this.seed = seed;
-            config = tuning; random = new Random(seed); plainLaps = 1;
+            config = tuning; plainLaps = 1;
             SetBranchLayout(SectionKind.Prison, PrisonCourse.Branch);
             Append(warmup);
         }
@@ -218,9 +240,8 @@ namespace Mongscape.Domain
         private void Ensure(int sequence) { while (Math.Max(0, sequence) >= types.Count) AppendLap(); }
         private void Append(IEnumerable<int> lap)
         {
-            var shuffled = new[] { -1, 0, 1 };
-            for (int i = 2; i > 0; i--) { int j = random.Next(i + 1); int swap = shuffled[i]; shuffled[i] = shuffled[j]; shuffled[j] = swap; }
-            destinations.Add(shuffled);
+            // Fixed directions (plan 3-2): left the zoo, the middle the prison, right the mine; the signs show them.
+            destinations.Add(new[] { -1, 0, 1 });
             starts.Add(types.Count); foreach (int type in lap) { types.Add(type); cycles.Add(cycle); } cycle++;
             RebuildBases(bases.Count - 1);
         }
