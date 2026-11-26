@@ -72,6 +72,27 @@ namespace Mongscape.Domain
 
     public enum ZooPhase { Idle, Cut, Shout, Song, Done }
 
+    // What the lion is doing (the art clips AN_Lion_*): breaking out of the cage in the entry cut, running behind, roaring as
+    // the warning before a bite, and pouncing when it bites.
+    public enum LionAction { CageBreakout, Run, Roar, Pounce }
+
+    // The verse of the zoo tutorial (plan 6-1b, chapter 2): the real song on an easy chart up to the break, five of every eight
+    // notes pass. The lion never gets close enough to roar by itself.
+    public static class ZooPractice
+    {
+        public const string Chart = "zoo_chase_v1.easy_a";
+        public const float LionCap = .8f;
+        public static ZooBeatmap Verse(ZooBeatmap full)
+        {
+            var map = new ZooBeatmap();
+            if (full == null) return map;
+            map.Chart = full.Chart; map.Difficulty = full.Difficulty; map.Bpm = full.Bpm; map.Offset = full.Offset; map.Length = full.Length;
+            foreach (var note in full.Notes) if (note.Time < full.BreakStart) map.Notes.Add(note);
+            return map;
+        }
+        public static int PassHits(int notes) => (notes * 5 + 7) / 8;
+    }
+
     // The zoo map (plan 1-2a, 1-2b, 1-2c, 6-8): the song sets the speed and the notes, the running beat sets the lion's distance.
     // Song time is the clock: the runner's speed follows Speed(SongTime), so a note at time t sits at EntryZ + DistanceAt(t).
     // Cut (2 s) + shout (1 s) cover the song intro; the speed eases from the entry speed to the song speed during the cut,
@@ -88,8 +109,20 @@ namespace Mongscape.Domain
         public float SongSpeed = 9f;
         // The player's recognition delay (seconds, positive = the camera reports late), from the sync calibration.
         public float SyncOffset;
-        // The roar before a bite: RoarSeconds plus the sharp ears trait (RunSession.Traits.WarningLeadSeconds).
+        // The roar before a bite (RoarLeadFor).
         public float RoarLead = RoarSeconds;
+        // The warning: RoarSeconds plus the run's whole warning cue time (RunSession.WarningCueSeconds, sharp ears included).
+        public static float RoarLeadFor(float warningCueSeconds) => RoarSeconds + Math.Max(0f, warningCueSeconds);
+        // Tutorial verse: the lion stays at ZooPractice.LionCap or farther, so it never roars or bites by itself.
+        public bool Practice;
+        // Seconds since the last bite (MaxValue before the first).
+        public float SinceBite => Bites > 0 ? SongTime - bitAt : float.MaxValue;
+        private float bitAt;
+        public LionAction ActionAt(float pounceSeconds) => Phase == ZooPhase.Cut ? LionAction.CageBreakout
+            : Roaring ? LionAction.Roar : SinceBite < pounceSeconds ? LionAction.Pounce : LionAction.Run;
+        // The tutorial's one look in the mirror: the practice lion comes as close as it may.
+        public void ShowLion() { if (Practice && Active) Lion = ZooPractice.LionCap; }
+        private float Capped(float lion) => Practice ? Math.Min(lion, ZooPractice.LionCap) : lion;
 
         public ZooBeatmap Map { get; private set; }
         public ZooPhase Phase { get; private set; } = ZooPhase.Idle;
@@ -165,7 +198,7 @@ namespace Mongscape.Domain
                 if (state[nextOpen] == 0) Judge(nextOpen, false);
                 nextOpen++;
             }
-            if (behind.HasValue && !InGrace) Lion = Clamp(Lion + (behind.Value ? BehindRise : -(Roaring ? RoarEscape : FollowFall)) * dt);
+            if (behind.HasValue && !InGrace) Lion = Capped(Clamp(Lion + (behind.Value ? BehindRise : -(Roaring ? RoarEscape : FollowFall)) * dt));
             UpdateRoar(dt);
             if (Map.Length > 0f && SongTime >= Map.Length) Stop();
         }
@@ -176,7 +209,7 @@ namespace Mongscape.Domain
                 if (Lion < RoarCancelBelow) { RoarLeft = 0f; return; }
                 RoarLeft -= dt;
                 if (RoarLeft > 0f) return;
-                RoarLeft = 0f; Lion = AfterBite; Bites++; Bit?.Invoke();
+                RoarLeft = 0f; Lion = AfterBite; Bites++; bitAt = SongTime; Bit?.Invoke();
                 return;
             }
             if (Lion >= 1f) { RoarLeft = Math.Max(RoarSeconds, RoarLead); RoarStarted?.Invoke(); }
@@ -201,7 +234,7 @@ namespace Mongscape.Domain
         {
             state[index] = hit ? 1 : 2;
             if (hit) { Hits++; Lion = Clamp(Lion - HitRelief); }
-            else { Misses++; Lion = Clamp(Lion + (Map.Notes[index].Kind == ZooNoteKind.Jump ? JumpMiss : ArmsUpMiss)); }
+            else { Misses++; Lion = Capped(Clamp(Lion + (Map.Notes[index].Kind == ZooNoteKind.Jump ? JumpMiss : ArmsUpMiss))); }
             Judged?.Invoke(index, hit);
         }
         // Pause: the song clock stops with the game. Resume after a count of four beats (the presenter plays the count).

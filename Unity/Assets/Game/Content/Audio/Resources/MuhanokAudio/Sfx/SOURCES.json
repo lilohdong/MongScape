@@ -201,6 +201,48 @@
       "license": "CC0-1.0"
     },
     {
+      "file": "lion_step_0.ogg",
+      "use": "Lion paw steps in the zoo, louder as it closes in",
+      "pack": "impact-sounds",
+      "source": "https://kenney.nl/assets/impact-sounds",
+      "original": "impactSoft_medium_000.ogg",
+      "original_sha256": "7d3ba0bb5e60a11b5d3e558c141303dcf494256675fbf753c0d252d2cf0481e3",
+      "seconds": 0.109,
+      "license": "CC0-1.0",
+      "processing": {
+        "pitch_semitones": -6,
+        "max_sec": 0.26
+      }
+    },
+    {
+      "file": "lion_step_1.ogg",
+      "use": "Lion paw steps in the zoo, louder as it closes in",
+      "pack": "impact-sounds",
+      "source": "https://kenney.nl/assets/impact-sounds",
+      "original": "impactSoft_medium_001.ogg",
+      "original_sha256": "7642a4fd43e547afe4f7adfadb3dabb681c0ff512f52c1674bae30a726841faf",
+      "seconds": 0.174,
+      "license": "CC0-1.0",
+      "processing": {
+        "pitch_semitones": -6,
+        "max_sec": 0.26
+      }
+    },
+    {
+      "file": "lion_step_2.ogg",
+      "use": "Lion paw steps in the zoo, louder as it closes in",
+      "pack": "impact-sounds",
+      "source": "https://kenney.nl/assets/impact-sounds",
+      "original": "impactSoft_medium_002.ogg",
+      "original_sha256": "5069e3571a77d7f7aae9ef71d0364aa245fb7d64a7c8cc9956f221d03088c089",
+      "seconds": 0.127,
+      "license": "CC0-1.0",
+      "processing": {
+        "pitch_semitones": -6,
+        "max_sec": 0.26
+      }
+    },
+    {
       "file": "lion_roar.ogg",
       "use": "Lion roar warning in the zoo (cartoon voice roar, pitched up 3 semitones)",
       "pack": "oga-80-cc0-creture-sfx-2",

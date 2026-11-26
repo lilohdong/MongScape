@@ -75,8 +75,8 @@ namespace Mongscape.Domain
                 case TutorialStep.Calibrate: return TutorialPass.Calibrated;
                 case TutorialStep.Cadence: return TutorialPass.Paced;
                 case TutorialStep.Fork: return TutorialPass.ForkChosen;
-                case TutorialStep.Rescue: case TutorialStep.Sync: case TutorialStep.Verse: case TutorialStep.Hide: return TutorialPass.Station;
-                case TutorialStep.WarnRule: case TutorialStep.Rearview: case TutorialStep.AlarmRule: return TutorialPass.Picture;
+                case TutorialStep.Rescue: case TutorialStep.Sync: case TutorialStep.Verse: case TutorialStep.Rearview: case TutorialStep.Hide: return TutorialPass.Station;
+                case TutorialStep.WarnRule: case TutorialStep.AlarmRule: return TutorialPass.Picture;
                 case TutorialStep.PauseX: return TutorialPass.Paused;
                 case TutorialStep.Done: return TutorialPass.None;
                 default: return TutorialPass.ObstaclePassed;
@@ -139,7 +139,8 @@ namespace Mongscape.Domain
                 case TutorialStep.Verse: return keys ? "Space와 W 누르기" : "점프하고 만세 하기";
                 case TutorialStep.Stair: return keys ? "W 번갈아 누르기" : upper ? "팔꿈치 당겨 내리기" : "제자리에서 걷듯 무릎 들기";
                 case TutorialStep.Hide: return keys ? "S 누르고 버티기" : upper ? "상체 숙여 버티기" : "숙여서 버티기";
-                case TutorialStep.WarnRule: case TutorialStep.Rearview: case TutorialStep.AlarmRule: return "그림 보기";
+                case TutorialStep.Rearview: return "거울 속 사자 보기";
+                case TutorialStep.WarnRule: case TutorialStep.AlarmRule: return "그림 보기";
                 default: return "다 했어요";
             }
         }
@@ -201,7 +202,8 @@ namespace Mongscape.Domain
         public const int Seed = 723, BlockedLane = 0;
         // Mine only: start, the pace chunk (cadence holds here), lane, jump, slide, the rescue spot, bananas, the pause spot.
         public static readonly int[] BasicsLap = { 0, 0, 0, 0, 0, 0, 0, 0 };
-        public static readonly int[] ZooLap = { 12, 12, 12, 12 };
+        // Long enough for the song's verse and the look in the mirror at song speed.
+        public static readonly int[] ZooLap = { 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12 };
         // The first set of the real prison branch (PrisonCourse): the stair chunk (type 7), the cell chunk with its door and searchlight (type 4), the flat.
         public static readonly int[] PrisonLap = { 7, 4, 5, 5 };
         public const int PaceChunk = 1, LaneChunk = 2, JumpChunk = 3, CrouchChunk = 4, RescueChunk = 5, BananaChunk = 6, PauseChunk = 7;

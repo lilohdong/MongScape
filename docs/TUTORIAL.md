@@ -5,7 +5,7 @@
 | 장 | 길이 | 단계 |
 | --- | --- | --- |
 | 1 기본 (광산) | 약 2분 | 카메라 확인, 보정, 제자리 달리기, 레인 이동, 점프, 숙이기, 구출, 바나나, 경고 규칙(그림), X자 일시정지, 수레와 갈림길 |
-| 2 동물원 연습 | 약 1분 | 싱크 조절(박자에 맞춰 점프 4번), 노트 한 절(점프와 만세), 사자 백미러(그림) |
+| 2 동물원 연습 | 약 1분 | 싱크 조절(박자에 맞춰 점프 4번), 실제 곡 한 절(점프와 만세 노트), 사자 백미러 한 번 |
 | 3 감옥 연습 | 약 40초 | 계단 한 번, 탐조등 숨기 한 세트와 자물쇠 게이지, 경보 규칙(그림) |
 
 ## 진행과 저장
@@ -17,9 +17,10 @@
 
 ## 코드 위치
 - `Domain/TutorialScript.cs`: 장, 단계, 통과 조건, 한 줄 문구, 시범 클립, 진행 규칙(`TutorialProgress`), 장별 코스(`TutorialCourse`)
-- `Domain/TutorialStations.cs`: 구출 팔 읽기(`ArmPose`), 박자(`BeatSync`, `BeatVerse`), 숨기(`HideSet`)
+- `Domain/TutorialStations.cs`: 구출 팔 읽기(`ArmPose`), 싱크 박자(`BeatSync`)
+- `Domain/ZooChase.cs`: 동물원 연습 절(`ZooPractice`)
 - `Presentation/Flow/TutorialDirector.cs`: 진행, 실패와 다시 하기, 3번 실패하면 관절 비교
-- `Presentation/Flow/TutorialPictures.cs`: 구출, 박자, 경고 규칙, 백미러, 탐조등, 경보 그림
+- `Presentation/Flow/TutorialPictures.cs`: 구출, 싱크 박자, 경고 규칙, 탐조등, 경보 그림
 - `Presentation/UI/Overlay/TutorialOfferScreen.cs`: 장 카드 3개 화면
 - `Bootstrap/GameBootstrap.Tutorial.cs`: 게임과의 연결
 - `Editor/MongscapeTutorialClips.cs`: 시범 클립 13개를 `Monkey.controller`에 넣는 도구 (메뉴 Mongscape/Add Tutorial Demo Clips)
@@ -31,4 +32,4 @@
 ## 실제 게임 연결
 - 구출: 1장 구출 단계에 광산의 `StuckMonkeyView` 벽 원숭이를 세우고, 팔 뻗기는 판과 같은 `ReachLeft/ReachRight`(포즈 또는 Q, E)를 쓴다.
 - 감옥: 3장은 `PrisonCourse` 첫 세트(계단, 셀 문, 탐조등, 자물쇠 게이지)를 그대로 쓴다. 자물쇠가 열리면 통과, 경보나 빛이 지나가면 다시 하기.
-- 동물원 2장의 싱크, 노트, 백미러는 아직 튜토리얼 안의 박자음과 그림이다. 동물원 PR #25가 머지되면 실제 곡과 박자표로 바꾼다.
+- 동물원: 2장의 노트와 백미러는 실제 동물원(`ZooMapView.StartPractice`)이다. `zoo_chase_v1`의 쉬움 박자표(easy_a)를 브레이크 앞까지 틀고, 8개 중 5개 꼴로 맞추면 통과한다. 만세 노트는 좁아지는 창살이다. 판정에는 저장한 싱크 조절 값을 쓴다. 연습에서 사자는 스스로 포효하거나 물지 않고, 노트가 끝나면 백미러에 한 번 크게 보인다. 싱크 조절만 튜토리얼 안의 박자음을 쓴다.

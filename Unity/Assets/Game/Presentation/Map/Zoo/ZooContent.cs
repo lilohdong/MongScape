@@ -11,6 +11,7 @@ namespace Mongscape.Presentation.Map
         public float JumpLead = 0f, ArmsUpLead = .0938f;
         public TextAsset[] Charts = new TextAsset[0];
         public GameObject Lion, Fence, Puddle, SqueezeBars, IronGate, LionCage, Exit;
+        public AnimationClip LionRun, LionRoar, LionPounce, LionBreakout;
         public Shader Mirror;
         private static ZooContent loaded; private static bool tried;
         public static ZooContent Load()

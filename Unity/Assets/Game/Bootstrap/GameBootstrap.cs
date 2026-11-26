@@ -150,7 +150,7 @@ namespace Mongscape.Bootstrap
             zoo = gameObject.AddComponent<ZooMapView>();
             audioPlayer.Configure(Session, Settings != null ? Settings.MusicVolume : .35f, Settings != null ? Settings.EffectsVolume : .7f); SetupTutorialAudio();
             audioPlayer.NewBest = () => Results != null && Results.LastNewBest;
-            zoo.Configure(Session, audioPlayer, PauseControl);
+            zoo.Configure(Session, audioPlayer, PauseControl); Tutorial.Zoo = zoo;
             hud.RankCracked = audioPlayer.Crack;
             // The prison's cell door, lock gauge and searchlight (plan 2-3a).
             gameObject.AddComponent<PrisonStage>().Configure(Session, audioPlayer);
@@ -410,6 +410,8 @@ namespace Mongscape.Bootstrap
                     guardDistance=Mathf.MoveTowards(guardDistance,distance,dt*18);
                     guard.Pose(new Vector3(Session.Runner.X, 0, Session.Runner.Z-guardDistance), !Session.Runner.Riding);
                     guard.Play("AN_Guard_ChaseRun");
+                    // One chaser per map (plan 6-8): behind the runner in the zoo there is only the lion.
+                    guard.SetVisible(Session.Section.Kind != SectionKind.Zoo);
                 }
             }
             if (Session.Flow.State == GameFlowState.Caught)
@@ -422,6 +424,7 @@ namespace Mongscape.Bootstrap
                 }
                 else
                 {
+                    guard.SetVisible(true);
                     Capture.Tick(Time.unscaledDeltaTime);
                     if(Capture.Complete)Session.Flow.Transition(GameFlowState.Result);
                 }

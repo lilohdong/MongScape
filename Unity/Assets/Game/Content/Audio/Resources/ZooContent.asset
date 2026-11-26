@@ -31,4 +31,8 @@ MonoBehaviour:
   IronGate: {fileID: 919132149155446097, guid: dd6ae32546ba1894491bb42ff06a28de, type: 3}
   LionCage: {fileID: 919132149155446097, guid: 5b8022258d83c714dabe1cfe9915b057, type: 3}
   Exit: {fileID: 919132149155446097, guid: fe8d3ac7c391d3943a4fc306514e2cb0, type: 3}
+  LionRun: {fileID: -623603649343465320, guid: 65308c43aeaabeb4ab9999f0c21bfc9a, type: 3}
+  LionRoar: {fileID: -623603649343465320, guid: 5a374c07289532842a4097aee7819fff, type: 3}
+  LionPounce: {fileID: -623603649343465320, guid: 95ddd736bbe68ce4db7ff272fb520b26, type: 3}
+  LionBreakout: {fileID: -623603649343465320, guid: 2660dcd62d5997241b43965f2d03f87e, type: 3}
   Mirror: {fileID: 4800000, guid: 18c5dd62607d476fb487d4729d5a3de2, type: 3}
