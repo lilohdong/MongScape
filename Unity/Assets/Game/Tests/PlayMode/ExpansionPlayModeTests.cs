@@ -92,10 +92,12 @@ namespace Mongscape.Tests
                     Assert.AreEqual(lane,view.HighlightedBranch);
                     for(int branch=-1;branch<=1;branch++)
                     {
-                        var marker=view.transform.Find("DirectionMarker_"+branch+"/DirectionArrow");Assert.IsNotNull(marker);
+                        // The art v2 map sign of the branch's destination hangs over the first fork chunk (plan 3-2: fixed directions).
+                        var marker=view.transform.Find("DirectionMarker_"+branch);Assert.IsNotNull(marker);
+                        if(RouteSurface.ActivePlan.LocalSequence(item.Chunk.Sequence)==CartFork.FirstChunk)
+                            Assert.IsTrue(marker.Find("MapSign_"+branch).gameObject.activeSelf);
                         var rail=view.transform.Find("PhysicalRail_"+((branch+1)*2)).GetComponent<LineRenderer>();
                         Assert.AreEqual(branch==lane?.2f:.11f,rail.startWidth,.001f);
-                        Assert.AreSame(rail.sharedMaterial,marker.GetComponent<Renderer>().sharedMaterial);
                     }
                 }
             }
