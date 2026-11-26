@@ -75,7 +75,7 @@ namespace Mongscape.Presentation.Map
             if (song != null) song.Stop();
             if (ownsMusic && audioPlayer != null) audioPlayer.MapMusicPlaying = false;
             ownsMusic = false;
-            if (run != null) { var hints = run.Workout.Hints; hints.MissingBeats = false; run.Workout.Hints = hints }
+            if (run != null) { var hints = run.Workout.Hints; hints.MissingBeats = false; run.Workout.Hints = hints; }
             foreach (var prop in props) if (prop != null) Destroy(prop);
             props.Clear(); noteViews.Clear(); lion = cage = gate = null;
             if (rear != null) rear.enabled = false;
