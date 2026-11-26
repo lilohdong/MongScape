@@ -51,7 +51,6 @@ namespace Mongscape.DevTools
             yield return Stage5();
             yield return Stage6();
             yield return FollowupCadenceOff();
-            yield return FollowupCoins();
             if (failure != null) { Fail(failure); yield break; }
             Debug.Log("MONGSCAPE_EXERCISE_REVIEW_PASS: " + destination);
             UnityEngine.Application.Quit(0);
@@ -190,34 +189,6 @@ namespace Mongscape.DevTools
             yield return new WaitForSecondsRealtime(1.5f);
             yield return Shot("F1_02_Result_CadenceOff_ServerWeekGoal");
             hud.SetCadenceSpeed(true);
-            game.ExitToMenu(); yield return new WaitForSecondsRealtime(.5f);
-        }
-        // Follow-up 2: the coin line under the bars (far half for a deep slide) and the coins over a jump row. Obstacles look
-        // as before (no red outline; only bananas wear the red ring, decision 2026-11-25); coins stay yellow.
-        private IEnumerator FollowupCoins()
-        {
-            game.Session.Invincible = true;
-            game.StartPlayerRun(new PlayerProfile { Name = "리뷰", Weight = "65", Style = PlayStyle.FullBody, CalorieGoal = 50 });
-            float wait = Time.realtimeSinceStartup;
-            while (game.IsLoading || game.IsRevealing || game.Session.Flow.State != GameFlowState.Running) { if (Time.realtimeSinceStartup - wait > 60) { Fail("run did not start"); yield break; } yield return null; }
-            yield return new WaitForSecondsRealtime(2f);
-            game.enabled = false; game.Race.Clear();
-            foreach (var kind in new[] { BonusCoin.UnderBar, BonusCoin.Air })
-            {
-                float at = -1;
-                for (float z = 30; z < 3000 && at < 0; z += 48)
-                {
-                    Seek(z, 0);
-                    foreach (var item in game.Map.Active) foreach (var coin in item.Chunk.BonusCoinViews)
-                        if (coin.gameObject.activeSelf && coin.Bonus == kind && coin.transform.position.z > z + 10 && (at < 0 || coin.transform.position.z < at)) at = coin.transform.position.z;
-                }
-                if (at < 0) { Debug.LogWarning("EXERCISE_REVIEW: no " + kind + " coins found"); continue; }
-                Seek(at - (kind == BonusCoin.Air ? 7 : 6), 0); yield return new WaitForSecondsRealtime(.6f);
-                yield return Shot(kind == BonusCoin.Air ? "F2_02_Jump_AirCoins" : "F2_01_Bars_CoinLine");
-            }
-            game.enabled = true; game.Session.Invincible = false; game.Session.ForceCatch();
-            wait = Time.realtimeSinceStartup;
-            while (game.Session.Flow.State != GameFlowState.Result) { if (Time.realtimeSinceStartup - wait > 30) { Fail("result did not appear"); yield break; } yield return null; }
             game.ExitToMenu(); yield return new WaitForSecondsRealtime(.5f);
         }
         // Stage 6: the new tutorial (camera check, pace gauge with the demo window, police, a lesson with the demo, the

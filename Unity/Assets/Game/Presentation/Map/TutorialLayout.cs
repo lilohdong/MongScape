@@ -46,7 +46,6 @@ namespace Mongscape.Presentation.Map
             foreach (var item in chunk.DynamicFloorItems) if (item != null) item.gameObject.SetActive(false);
             foreach (var pickup in chunk.Pickups) if (pickup != null) pickup.gameObject.SetActive(false);
             if (chunk.FloorItems != null) foreach (var item in chunk.FloorItems) if (item != null) item.gameObject.SetActive(false);
-            if (chunk.Coins != null) foreach (var coin in chunk.Coins) if (coin != null) coin.gameObject.SetActive(false);
             // Intact rails: both shown and nothing to judge (the seeded layout may have broken one).
             if (chunk.RailGaps != null) foreach (var gap in chunk.RailGaps) if (gap != null) gap.Configure(0);
             chunk.DynamicObstacles.Clear(); chunk.DynamicFloorItems.Clear(); chunk.Pickups.Clear(); chunk.Animated.Clear();

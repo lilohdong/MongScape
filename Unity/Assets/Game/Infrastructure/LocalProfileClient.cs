@@ -48,7 +48,7 @@ namespace Mongscape.Infrastructure
         }
         [Serializable] private sealed class FaceRequest { public string[] images; }
         [Serializable] private sealed class NameRequest { public string name; }
-        [Serializable] private sealed class ItemRequest { public int item; }
+        [Serializable] private sealed class TraitRequest { public int trait; public int level; }
         [Serializable] private sealed class BoardRequest { public int mode; public bool today; }
         [Serializable] private sealed class WeekBoardRequest { public int mode; public bool week = true; }
         private bool capturing; private int faceCalls;
@@ -118,7 +118,8 @@ namespace Mongscape.Infrastructure
             if(!reply.ok)Debug.LogWarning("Mongscape: run save failed: "+reply.message);
             done?.Invoke(reply);
         });
-        public void Buy(string token,ItemKind item,Action<AccountReply> done)=>Post("/shop/buy",JsonUtility.ToJson(new ItemRequest{item=(int)item}),token,done);
+        public void Traits(Action<TraitsReply> done)=>StartCoroutine(Send("/traits","{}","",done));
+        public void UnlockTrait(string token,TraitId trait,int level,Action<AccountReply> done)=>Post("/traits/unlock",JsonUtility.ToJson(new TraitRequest{trait=(int)trait,level=level}),token,done);
         public void WeekLeaderboard(string token,PlayStyle mode,Action<LeaderboardReply> done)=>
             StartCoroutine(Send("/leaderboard",JsonUtility.ToJson(new WeekBoardRequest{mode=(int)mode}),token,done));
         public void Leaderboard(string token,PlayStyle mode,bool today,Action<LeaderboardReply> done)=>

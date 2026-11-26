@@ -22,8 +22,8 @@ namespace Mongscape.Presentation.Map
             {
                 var filter = renderer.GetComponent<MeshFilter>();
                 if (filter == null || filter.sharedMesh == null) continue;
-                // Gameplay objects (hazards, coins, floor items, rail gaps and their rail pieces) always stay visible.
-                if (renderer.GetComponentInParent<ObstacleController>(true) != null || renderer.GetComponentInParent<CoinController>(true) != null
+                // Gameplay objects (hazards, floor items, rail gaps and their rail pieces) always stay visible.
+                if (renderer.GetComponentInParent<ObstacleController>(true) != null
                     || renderer.GetComponentInParent<FloorItemController>(true) != null || renderer.GetComponentInParent<CartRailGap>(true) != null
                     || RailPiece(chunk, renderer.transform)) continue;
                 // Mesh bounds times scale works while the pooled chunk is inactive (Renderer.bounds does not).

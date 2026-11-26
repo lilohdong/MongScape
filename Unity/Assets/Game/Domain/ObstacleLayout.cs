@@ -39,12 +39,8 @@ namespace Mongscape.Domain
         // Per rail-gap window: 0 intact, -1 missing left rail, 1 missing right rail.
         public readonly int[] RailGaps = new int[2];
         public bool Animal { get; private set; }
-        // Stair chunks (prison 7, mine 13, zoo 14) carry no hazards at all: the knee-step judge and a knee-height coin line are their content.
+        // Stair chunks (prison 7, mine 13, zoo 14) carry no hazards at all: the knee-step judge is their content.
         public bool Stair { get; private set; }
-        public const float StairCoinHeight = .6f, StairCoinFromZ = 4f, StairCoinToZ = 20f;
-        public static float StairCoinZ(int index, int count) => count <= 1 ? StairCoinFromZ : StairCoinFromZ + (StairCoinToZ - StairCoinFromZ) * index / (count - 1);
-        // Coins on a stair are out of reach unless the runner is stepping.
-        public static bool CoinReachable(bool stairChunk, bool kneeStepping) => !stairChunk || kneeStepping;
         public int SafeLane { get; private set; }
         public bool Blocked => Blockers.Count > 0;
         private readonly List<float> rows = new List<float>(4);

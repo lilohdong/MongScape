@@ -46,22 +46,6 @@ namespace Mongscape.Editor
             float p = Mathf.PI * y / rings, a = 2*Mathf.PI*x/segments;
             return new Vector3(Mathf.Sin(p)*Mathf.Cos(a), Mathf.Cos(p), Mathf.Sin(p)*Mathf.Sin(a))*.5f;
         }
-        public static Mesh CoinDisc()
-        {
-            var vertices=new List<Vector3>(); var triangles=new List<int>(); var uv=new List<Vector2>();
-            var front=new Vector3[20]; var back=new Vector3[20];
-            for(int i=0;i<20;i++)
-            {
-                float a=i*2*Mathf.PI/20,b=(i+1)*2*Mathf.PI/20;
-                front[i]=new Vector3(Mathf.Cos(a)*.43f,Mathf.Sin(a)*.43f,-.10f); back[i]=new Vector3(Mathf.Cos(a)*.43f,Mathf.Sin(a)*.43f,.10f);
-                var fa=new Vector3(Mathf.Cos(a)*.5f,Mathf.Sin(a)*.5f,-.055f); var fb=new Vector3(Mathf.Cos(b)*.5f,Mathf.Sin(b)*.5f,-.055f);
-                var ba=new Vector3(fa.x,fa.y,.055f); var bb=new Vector3(fb.x,fb.y,.055f);
-                Face(vertices,triangles,uv,new[]{front[i],new Vector3(Mathf.Cos(b)*.43f,Mathf.Sin(b)*.43f,-.10f),fb,fa});
-                Face(vertices,triangles,uv,new[]{fa,fb,bb,ba});
-                Face(vertices,triangles,uv,new[]{back[i],new Vector3(Mathf.Cos(b)*.43f,Mathf.Sin(b)*.43f,.10f),bb,ba});
-            }
-            Face(vertices,triangles,uv,front); Face(vertices,triangles,uv,back); return Finish("CoinDisc",vertices,triangles,uv);
-        }
         private static void Face(List<Vector3> vertices, List<int> triangles, List<Vector2> uv, Vector3[] points)
         {
             Vector3 center = Vector3.zero; foreach (var point in points) center += point; center /= points.Length;

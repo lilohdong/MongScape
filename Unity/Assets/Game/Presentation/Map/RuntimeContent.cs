@@ -122,10 +122,6 @@ namespace Mongscape.Presentation.Map
                     block.Hazard.ResetPass();block.gameObject.SetActive(true);
                     chunk.DynamicObstacles.Add(block.Hazard);list.Add(block);
                 }
-                if(chunk.Coins!=null)foreach(var coin in chunk.Coins)
-                {
-                    var p=coin.transform.position;p.x=LanePoint(layout.SafeLane,p.z,0).x;coin.transform.position=p;
-                }
             }
             // Zoo animals: one per zoo chunk, across the middle of an otherwise empty chunk.
             if (layout.Animal)
@@ -161,7 +157,9 @@ namespace Mongscape.Presentation.Map
             }
             PlaceStuckMonkey(chunk, sequence, list);
             var kinds = availableItems();
-            if (kinds.Count > 0 && random.NextDouble() < itemChance)
+            // A doubled entry (Shield Lv2) also doubles the chance when it is the only item.
+            int distinct = 0; for (int i = 0; i < kinds.Count; i++) if (kinds.IndexOf(kinds[i]) == i) distinct++;
+            if (kinds.Count > 0 && random.NextDouble() < itemChance * Math.Min(2f, kinds.Count / (float)distinct))
             {
                 float z = FreeZ(chunk, start, random, 3f);
                 if (!float.IsNaN(z))
@@ -285,17 +283,13 @@ namespace Mongscape.Presentation.Map
         {
             var node = new GameObject("Item_" + kind); node.transform.SetParent(root, false);
             var pickup = node.AddComponent<ItemPickup>(); pickup.Kind = kind;
-            Color color = kind == ItemKind.Magnet ? new Color(.85f, .15f, .15f) : kind == ItemKind.DoubleScore ? new Color(1f, .78f, .1f) : new Color(.2f, .6f, 1f);
+            Color color = kind == ItemKind.Call ? new Color(1f, .62f, .15f) : new Color(.2f, .6f, 1f);
             Part(PrimitiveType.Sphere, node.transform, Vector3.zero, Vector3.one * .75f, new Color(color.r, color.g, color.b) * .55f + Color.white * .3f);
-            if (kind == ItemKind.Magnet)
+            if (kind == ItemKind.Call)
             {
-                Part(PrimitiveType.Cube, node.transform, new Vector3(-.2f, .05f, 0), new Vector3(.14f, .5f, .14f), color);
-                Part(PrimitiveType.Cube, node.transform, new Vector3(.2f, .05f, 0), new Vector3(.14f, .5f, .14f), color);
-                Part(PrimitiveType.Cube, node.transform, new Vector3(0, -.22f, 0), new Vector3(.54f, .14f, .14f), color);
-            }
-            else if (kind == ItemKind.DoubleScore)
-            {
-                Part(PrimitiveType.Cylinder, node.transform, Vector3.zero, new Vector3(.55f, .06f, .55f), color, Quaternion.Euler(90, 0, 0));
+                // A small horn: the cone of a loudspeaker and its mouth.
+                Part(PrimitiveType.Cylinder, node.transform, new Vector3(-.08f, 0, 0), new Vector3(.18f, .16f, .18f), color, Quaternion.Euler(0, 0, 90));
+                Part(PrimitiveType.Cylinder, node.transform, new Vector3(.16f, 0, 0), new Vector3(.42f, .05f, .42f), color, Quaternion.Euler(0, 0, 90));
             }
             else Part(PrimitiveType.Cube, node.transform, Vector3.zero, new Vector3(.42f, .52f, .12f), color);
             return pickup;

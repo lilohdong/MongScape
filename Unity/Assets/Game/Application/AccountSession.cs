@@ -24,7 +24,7 @@ namespace Mongscape.Application
     {
         public const string GuestName = "게스트";
         public const int MaxNickname = 10;
-        private readonly PlayerWallet wallet = new PlayerWallet();
+        private readonly TraitLevels traits = new TraitLevels();
         private AccountSettings settings = new AccountSettings();
         private PlayerProfile profile;
         public AccountKind Kind { get; private set; } = AccountKind.Guest;
@@ -33,10 +33,9 @@ namespace Mongscape.Application
         public string Token { get; private set; } = "";
         public string Nickname { get; private set; } = GuestName;
         public AccountSettings Settings => settings.Clone();
-        public int Coins => wallet.Coins;
-        public IEnumerable<ItemKind> Unlocked => wallet.Unlocked;
-        // Read-only view for the screens (coins and unlocked items); a guest's wallet is always empty.
-        public PlayerWallet Wallet => wallet;
+        // Rescued monkeys the member holds (the server's coins); a guest has none and owns no trait.
+        public int Monkeys { get; private set; }
+        public TraitLevels Traits => traits;
         public bool TutorialDone { get; private set; }
         public event Action Changed;
 
@@ -52,10 +51,10 @@ namespace Mongscape.Application
             if (!IsMember || account == null || account.id != Id) return false;
             Load(account); Notify(); return true;
         }
-        public void SetCoins(int coins)
+        public void SetMonkeys(int monkeys)
         {
             if (!IsMember) return;
-            wallet.Restore(coins, new List<ItemKind>(wallet.Unlocked)); Notify();
+            Monkeys = Math.Max(0, monkeys); Notify();
         }
         public void UpdateSettings(AccountSettings value)
         {
@@ -72,7 +71,7 @@ namespace Mongscape.Application
         public void SignOut()
         {
             Kind = AccountKind.Guest; Id = Token = ""; Nickname = GuestName; TutorialDone = false;
-            settings = new AccountSettings(); wallet.Restore(0, null); Notify();
+            settings = new AccountSettings(); Monkeys = 0; traits.Clear(); Notify();
         }
 
         // The account as the existing screens see it: name, weight text, default style and calorie goal.
@@ -80,14 +79,9 @@ namespace Mongscape.Application
         {
             Name = Nickname, Weight = settings.Weight.ToString("0.##", CultureInfo.InvariantCulture), Style = settings.Style, CalorieGoal = settings.Goal,
         };
-        // Items placed on the map: what a member unlocked in the shop, nothing for a guest.
-        public List<ItemKind> RunItems()
-        {
-            var list = new List<ItemKind>();
-            if (!IsMember) return list;
-            foreach (var item in ItemCatalog.All) if (wallet.IsUnlocked(item.Kind)) list.Add(item.Kind);
-            return list;
-        }
+        // The traits a run plays with (a guest plays without any), and the items they place on the map.
+        public RunTraits TraitsForRun() => IsMember ? traits.ForRun() : RunTraits.None;
+        public List<ItemKind> RunItems() => ItemCatalog.Available(TraitsForRun());
         // Server nickname rule (storage.clean_name): 1-10 code points after trimming (Python len()), and no character of
         // a Unicode "C" category (control, format such as U+200B, private use, unassigned, lone surrogate); null when acceptable.
         public static string NicknameProblem(string name)
@@ -123,9 +117,7 @@ namespace Mongscape.Application
             Nickname = string.IsNullOrWhiteSpace(account.name) ? GuestName : account.name.Trim();
             settings = Sanitize(account.weight, account.style, account.goal);
             TutorialDone = account.tutorial_done;
-            var kinds = new List<ItemKind>();
-            if (account.unlocked != null) foreach (int id in account.unlocked) if (Enum.IsDefined(typeof(ItemKind), id)) kinds.Add((ItemKind)id);
-            wallet.Restore(account.coins, kinds);
+            Monkeys = Math.Max(0, account.coins); traits.Restore(account.unlocked);
         }
         private static AccountSettings Sanitize(double weight, int style, double goal) => new AccountSettings
         {
