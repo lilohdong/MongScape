@@ -34,7 +34,7 @@ namespace Mongscape.Infrastructure
             if (k.cKey.wasPressedThisFrame) buffer.Enqueue(MotionCommand.Center);
             if (k.spaceKey.wasPressedThisFrame) buffer.Enqueue(MotionCommand.Jump);
             if (k.sKey.isPressed || k.downArrowKey.isPressed) buffer.Enqueue(MotionCommand.Crouch);
-            if (k.wKey.wasPressedThisFrame || k.upArrowKey.wasPressedThisFrame) buffer.Enqueue(MotionCommand.KneeStep);
+            if (k.wKey.wasPressedThisFrame || k.upArrowKey.wasPressedThisFrame) { buffer.Enqueue(MotionCommand.KneeStep); buffer.Enqueue(MotionCommand.ArmsUp); }
             // Mine rescue (plan 5-3): Q reaches to the left wall, E to the right; held keys keep reaching.
             if (k.qKey.isPressed) buffer.Enqueue(MotionCommand.ReachLeft);
             if (k.eKey.isPressed) buffer.Enqueue(MotionCommand.ReachRight);

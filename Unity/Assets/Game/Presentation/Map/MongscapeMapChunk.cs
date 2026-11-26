@@ -107,6 +107,16 @@ namespace Mongscape.Presentation.Map
                 obstacle.ResetPass();obstacle.FullExerciseRow=true;obstacle.gameObject.SetActive(Layout.Slots[Obstacles.Length+i]);
             }
         }
+        // Zoo branch (plan 1-2b): the song lays the notes, so the chunk keeps only its scenery.
+        public void ClearForZoo()
+        {
+            foreach (var o in Obstacles) if (o != null) o.gameObject.SetActive(false);
+            if (ExerciseObstacles != null) foreach (var o in ExerciseObstacles) if (o != null) o.gameObject.SetActive(false);
+            if (FloorItems != null) foreach (var f in FloorItems) if (f != null) f.gameObject.SetActive(false);
+            foreach (var o in DynamicObstacles) if (o != null) o.gameObject.SetActive(false);
+            foreach (var f in DynamicFloorItems) if (f != null) f.gameObject.SetActive(false);
+            foreach (var h in GetComponentsInChildren<ZooHazard>(true)) h.gameObject.SetActive(false);
+        }
         public void AnimateGates(float runnerZ)
         {
             if(Gates!=null) foreach(var gate in Gates) if(gate.gameObject.activeInHierarchy) gate.Preview(runnerZ);

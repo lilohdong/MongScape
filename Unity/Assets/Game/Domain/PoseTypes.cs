@@ -144,6 +144,8 @@ namespace Mongscape.Domain
         public bool JumpEdge, KneeStep, Crouch, Active;
         // Big movements: one-frame edges for jump, knee step and lane change; CrouchDeep holds while the crouch is deep.
         public bool BigJump, BigKnee, BigLane, CrouchDeep;
+        // Arms-up (zoo squeeze note, plan 5-1): both wrists over the head. ArmsUp holds, ArmsUpEdge is the frame it starts.
+        public bool ArmsUp, ArmsUpEdge;
         // Both forearms crossed in front of the chest (the X pause gesture, plan 6-7a); holds while crossed.
         public bool ArmsCrossed;
         // How deep the held crouch is (prison hiding, plan 2-3a): 0 standing, about .3 just under the line, up to .7 lower,
@@ -151,6 +153,6 @@ namespace Mongscape.Domain
         public float CrouchDepth;
         // One arm out to the side, held: -1 toward the screen's left, 1 toward its right, 0 none (the mine rescue).
         public int Reach;
-        public void Clear() { Lane = 0; JumpEdge = KneeStep = Crouch = Active = BigJump = BigKnee = BigLane = CrouchDeep = ArmsCrossed = false; CrouchDepth = 0f; Reach = 0; }
+        public void Clear() { Lane = 0; JumpEdge = KneeStep = Crouch = Active = BigJump = BigKnee = BigLane = CrouchDeep = ArmsCrossed = ArmsUp = ArmsUpEdge = false; CrouchDepth = 0f; Reach = 0; }
     }
 }

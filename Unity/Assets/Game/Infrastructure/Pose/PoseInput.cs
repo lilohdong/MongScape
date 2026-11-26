@@ -65,6 +65,7 @@ namespace Mongscape.Infrastructure
                 lastZone = reading.Lane; lastRiding = cart;
             }
             if (reading.JumpEdge) output.Buffer.Add(MotionCommand.Jump);
+            if (reading.ArmsUpEdge) output.Buffer.Add(MotionCommand.ArmsUp);
             // Held actions refresh the runner's timers while the body keeps the pose.
             if (reading.Crouch && now - lastCrouch >= .2) { output.Buffer.Add(MotionCommand.Crouch); lastCrouch = now; }
             // A knee step is a one-frame edge, sent once.

@@ -39,6 +39,7 @@ namespace Mongscape.Bootstrap
         private InputRouter router;
         private HUDPresenter hud;
         private GameAudio audioPlayer;
+        private ZooMapView zoo;
         private readonly StairCameraFx stairFx = new StairCameraFx();
         public StairCameraFx StairFx => stairFx;
         private float caughtTime, runFade, runStartedAt = -10, caughtAt = -10;
@@ -146,8 +147,10 @@ namespace Mongscape.Bootstrap
             hud.StartTutorial=StartTutorial; hud.OfferTutorial=OfferTutorial; hud.TutorialMask=()=>TutorialMask;
             SetupTutorial();
             audioPlayer = gameObject.AddComponent<GameAudio>();
+            zoo = gameObject.AddComponent<ZooMapView>();
             audioPlayer.Configure(Session, Settings != null ? Settings.MusicVolume : .35f, Settings != null ? Settings.EffectsVolume : .7f); SetupTutorialAudio();
             audioPlayer.NewBest = () => Results != null && Results.LastNewBest;
+            zoo.Configure(Session, audioPlayer, PauseControl);
             hud.RankCracked = audioPlayer.Crack;
             // The prison's cell door, lock gauge and searchlight (plan 2-3a).
             gameObject.AddComponent<PrisonStage>().Configure(Session, audioPlayer);
@@ -285,6 +288,7 @@ namespace Mongscape.Bootstrap
             yield return new WaitForSecondsRealtime(.25f);
             RouteSurface.UsePlan(Session.IsTutorial?TutorialCourse.Plan(Session.Config,tutorialChapter):new RoutePlan(Session.Config, seed));
             Session.ApplyTraits(Session.IsTutorial ? RunTraits.None : Account.TraitsForRun());
+            ZooMapView.Register(RouteSurface.ActivePlan);
             Session.Reset(); moveTally.Reset(); pace.Reset(); ResetBigMoves(); System.Array.Clear(kindSeconds, 0, 4); keyboard.Clear(); poseInput.Clear(); hud.LoadingProgress=.42f;
             yield return new WaitForSecondsRealtime(.25f);
             Map.Reset(seed); Map.AnimateGates(Session.Runner.Z); hud.LoadingProgress=.78f;
@@ -381,6 +385,10 @@ namespace Mongscape.Bootstrap
                 // Prison hiding (plan 2-3a): the body's held crouch and its depth; the keyboard (S) hides with the runner's crouch.
                 bool hideBody = Pose.UsesCamera && Pose.Tracking;
                 Session.HidePose = hideBody && Pose.Reading.Crouch; Session.HideDepth = hideBody ? Pose.Reading.CrouchDepth : -1f;
+                // The zoo song sets the speed and the lion follows the running beat (plan 1-2b); keyboard: notes only.
+                bool tracking = cadenceRun && Pose.UsesCamera && Pose.Tracking;
+                zoo.SyncOffset = Pose.UsesCamera ? .12f : 0f;
+                zoo.Tick(dt, tracking ? Pose.StepsPerMinute < MapCourse.TargetCadence(course, Settings != null ? Settings.Motion : null) : (bool?)null);
                 float previousZ = Session.Runner.Z;
                 Session.Tick(dt); Results.Race.Update(Session.Score.Score); Map.Tick(Session.Runner.Z); Hero.Apply(Session.Runner); Map.Evaluate(previousZ);
                 Map.AnimateGates(Session.Runner.Z);

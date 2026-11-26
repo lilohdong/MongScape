@@ -97,7 +97,7 @@ namespace Mongscape.Domain
 
         public MotionReading Update(PoseFrame frame)
         {
-            Reading.JumpEdge = false; Reading.KneeStep = false; Reading.BigJump = Reading.BigKnee = Reading.BigLane = false;
+            Reading.JumpEdge = false; Reading.KneeStep = false; Reading.BigJump = Reading.BigKnee = Reading.BigLane = false; Reading.ArmsUpEdge = false;
             double now = frame.Time; lastFrameTime = now;
             if (!frame.HasPose || !Smooth(frame) || !RequiredVisible())
             {
@@ -117,6 +117,7 @@ namespace Mongscape.Domain
             Status = PoseStatus.Tracking;
             UpdateReach();
             if (style == PlayStyle.UpperBody) TrackUpper(frame.Aspect, now); else TrackFull(frame.Aspect, now);
+            UpdateArmsUp();
             UpdateCadence(now);
             Reading.ArmsCrossed = ArmsCrossed();
             Reading.Active = now - lastStep < .8 || now - lastJump < 1 || Reading.Crouch || now - lastKneeStep < KneeStepActiveSeconds || now - lastLaneChange < 1 || now < pumpUntil;
@@ -137,6 +138,16 @@ namespace Mongscape.Domain
                 if (down < -.3f || down > tuning.CrossBelowShoulder || Math.Abs(px[wrist] - ShoulderX) / width > 1f) return false;
             }
             return true;
+        }
+        // Arms-up in both styles: both wrists over the calibrated head height (the live nose drops when ducking). Released when
+        // a wrist comes back under the shoulders, so holding the pose is one edge.
+        private void UpdateArmsUp()
+        {
+            bool seen = ActionSeen(PoseJoint.LeftWrist) && ActionSeen(PoseJoint.RightWrist);
+            float head = !float.IsNaN(bNose) ? bNose : bSy - bScale;
+            bool up = seen && py[PoseJoint.LeftWrist] < head - tuning.UpperHandsAboveNose * bScale && py[PoseJoint.RightWrist] < head - tuning.UpperHandsAboveNose * bScale;
+            if (up && !Reading.ArmsUp) { Reading.ArmsUp = true; Reading.ArmsUpEdge = true; }
+            else if (!up && Reading.ArmsUp && (!seen || py[PoseJoint.LeftWrist] > ShoulderY || py[PoseJoint.RightWrist] > ShoulderY)) Reading.ArmsUp = false;
         }
         private bool Smooth(PoseFrame frame)
         {
