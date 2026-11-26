@@ -18,6 +18,7 @@
 | 설정 화면을 수정 | [설정 UI](SETTINGS_UI.md) |
 | 화질·성능 측정 | [성능 안내](PERFORMANCE.md) |
 | 아트 작업 기준 | [아트 방향](ART_DIRECTION.md) |
+| 2차 에셋 스타일 (색·셰이딩·폴리곤·비율·애니메이션·이름·Unity 설정) | [아트 스타일 가이드](ART_STYLE_GUIDE.md) |
 | 리소스 후보·교체 지점 | [에셋 목록](ASSET_CATALOG.md) |
 | 사용 리소스와 공개 조건 | [외부 리소스 안내](../THIRD_PARTY_NOTICES.md), [무료 에셋 출처](FREE_ASSETS_IMPORTED.json) |
 | 브랜치·커밋 규칙 | [Git 작업 흐름](GIT_WORKFLOW.md), [작업 규칙](../AGENTS.md) |
