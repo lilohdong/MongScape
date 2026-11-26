@@ -368,6 +368,9 @@ namespace Mongscape.Domain
             // A cell door and the roof bonus each free one monkey (plan 2-3a).
             Prison.CellOpened += _ => Rescue(RescueSource.PrisonLock);
             Prison.RoofRescue += () => Rescue(RescueSource.PrisonLock);
+            // A mine wall monkey (plan 3-0): reached out to, or in the runner's lane while the call item lasts.
+            MineRescue.CallActive = () => CallActive;
+            MineRescue.RescuedAt += (sequence, side) => Rescue(CallActive ? RescueSource.Call : RescueSource.MineWall);
             // Seen by the searchlight (plan 2-3a): one warning, rung by the warden's alarm bell (ChaserDef.Warden).
             Prison.Alarm += set => Warn(WarningCause.Spotted);
         }

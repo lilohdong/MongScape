@@ -100,7 +100,7 @@ namespace Mongscape.Tests
                 var course = new PrisonCourse { LockBonus = bonus }; course.Begin(1);
                 float openedAt = -1, t = 0; course.CellOpened += _ => openedAt = t;
                 course.Tick(Dt, Cell(0), 5f, false, 0f);
-                for (; t < 20f && openedAt < 0; t += Dt) course.Tick(Dt, Cell(0), PrisonCourse.DoorZ, true, .5f);
+                for (; t < 20f && openedAt < 0; t += Dt) course.Tick(Dt, Cell(0), PrisonCourse.DoorZ, true, 1f);
                 return openedAt;
             }
             float plain = OpenedAt(0f), skilled = OpenedAt(.3f);
