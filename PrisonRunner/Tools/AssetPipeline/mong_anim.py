@@ -85,3 +85,14 @@ def key_object(ob, frame, loc=None, rot=None, scale=None):
     if loc is not None: ob.location = loc; ob.keyframe_insert('location', frame=frame)
     if rot is not None: ob.rotation_euler = Euler([math.radians(a) for a in rot]); ob.keyframe_insert('rotation_euler', frame=frame)
     if scale is not None: ob.scale = scale; ob.keyframe_insert('scale', frame=frame)
+
+def fcurves(act):
+    """F-curves of an action in Blender 4.x (act.fcurves) and 5.x layered actions (channelbags)."""
+    if hasattr(act, 'fcurves'):
+        return list(act.fcurves)
+    out = []
+    for layer in act.layers:
+        for strip in layer.strips:
+            for bag in getattr(strip, 'channelbags', []):
+                out += list(bag.fcurves)
+    return out

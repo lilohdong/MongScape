@@ -73,6 +73,38 @@
    "frames": 37
   },
   {
+   "name": "Models/MD_Mine_BrokenWall_L.fbx",
+   "kind": "prop",
+   "group": "PrisonMine",
+   "loop": false,
+   "avatar_from": "",
+   "frames": 0
+  },
+  {
+   "name": "Models/MD_Mine_BrokenWall_R.fbx",
+   "kind": "prop",
+   "group": "PrisonMine",
+   "loop": false,
+   "avatar_from": "",
+   "frames": 0
+  },
+  {
+   "name": "Models/MD_Prison_CellDoor.fbx",
+   "kind": "prop_anim",
+   "group": "PrisonMine",
+   "loop": false,
+   "avatar_from": "",
+   "frames": 40
+  },
+  {
+   "name": "Models/MD_Prison_Searchlight.fbx",
+   "kind": "prop_anim",
+   "group": "PrisonMine",
+   "loop": true,
+   "avatar_from": "",
+   "frames": 121
+  },
+  {
    "name": "Models/MD_Zoo_LionCage.fbx",
    "kind": "prop_anim",
    "group": "Lion",
