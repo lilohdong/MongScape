@@ -86,6 +86,7 @@ namespace Mongscape.PoseInference
             if (!Load()) { Status = PoseStatus.NoModel; return; }
             ResetPipeline();
             if (camera != null) { if (!camera.isPlaying) { camera.Play(); openedAt = Time.realtimeSinceStartupAsDouble; } Status = PoseStatus.Starting; return; }
+            if (CameraAccess.Disabled) { Status = PoseStatus.NoCamera; Message = "카메라를 쓰지 않는 실행입니다."; return; }
             var devices = WebCamTexture.devices;
             if (devices.Length == 0) { Status = PoseStatus.NoCamera; Message = "연결된 웹캠이 없습니다."; Debug.LogWarning("Muhanok pose: no webcam devices."); return; }
             // Preferred device first, then real cameras, then virtual ones (OBS and similar often fail to start).

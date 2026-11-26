@@ -11,7 +11,10 @@ namespace Mongscape.Presentation
     {
         private const int Rate = 44100;
         private RunSession session;
-        private AudioSource music, siren, effects;
+        private AudioSource music, siren, effects, varied;
+        // Music ducking: an important effect (hit) lowers the music by DuckDb for DuckHold seconds, then it recovers over DuckRelease.
+        private const float DuckDb = 5f, DuckHold = .4f, DuckRelease = .5f;
+        private float duckUntil = -1f, duck = 1f;
         private const string SfxFolder = "MuhanokAudio/Sfx/";
         private AudioClip crack, coin;
         private AudioClip[] jump, land, hit, bonk, cue, item, shield, beep, go, step, slip;
@@ -29,6 +32,7 @@ namespace Mongscape.Presentation
             music = Source("Music", true); music.clip = AudioClip.Create("Muhanok Music", Rate * 2, 1, Rate, true, FillMusic); music.loop = true; music.Play();
             siren = Source("Siren", true); siren.clip = Siren(); siren.loop = true; siren.volume = 0; siren.Play();
             effects = Source("Effects", false);
+            varied = Source("Varied effects", false);
             coin = Tone(.12f, f => 1046 + (f > .05f ? 520 : 0), .5f);
             beep = Load(() => Tone(.15f, f => 660, .4f), "count_beep");
             go = Load(() => Tone(.35f, f => 990, .45f), "count_go");
@@ -63,13 +67,23 @@ namespace Mongscape.Presentation
             if (effects == null || clips == null || clips.Length == 0) return;
             effects.PlayOneShot(clips[clips.Length == 1 ? 0 : pick.Next(clips.Length)], effectsVolume * gain);
         }
+        // Repeating effects (footsteps, landings): a random variant at a pitch within +-5 % so the repeats sound less alike.
+        private void PlayVaried(AudioClip[] clips, float gain)
+        {
+            if (varied == null || clips == null || clips.Length == 0) return;
+            varied.pitch = 1f + ((float)pick.NextDouble() * 2f - 1f) * .05f;
+            varied.PlayOneShot(clips[clips.Length == 1 ? 0 : pick.Next(clips.Length)], effectsVolume * gain);
+        }
+        // Lowers the music under an effect the player must hear.
+        public void Duck() { duckUntil = Time.unscaledTime + DuckHold; }
         // In-game gain of each effect relative to the effects volume (files are all peak-normalised to -1 dBFS).
-        private const float JumpGain = .45f, LandGain = .4f, StepGain = .35f, HitGain = 1f, BonkGain = .75f, CueGain = .5f,
-            BeepGain = .6f, GoGain = .7f, SlipGain = .8f, ItemGain = .7f, ShieldGain = .8f;
+        // Tuned with Tools/Audio/check_sfx_mix.py against the loudest state of every song (see docs/AUDIO.md).
+        private const float JumpGain = .8f, LandGain = .6f, StepGain = .6f, HitGain = 1f, BonkGain = .75f, CueGain = .75f,
+            BeepGain = .9f, GoGain = .75f, SlipGain = .75f, ItemGain = .8f, ShieldGain = .6f;
         public void SetVolumes(float musicLevel, float effectsLevel) { musicVolume = Mathf.Clamp01(musicLevel); effectsVolume = Mathf.Clamp01(effectsLevel); }
         public void Countdown(bool final) { if (final) Play(go, GoGain); else Play(beep, BeepGain); }
         // A short step for a KneeStep on the stairs (the bootstrap calls it with the camera effect), under the music.
-        public void Footstep() => Play(step, StepGain);
+        public void Footstep() => PlayVaried(step, StepGain);
         // A short glassy break when the ranking strip passes a row.
         public void Crack() { if (effects != null && crack != null) effects.PlayOneShot(crack, effectsVolume * .55f); }
         // The guard's baton hits in the capture scene.
@@ -101,7 +115,9 @@ namespace Mongscape.Presentation
             energy = running ? (cart ? .35f : 1f) : .3f;
             float target = state == GameFlowState.Result || state == GameFlowState.Caught ? .25f : running ? 1f : .6f;
             level = Mathf.MoveTowards(level, target, Time.unscaledDeltaTime);
-            music.volume = musicVolume;
+            duck = Time.unscaledTime < duckUntil ? Mathf.Pow(10f, -DuckDb / 20f)
+                : Mathf.MoveTowards(duck, 1f, (1f - Mathf.Pow(10f, -DuckDb / 20f)) * Time.unscaledDeltaTime / DuckRelease);
+            music.volume = musicVolume * duck;
             float danger = running ? Mathf.Max(session.SlipPursuit ? 1f : 0f, Mathf.InverseLerp(.35f, .9f, session.Chase.Pressure)) : 0f;
             // The looping siren is the police; the lion and the warden have their own cue (ChaserCue) until they get loops.
             if (session.Chaser.Sound != ChaserSound.Siren) danger = 0f;
@@ -113,14 +129,14 @@ namespace Mongscape.Presentation
                 if (session.ShieldSaves > lastShields) Play(shield, ShieldGain);
                 bool airborne = session.Runner.Y > .05f;
                 if (airborne && !wasAirborne) Play(jump, JumpGain);
-                if (!airborne && wasAirborne) Play(land, LandGain);
+                if (!airborne && wasAirborne) PlayVaried(land, LandGain);
                 wasAirborne = airborne;
                 // A missed knee step on the stairs also slows the runner; only a real slip (banana, floor) squelches.
                 bool slowing = session.Runner.Slowing;
                 if (slowing && !wasSlowing && (session.LastSlipSource == SlipSource.Banana || session.LastSlipSource == SlipSource.Floor)) Play(slip, SlipGain);
                 wasSlowing = slowing;
             }
-            if (state == GameFlowState.Caught && lastState != GameFlowState.Caught) Play(hit, HitGain);
+            if (state == GameFlowState.Caught && lastState != GameFlowState.Caught) { Play(hit, HitGain); Duck(); }
             lastCoins = session.Score.Coins; lastItems = session.Items.Collected; lastShields = session.ShieldSaves; lastState = state;
         }
 

@@ -1,0 +1,87 @@
+{
+  "song": "menu",
+  "bpm": 112,
+  "time_signature": [
+    4,
+    4
+  ],
+  "bars": 32,
+  "loop_seconds": 68.5714,
+  "loop_samples": 3024000,
+  "sample_rate": 44100,
+  "playback": "Start every layer with AudioSource.PlayScheduled at the same dspTime, loop = true. A state only sets layer volumes.",
+  "song_gain_db": 4.9,
+  "reference_state": "full",
+  "target_lufs": -20.0,
+  "sections": [
+    {
+      "name": "A",
+      "bars": [
+        1,
+        8
+      ]
+    },
+    {
+      "name": "B",
+      "bars": [
+        9,
+        16
+      ]
+    },
+    {
+      "name": "A2",
+      "bars": [
+        17,
+        24
+      ]
+    },
+    {
+      "name": "bridge",
+      "bars": [
+        25,
+        32
+      ]
+    }
+  ],
+  "layers": {
+    "base": {
+      "file": "menu_base.ogg",
+      "meaning": "Pizzicato strings, bass, marimba theme, clarinet and bassoon dialogue, glockenspiel",
+      "alone": {
+        "lufs": -21.2,
+        "true_peak_dbtp": -7.8
+      }
+    },
+    "rhythm": {
+      "file": "menu_rhythm.ogg",
+      "meaning": "Shaker, woodblock and claves (no kick). Can be muted for a calmer screen",
+      "alone": {
+        "lufs": -26.4,
+        "true_peak_dbtp": -4.6
+      }
+    }
+  },
+  "states": {
+    "full": {
+      "meaning": "Title, menu, trait screen (default)",
+      "layers": {
+        "base": 1,
+        "rhythm": 1
+      },
+      "lufs": -20.0,
+      "true_peak_dbtp": -4.2
+    },
+    "calm": {
+      "meaning": "Optional quieter variant: rhythm layer muted",
+      "layers": {
+        "base": 1,
+        "rhythm": 0
+      },
+      "lufs": -21.2,
+      "true_peak_dbtp": -7.8
+    }
+  },
+  "fades": {
+    "default": 1.0
+  }
+}

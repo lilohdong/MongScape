@@ -26,7 +26,7 @@ namespace Mongscape.Bootstrap
         private bool PlayableStyle(PlayStyle style)
         {
             if(!PlayStyleInfo.UsesCamera(style)) return true;
-            if(!cameraDetected&&!automated) cameraDetected=WebCamTexture.devices.Length>0;
+            if(!cameraDetected&&!automated&&!CameraAccess.Disabled) cameraDetected=WebCamTexture.devices.Length>0;
             return ((IHudData)this).BodyStylesAllowed;
         }
         PoseFrame IHudData.PoseFrame => Pose.LastFrame;

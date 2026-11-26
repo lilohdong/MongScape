@@ -365,7 +365,7 @@ namespace Mongscape.Bootstrap
             bool menu=(Session.Flow.State==GameFlowState.TitleIdle || Session.Flow.State==GameFlowState.Result || Session.Paused || settingsWindow.IsOpen) && !hud.Loading && !hud.Revealing;
             // Re-read the device list on entering a menu, then every 5 s on calm menu screens only (not during play, pause, loading or reveal).
             bool calmMenu=menu&&!Session.Paused;
-            if(menu&&!wasMenu || calmMenu&&now>=nextCameraScan){nextCameraScan=now+5;cameraDetected=!automated&&WebCamTexture.devices.Length>0;}
+            if(menu&&!wasMenu || calmMenu&&now>=nextCameraScan){nextCameraScan=now+5;cameraDetected=!automated&&!CameraAccess.Disabled&&WebCamTexture.devices.Length>0;}
             wasMenu=menu;
             UpdateMenuCamera(menu);
             UpdateAdaptive(live);

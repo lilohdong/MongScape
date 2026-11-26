@@ -1,0 +1,80 @@
+{
+  "song": "result",
+  "bpm": 100,
+  "time_signature": [
+    4,
+    4
+  ],
+  "bars": 12,
+  "loop_seconds": 28.8,
+  "loop_samples": 1270080,
+  "sample_rate": 44100,
+  "playback": "Start every layer with AudioSource.PlayScheduled at the same dspTime, loop = true. A state only sets layer volumes.",
+  "song_gain_db": 7.7,
+  "reference_state": "full",
+  "target_lufs": -20.0,
+  "sections": [
+    {
+      "name": "motif",
+      "bars": [
+        1,
+        4
+      ]
+    },
+    {
+      "name": "answer",
+      "bars": [
+        5,
+        8
+      ]
+    },
+    {
+      "name": "cadence",
+      "bars": [
+        9,
+        12
+      ]
+    }
+  ],
+  "layers": {
+    "base": {
+      "file": "result_base.ogg",
+      "meaning": "Piano melody and broken chords, soft pad, bass, marimba echo, glockenspiel",
+      "alone": {
+        "lufs": -21.1,
+        "true_peak_dbtp": -7.2
+      }
+    },
+    "rhythm": {
+      "file": "result_rhythm.ogg",
+      "meaning": "Shaker, brush snare and pedal hi-hat (no kick)",
+      "alone": {
+        "lufs": -26.6,
+        "true_peak_dbtp": -7.2
+      }
+    }
+  },
+  "states": {
+    "full": {
+      "meaning": "Result screen and ranking (default)",
+      "layers": {
+        "base": 1,
+        "rhythm": 1
+      },
+      "lufs": -20.0,
+      "true_peak_dbtp": -3.7
+    },
+    "calm": {
+      "meaning": "Optional quieter variant: rhythm layer muted",
+      "layers": {
+        "base": 1,
+        "rhythm": 0
+      },
+      "lufs": -21.1,
+      "true_peak_dbtp": -7.2
+    }
+  },
+  "fades": {
+    "default": 1.0
+  }
+}
