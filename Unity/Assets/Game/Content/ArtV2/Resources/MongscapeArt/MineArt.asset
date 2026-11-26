@@ -18,6 +18,7 @@ MonoBehaviour:
   WaveLeft: {fileID: 9100000, guid: a883aa8568927424db8bf8aaf00087e2, type: 2}
   WaveRight: {fileID: 9100000, guid: 41452ee714c47cc43a8b020a947b12f1, type: 2}
   RescuePop: {fileID: 9100000, guid: 6befd9ae5efabb849aa97a770a5d7571, type: 2}
+  Run: {fileID: 7400000, guid: 09aae67c8562cd44cac3a0bd02f6fe3e, type: 2}
   SignMine: {fileID: 919132149155446097, guid: 9eacef45ad192ee459d594e7de64055f, type: 3}
   SignZoo: {fileID: 919132149155446097, guid: a771c064b7f068146b6593895f0c7618, type: 3}
   SignPrison: {fileID: 919132149155446097, guid: 0b0d8c8e9139d89448f83fde44504739, type: 3}

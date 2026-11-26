@@ -30,6 +30,7 @@ namespace Mongscape.Presentation
         private volatile float tempo = 96f, energy = .3f, level;
         private double phase;
         private int lastRescued, lastItems, lastShields;
+        private bool warningSoon;
         private bool wasAirborne, wasSlowing;
         private GameFlowState lastState;
         private MusicPlayer loops;
@@ -182,6 +183,9 @@ namespace Mongscape.Presentation
             {
                 // Every rescue (mine wall, call item, prison cell, roof) goes through RunSession.Rescue and grows the troop.
                 if (session.Troop.Rescued > lastRescued) MonkeyRescued();
+                // A warning is about to land (police gauge): a short cue, earlier with the sharp ears trait.
+                if (session.WarningSoon && !warningSoon) Cue();
+                warningSoon = session.WarningSoon;
                 if (session.Items.Collected > lastItems) Play(item, ItemGain);
                 if (session.ShieldSaves > lastShields) Play(shield, ShieldGain);
                 bool airborne = session.Runner.Y > .05f;

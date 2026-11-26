@@ -447,7 +447,7 @@ namespace Mongscape.Domain
         // Call after Reset when a run starts: fixes the traits and hands out the starting shield (Shield Lv3).
         public void ApplyTraits(RunTraits traits)
         {
-            Traits = traits ?? RunTraits.None; Items.Traits = Traits; Prison.LockBonus = tutorial ? 0f : Traits.LockGaugeBonus; thickFurLeft = Traits.ThickFur; loyaltyLeft = Traits.Loyalty;
+            Traits = traits ?? RunTraits.None; Items.Traits = Traits; Prison.LockBonus = tutorial ? 0f : Traits.LockGaugeBonus; Prison.LeadBonus = tutorial ? 0f : Traits.WarningLeadSeconds; thickFurLeft = Traits.ThickFur; loyaltyLeft = Traits.Loyalty;
             if (Traits.StartsWithShield && !tutorial) Items.GiveStartingShield();
         }
         // A monkey joins the troop (a mine wall rescue, a prison lock, the call item). Ignored outside a running run and in the tutorial.
@@ -527,8 +527,18 @@ namespace Mongscape.Domain
                 pace.Halve();
                 Warn(WarningCause.Pace);
             }
+            float before = PacePressure;
             PacePressure = warns ? pace.Pressure : Math.Min(CadencePace.LegacyMaxPressure, pace.Pressure);
+            paceRising = warns && PacePressure > before;
         }
+        // The cue before a chaser warning (plan 6-8): CueSeconds ahead, plus the sharp ears trait (plan 4-1).
+        public const float CueSeconds = .6f;
+        public float WarningCueSeconds => CueSeconds + Traits.WarningLeadSeconds;
+        private bool paceRising;
+        // True while a warning is about to land: the mine police gauge will fill within WarningCueSeconds at its rise rate.
+        // Map stages with their own chaser cue (the zoo lion's roar, the prison searchlight) add WarningCueSeconds themselves.
+        public bool WarningSoon => Flow.State == GameFlowState.Running && !Paused && !tutorial && !SlipPursuit && paceRising
+            && (1f - PacePressure) / CadencePace.PressureRise <= WarningCueSeconds;
         // Leaving a map empties the warning slots and the gauge (not during a pursuit: that capture still happens).
         private void LeaveSection(SectionSpan left)
         {
@@ -599,6 +609,6 @@ namespace Mongscape.Domain
             BigMoves[(int)move]++;
             return true;
         }
-        public void Reset() { Array.Clear(BigMoves, 0, BigMoves.Length); Troop.Reset(); LoyaltySaves = 0; thickFurLeft = Traits.ThickFur; loyaltyLeft = Traits.Loyalty; SoftWarning = false; Runner.Reset(); Stair.Reset(); Chase.Reset(); Score.Reset(); Workout.Reset(); Items.Reset(); Paused=false; SpeedScale=1f; CadenceScale=1f; PacePressure=0f; clock = 0f; lastHit = -100f;SlipStrikes=0;lastStrike=0f;ShieldSaves=0;bananaCatchLeft=0;pursuer=null;ChaserGauge=0f;LastWarning=WarningCause.Collision;CaughtBy=ChaserKind.Police;Reason=CaptureReason.Collision; Sections.Reset(); SectionSpeed = null; Prison.Reset(); MineRescue.Reset(); Stair.GapScale = 1f; HidePose = false; HideDepth = -1f; if (Traits.StartsWithShield && !tutorial) Items.GiveStartingShield(); smoothSpeed = TargetSpeed; }
+        public void Reset() { Array.Clear(BigMoves, 0, BigMoves.Length); Troop.Reset(); LoyaltySaves = 0; thickFurLeft = Traits.ThickFur; loyaltyLeft = Traits.Loyalty; SoftWarning = false; paceRising = false; Runner.Reset(); Stair.Reset(); Chase.Reset(); Score.Reset(); Workout.Reset(); Items.Reset(); Paused=false; SpeedScale=1f; CadenceScale=1f; PacePressure=0f; clock = 0f; lastHit = -100f;SlipStrikes=0;lastStrike=0f;ShieldSaves=0;bananaCatchLeft=0;pursuer=null;ChaserGauge=0f;LastWarning=WarningCause.Collision;CaughtBy=ChaserKind.Police;Reason=CaptureReason.Collision; Sections.Reset(); SectionSpeed = null; Prison.Reset(); MineRescue.Reset(); Stair.GapScale = 1f; HidePose = false; HideDepth = -1f; if (Traits.StartsWithShield && !tutorial) Items.GiveStartingShield(); smoothSpeed = TargetSpeed; }
     }
 }
