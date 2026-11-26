@@ -17,7 +17,7 @@ namespace Mongscape.Presentation
         public Texture2D LoadingImage;
         public IHudData Data;
         public Action<PlayerProfile> BeginRun;
-        public Action PauseRun;
+        public Action PauseRun, Recalibrate;
         // Result and pause: back to the main menu.
         public Action ToMenu;
         public Action OpenSettings;
@@ -183,10 +183,10 @@ namespace Mongscape.Presentation
             else if (state == GameFlowState.TitleIdle) DrawMenu();
             else if (state == GameFlowState.Running || state == GameFlowState.Caught)
             {
-                if (session.Paused) pause.Draw(session, Data, PauseRun, OpenSettings, ToMenu);
+                if (session.Paused) pause.Draw(session, Data, PauseRun, Recalibrate, ToMenu);
                 // Camera runs hold on the calibration screen until the player is measured, then the countdown starts.
                 else if (Data != null && Data.RunCalibration != RunCalibrationState.None && state == GameFlowState.Running) calibration.DrawRun(Data);
-                else runHud.Draw(session, Fade, Data, PauseRun);
+                else { runHud.Draw(session, Fade, Data, PauseRun); pause.DrawGesture(Data?.Pause); }
             }
             else if (state == GameFlowState.Result)
             {

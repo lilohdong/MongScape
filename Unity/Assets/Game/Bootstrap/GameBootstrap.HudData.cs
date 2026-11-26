@@ -16,6 +16,7 @@ namespace Mongscape.Bootstrap
     {
         // IHudData
         PlayerProfile IHudData.Player => player;
+        PauseFlow IHudData.Pause => PauseControl;
         PlayerProfile IHudData.SavedProfile => Account.Profile;
         Texture IHudData.CameraTexture => Pose.CameraTexture;
         // Listed, or already delivering frames (a camera the driver listed late still counts).

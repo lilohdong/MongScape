@@ -27,7 +27,8 @@ namespace Mongscape.Tests
             yield return null;
             Assert.AreEqual(GameFlowState.Running,game.Session.Flow.State); Assert.IsFalse(hud.RunModel.ShowWorkout);
             game.TogglePause(); yield return null; Assert.IsTrue(game.Session.Paused);
-            game.TogglePause(); yield return null; Assert.IsFalse(game.Session.Paused);
+            game.TogglePause(); yield return null; Assert.IsTrue(game.PauseControl.Counting, "Resuming counts 3, 2, 1 first");
+            yield return new WaitForSecondsRealtime(3.3f); Assert.IsFalse(game.Session.Paused);
             game.TogglePause(); game.ExitToMenu(); Assert.AreEqual(1,Time.timeScale);
         }
         [UnityTest]
