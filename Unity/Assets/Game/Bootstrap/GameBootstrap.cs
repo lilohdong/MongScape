@@ -27,6 +27,8 @@ namespace Mongscape.Bootstrap
         public bool IsRevealing=>hud!=null&&hud.Revealing;
         public RunSession Session { get; private set; }
         public ChunkSpawner Map { get; private set; }
+        // Runtime decoration of the chunks (items, animals, the mine's stuck monkeys).
+        public RuntimeContent Content { get; private set; }
         public IntroSequenceDirector Intro { get; private set; }
         public PoseTracker Pose { get; private set; }
         public PlayerProgressStore Store { get; private set; }
@@ -110,7 +112,9 @@ namespace Mongscape.Bootstrap
             OutputCamera.GetComponent<CinematicFocus>()?.Configure(Session,Hero);
             var mapRoot = new GameObject("ChunkPool"); mapRoot.transform.SetParent(transform, false);
             Map = new ChunkSpawner(ChunkPrefabs, mapRoot.transform, Session, Settings != null ? Settings.Render : new RenderBudget());
-            Map.Decorator = new TutorialLayout(new RuntimeContent(mapRoot.transform, RunItems, Settings != null ? Settings.ItemChancePerChunk : .35f), Session);
+            Content = new RuntimeContent(mapRoot.transform, RunItems, Settings != null ? Settings.ItemChancePerChunk : .35f) { Session = Session };
+            Map.Decorator = new TutorialLayout(Content, Session);
+            gameObject.AddComponent<ForkBlockedCue>().Configure(Session, Settings != null ? Settings.EffectsVolume : .7f);
             // Right before a duck row (about 1.2 s ahead) the jump line rises, so a running bounce cannot jump into the bar.
             Pose.DuckAhead = () => Session.Flow.State == GameFlowState.Running && !Session.Runner.Riding
                 && Map.ActionAhead(HazardAction.Crouch, Session.Runner.Z, Mathf.Max(6f, Session.CurrentSpeed * 1.2f));

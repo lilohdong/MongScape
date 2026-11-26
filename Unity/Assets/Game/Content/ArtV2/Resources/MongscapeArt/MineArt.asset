@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cad9aa92a5864bdbb5f75fe4cf6953c4, type: 3}
+  m_Name: MineArt
+  m_EditorClassIdentifier: 
+  Monkey: {fileID: 2600305597835814258, guid: 0031ccc85cbc96e48890b910042b039d, type: 3}
+  WallLeft: {fileID: 919132149155446097, guid: f0530d0b1d2b031408e8e8eb4f321002, type: 3}
+  WallRight: {fileID: 919132149155446097, guid: 3bd631d0506271a4ca9a5d4fe6eec225, type: 3}
+  WaveLeft: {fileID: 9100000, guid: a883aa8568927424db8bf8aaf00087e2, type: 2}
+  WaveRight: {fileID: 9100000, guid: 41452ee714c47cc43a8b020a947b12f1, type: 2}
+  RescuePop: {fileID: 9100000, guid: 6befd9ae5efabb849aa97a770a5d7571, type: 2}
+  SignMine: {fileID: 919132149155446097, guid: 9eacef45ad192ee459d594e7de64055f, type: 3}
+  SignZoo: {fileID: 919132149155446097, guid: a771c064b7f068146b6593895f0c7618, type: 3}
+  SignPrison: {fileID: 919132149155446097, guid: 0b0d8c8e9139d89448f83fde44504739, type: 3}
+  SignBlocked: {fileID: 919132149155446097, guid: 3c0ff2756c5dc5a4a801bf5c7f329163, type: 3}
+  Rescue: {fileID: 8300000, guid: 57052b17bbcb49d458f5ac5b921f5d9a, type: 3}
+  ForkBlocked: {fileID: 8300000, guid: 6f6d78cb4ef797e49964bb5bfade1b23, type: 3}

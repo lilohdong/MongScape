@@ -51,7 +51,7 @@ namespace Mongscape.Presentation
                 skin.Card(rect, Palette.A(Palette.Ground, .82f));
                 GUI.Label(rect, Model.ItemLabels[i], skin.Centered(16, FontStyle.Bold));
             }
-            if (session.Flow.State == GameFlowState.Running && data != null) { DrawPaceEdges(data.PacePressure); Strip.Draw(data.Race, data.HazardNear, Time.unscaledTime); DrawForkPreview(data); }
+            if (session.Flow.State == GameFlowState.Running && data != null) { DrawPaceEdges(data.PacePressure); Strip.Draw(data.Race, data.HazardNear, Time.unscaledTime); }
             if (session.Flow.State == GameFlowState.Running)
             {
                 if (Model.ShowSiren) DrawSiren();
@@ -73,35 +73,7 @@ namespace Mongscape.Presentation
         }
         private static readonly string[] ForkArrows={"↖","↑","↗"};
         // Below the target cadence the screen edges redden with the police pressure (pulsing gently); nothing in the middle.
-        public const string Recommend = "추천";
-        // Three cards before the fork (exercise plan 3).
-        private void DrawForkPreview(IHudData data)
-        {
-            if (!Model.ShowForkPreview) return;
-            string[] sides = { "◀ 왼쪽으로 기울이기", "가운데 유지", "오른쪽으로 기울이기 ▶" };
-            for (int lane = -1; lane <= 1; lane++)
-            {
-                int destination = Model.PreviewDestinations[lane + 1]; var kind = MapCourse.KindOf(destination);
-                bool lit = lane == Model.ForkLane;
-                var r = new Rect(298 + (lane + 1) * 232, 232, 220, 118);
-                // Solid cards: the world signs behind must not show through the text (QA 2026-11-25 L12).
-                skin.Card(r, lit ? Palette.Gold : Palette.A(Palette.Ground, .98f));
-                GUI.color = lit ? Palette.Outline : Palette.Sand;
-                GUI.Label(new Rect(r.x, r.y + 4, r.width, 20), sides[lane + 1], skin.Centered(14, FontStyle.Normal));
-                GUI.color = lit ? Palette.Outline : Palette.Cream;
-                GUI.Label(new Rect(r.x, r.y + 26, r.width, 34), MapCourse.Name(destination) + " · " + MapCourse.Label(kind), skin.Centered(25, FontStyle.Bold));
-                GUI.Label(new Rect(r.x, r.y + 62, r.width, 24), MapCourse.Moves(kind), skin.Centered(17, FontStyle.Normal));
-                GUI.color = lit ? Palette.Outline : Palette.Gold;
-                GUI.Label(new Rect(r.x, r.y + 86, r.width, 26), MapCourse.DotText(kind), skin.Centered(18, FontStyle.Bold));
-                if (data.Recommended == kind)
-                {
-                    var tag = new Rect(r.xMax - 58, r.y - 10, 56, 24);
-                    skin.Card(tag, new Color(.25f, .7f, .35f, .95f));
-                    GUI.color = Color.white; GUI.Label(tag, Recommend, skin.Centered(15, FontStyle.Bold));
-                }
-                GUI.color = Color.white;
-            }
-        }
+        // The fork has no cards or captions (plan 0): the signs in the world and the rails say where each branch leads.
         private static Texture2D edgeV, edgeH;
         // A ramp from transparent to solid: vertical (rows) or horizontal (columns).
         private static Texture2D Ramp(bool vertical)

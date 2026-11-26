@@ -159,6 +159,7 @@ namespace Mongscape.Presentation.Map
                 peel.transform.SetParent(chunk.transform,true);peel.ResetItem();peel.gameObject.SetActive(true);
                 chunk.DynamicFloorItems.Add(peel);list.Add(peel);
             }
+            PlaceStuckMonkey(chunk, sequence, list);
             var kinds = availableItems();
             if (kinds.Count > 0 && random.NextDouble() < itemChance)
             {
@@ -201,6 +202,7 @@ namespace Mongscape.Presentation.Map
             if (!placed.TryGetValue(chunk, out var list)) return;
             foreach (var item in list)
             {
+                if (ReleaseStuckMonkey(item)) continue;
                 if (item is RailForkView fork) { fork.Release(); continue; }
                 if(item is RouteEnvelopeView envelope){envelope.Release();continue;}
                 if(item is RouteTransitionView connection){connection.Release();continue;}

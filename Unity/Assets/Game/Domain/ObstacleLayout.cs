@@ -78,17 +78,19 @@ namespace Mongscape.Domain
         private static bool InsideSeams(float z) => z >= SeamClearance - .001f && z <= RouteSurface.Length - SeamClearance + .001f;
 
         public void Plan(Random random, int type, int sequence, IReadOnlyList<ObstacleSlot> authored, IReadOnlyList<LanePlacement> floorItems,
-            HazardOdds odds, bool extended, bool fork, bool boarding = false, HazardPacer pacer = null, float speed = 0, ActionMix? course = null)
+            HazardOdds odds, bool extended, bool fork, bool boarding = false, HazardPacer pacer = null, float speed = 0, ActionMix? course = null, int rescueSide = 0)
         {
             mix = course ?? ActionMix.Neutral;
             PlanRows(random, type, sequence, authored, floorItems, odds, extended, fork, boarding);
+            RescueSide = Stair || IsCart(type) ? 0 : Math.Sign(rescueSide);
+            if (RescueSide != 0) ClearForRescue(speed);
             if (pacer != null) Pace(pacer, type, sequence, speed);
         }
         private void PlanRows(Random random, int type, int sequence, IReadOnlyList<ObstacleSlot> authored, IReadOnlyList<LanePlacement> floorItems,
             HazardOdds odds, bool extended, bool fork, bool boarding)
         {
             slots = authored; floor = floorItems;
-            Slots.Clear(); FloorItems.Clear(); Blockers.Clear(); Bananas.Clear(); Animal = false; Stair = false; SafeLane = 0; openingFrom = float.NaN;
+            Slots.Clear(); FloorItems.Clear(); Blockers.Clear(); Bananas.Clear(); Animal = false; Stair = false; SafeLane = 0; RescueSide = 0; openingFrom = float.NaN;
             for (int i = 0; i < slots.Count; i++) Slots.Add(false);
             for (int i = 0; i < floor.Count; i++) FloorItems.Add(false);
             Array.Clear(RailGaps, 0, RailGaps.Length);
@@ -142,6 +144,24 @@ namespace Mongscape.Domain
                 if (Conflicts(z, HazardAction.Dodge)) continue;
                 for (int lane = -1; lane <= 1; lane++) if (lane != SafeLane && random.NextDouble() < Math.Min(.95f, odds.Banana * mix.Factor(HazardAction.Dodge))) Bananas.Add(new LanePlacement(lane, z));
             }
+        }
+        // Wall of the stuck monkey in this chunk (-1 left, 1 right, 0 none; MineRescuePlan).
+        public int RescueSide { get; private set; }
+        // Plan 3-0: for SightSeconds before the monkey its lane has nothing in it, and no full row crosses it either, so the only
+        // choice left is to go to that lane.
+        public static float RescueClearFrom(float speed) => Math.Max(0f, MineRescuePlan.MonkeyZ - MineRescuePlan.SightSeconds * (speed > 0 ? speed : 10f));
+        private void ClearForRescue(float speed)
+        {
+            float from = RescueClearFrom(speed), to = MineRescuePlan.MonkeyZ + 1f;
+            for (int i = 0; i < Slots.Count; i++)
+            {
+                if (!Slots[i] || slots[i].Terrain) continue;
+                float z = ZOf(i);
+                if (z >= from && z <= to && (slots[i].FullRow || slots[i].Lane == RescueSide)) Slots[i] = false;
+            }
+            for (int i = 0; i < FloorItems.Count; i++) if (FloorItems[i] && floor[i].Lane == RescueSide && floor[i].Z >= from && floor[i].Z <= to) FloorItems[i] = false;
+            Blockers.RemoveAll(b => b.Lane == RescueSide && b.Z >= from && b.Z <= to);
+            Bananas.RemoveAll(b => b.Lane == RescueSide && b.Z >= from && b.Z <= to);
         }
         // Time spacing (HazardPacer): jump rows and animals in route order; one that comes too soon after the previous jump is
         // switched off. Ducks, lane hazards, stairs and the cart break a jump streak. The opening row always stays.

@@ -48,9 +48,9 @@ namespace Mongscape.Infrastructure
         private readonly Func<bool> riding;
         private int lastZone;
         private bool lastRiding;
-        private double lastCrouch = -10;
+        private double lastCrouch = -10, lastReach = -10;
         public PoseCommandSource(PoseGameInput target, Func<int> lane, Func<bool> cart) { output = target; runnerLane = lane; riding = cart; }
-        public void Reset(int zone) { lastZone = zone; lastRiding = riding(); lastCrouch = -10; output.Clear(); }
+        public void Reset(int zone) { lastZone = zone; lastRiding = riding(); lastCrouch = -10; lastReach = -10; output.Clear(); }
         public void Feed(MotionReading reading, double now)
         {
             bool cart = riding();
@@ -69,6 +69,8 @@ namespace Mongscape.Infrastructure
             if (reading.Crouch && now - lastCrouch >= .2) { output.Buffer.Add(MotionCommand.Crouch); lastCrouch = now; }
             // A knee step is a one-frame edge, sent once.
             if (reading.KneeStep) output.Buffer.Add(MotionCommand.KneeStep);
+            // An arm held out to one side keeps reaching (the mine rescue judges the last 0.3 s).
+            if (reading.Reach != 0 && now - lastReach >= .1) { output.Buffer.Add(reading.Reach < 0 ? MotionCommand.ReachLeft : MotionCommand.ReachRight); lastReach = now; }
         }
     }
 
