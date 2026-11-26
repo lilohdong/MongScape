@@ -17,7 +17,11 @@ from storage import NAME_MAX,ApiError,ConfigError,SchemaError,Store,clean_name,n
 # the server-wide caps bound face inference CPU. PCs behind one NAT share their IP budget.
 LIMIT_WINDOW=60; FACE_LIMIT=15; FACE_LIMIT_ALL=60; NAME_CHECK_LIMIT=60; NAME_CHECK_LIMIT_ALL=240
 LEADERBOARD_LIMIT=120; RUNS_LIMIT=20 # per client IP / per account
-ITEM_PRICES={0:30,1:60,2:100} # ItemKind: magnet, coin x2, shield; same as client ItemCatalog
+# Traits (plan 4-1), the one price list: (id, key, cost of each level). The client reads it from /traits and keeps
+# only an offline default for guests. A bought level is stored in profiles.unlocked as id*10+level (codes 0-2 are the
+# old shop items and are ignored); coins hold the rescued monkeys.
+TRAITS=((1,'shield',(5,15,30)),(2,'sharp_ears',(10,20)),(3,'thick_fur',(20,)),(4,'call',(5,15)),(5,'dexterity',(10,20,30)),(6,'loyalty',(25,)),(7,'sweat',(5,15)))
+TRAIT_COSTS={tid:costs for tid,_,costs in TRAITS}
 MODES=range(3) # PlayStyle: 0 full body, 1 upper body, 2 keyboard
 DEFAULT_WEIGHT=65; WEIGHT_MIN,WEIGHT_MAX=10,350; LEADERBOARD_SIZE=50; CONSENT_VERSION='account-v3' # weight range = the game's WorkoutEstimate
 KST=9*3600
@@ -126,6 +130,7 @@ class App:
             session=self.store.issue(pid); return self.store.profile(pid,session,avatar)
         if path=='/leaderboard':
             self.limit(('leaderboard',client),LEADERBOARD_LIMIT); return self.leaderboard(data,token)
+        if path=='/traits': return dict(ok=True,traits=[dict(id=tid,key=key,costs=list(costs)) for tid,key,costs in TRAITS])
         pid=self.store.authorize(token)
         if path=='/profile': return dict(ok=True,profile=self.store.account(pid))
         if path=='/profile/update':
@@ -157,19 +162,23 @@ class App:
                 added=self.store.db.execute('INSERT INTO runs (id,profile_id,distance,score,kcal,goal,activities,created_at,mode,coins,score_version,play_seconds,moderate_seconds) '
                     'VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT DO NOTHING',
                     (rid,pid,distance,int(score),kcal,goal,json.dumps(activities),int(time.time()),mode,coins,version,play_seconds,moderate_seconds)).rowcount
-                # A resent record id (retry after a lost reply) is stored once and credits coins once.
+                # A resent record id (retry after a lost reply) is stored once and credits its monkeys (coins) once.
                 if added and coins: self.store.db.execute('UPDATE profiles SET coins=coins+? WHERE id=?',(coins,pid))
                 balance=self.store.db.execute('SELECT coins FROM profiles WHERE id=?',(pid,)).fetchone()[0]
             return dict(ok=True,coins=balance)
-        if path=='/shop/buy':
-            item=data.get('item')
-            if type(item) is not int or item not in ITEM_PRICES: raise ApiError('없는 아이템입니다.')
+        if path=='/traits/unlock':
+            trait=data.get('trait'); level=data.get('level')
+            if type(trait) is not int or trait not in TRAIT_COSTS: raise ApiError('없는 특성입니다.')
+            costs=TRAIT_COSTS[trait]
+            if type(level) is not int or not 1<=level<=len(costs): raise ApiError('없는 단계입니다.')
+            code,cost=trait*10+level,costs[level-1]
             with self.store.db:
                 profile=self.store.account(pid)
-                if item in profile['unlocked']: raise ApiError('이미 해금한 아이템입니다.',409)
-                if profile['coins']<ITEM_PRICES[item]: raise ApiError('코인이 부족합니다.')
+                if code in profile['unlocked']: raise ApiError('이미 해금한 특성입니다.',409)
+                if level>1 and code-1 not in profile['unlocked']: raise ApiError('앞 단계를 먼저 해금하세요.')
+                if profile['coins']<cost: raise ApiError('원숭이가 부족합니다.')
                 self.store.db.execute('UPDATE profiles SET coins=coins-?,unlocked=? WHERE id=? AND coins>=?',
-                    (ITEM_PRICES[item],json.dumps(sorted(profile['unlocked']+[item])),pid,ITEM_PRICES[item]))
+                    (cost,json.dumps(sorted(profile['unlocked']+[code])),pid,cost))
             return dict(ok=True,profile=self.store.account(pid))
         if path=='/stats':
             today,total=self.store.db.execute('SELECT COALESCE(SUM(CASE WHEN created_at>=? THEN kcal ELSE 0 END),0),COALESCE(SUM(kcal),0) FROM runs WHERE profile_id=?',

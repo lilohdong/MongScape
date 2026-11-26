@@ -150,15 +150,22 @@ class IdentityTests(PostgresCase):
   self.assertEqual(self.app.handle('/runs',legacy,token)['coins'],20) # clients before accounts still save, unranked
   rows=self.store.db.execute('SELECT mode,coins,score_version,play_seconds,moderate_seconds FROM runs').fetchall()
   self.assertEqual(set(map(tuple,rows)),{(0,12,3,60,30),(2,5,1,0,30),(None,0,1,0,0)})
- def test_shop_buy(self):
-  pid,token=self.member('Shopper',coins=100)
-  self.assertEqual(self.status('/shop/buy',dict(item=0)),401)
-  profile=self.app.handle('/shop/buy',dict(item=0),token)['profile'];self.assertEqual((profile['coins'],profile['unlocked']),(70,[0]))
-  self.assertEqual(self.status('/shop/buy',dict(item=0),token),409)
-  self.assertEqual(self.status('/shop/buy',dict(item=2),token),400) # 100 coins needed
-  for item in (3,-1,'1',True,None,1.0):self.assertEqual(self.status('/shop/buy',dict(item=item),token),400,item)
-  profile=self.app.handle('/shop/buy',dict(item=1),token)['profile'];self.assertEqual((profile['coins'],profile['unlocked']),(10,[0,1]))
-  self.assertEqual(self.app.handle('/profile',{},token)['profile']['unlocked'],[0,1])
+ def test_traits_catalog_and_unlock(self):
+  traits=self.app.handle('/traits',{})['traits'] # public: guests see the same price list
+  self.assertEqual([(t['id'],t['costs']) for t in traits],[(1,[5,15,30]),(2,[10,20]),(3,[20]),(4,[5,15]),(5,[10,20,30]),(6,[25]),(7,[5,15])])
+  self.assertEqual(sum(sum(t['costs']) for t in traits),225) # plan 4-1 total
+  pid,token=self.member('Trainee',coins=40)
+  self.assertEqual(self.status('/traits/unlock',dict(trait=1,level=1)),401)
+  self.assertEqual(self.status('/traits/unlock',dict(trait=1,level=2),token),400) # level 1 first
+  profile=self.app.handle('/traits/unlock',dict(trait=1,level=1),token)['profile'];self.assertEqual((profile['coins'],profile['unlocked']),(35,[11]))
+  self.assertEqual(self.status('/traits/unlock',dict(trait=1,level=1),token),409)
+  profile=self.app.handle('/traits/unlock',dict(trait=1,level=2),token)['profile'];self.assertEqual((profile['coins'],profile['unlocked']),(20,[11,12]))
+  self.assertEqual(self.status('/traits/unlock',dict(trait=1,level=3),token),400) # 30 monkeys needed
+  for trait,level in ((0,1),(8,1),('1',1),(True,1),(None,1),(1.0,1),(3,2),(3,0),(3,True),(3,'1'),(3,None)):
+   self.assertEqual(self.status('/traits/unlock',dict(trait=trait,level=level),token),400,(trait,level))
+  profile=self.app.handle('/traits/unlock',dict(trait=3,level=1),token)['profile'];self.assertEqual((profile['coins'],profile['unlocked']),(0,[11,12,31]))
+  self.assertEqual(self.app.handle('/profile',{},token)['profile']['unlocked'],[11,12,31])
+  self.assertEqual(self.status('/shop/buy',dict(item=0),token),404) # the shop is gone
  def test_leaderboard_best_per_member(self):
   a,ta=self.member('Alpha');b,tb=self.member('Beta');c,_=self.member('Gamma');_,td=self.member('Delta')
   self.record(a,100,created=10);self.record(a,300,created=20);self.record(b,300,created=5) # tie: earlier record first
