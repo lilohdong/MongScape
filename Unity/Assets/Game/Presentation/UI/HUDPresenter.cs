@@ -74,6 +74,10 @@ namespace Mongscape.Presentation
         private RunHudView runView;
         private ResultView resultView;
         private HelpView helpView;
+        private MainMenuView mainView;
+        private PlayModeView playView;
+        private RankingView rankingView;
+        public MainMenuView MainView => mainView;
         private WeekView weekView;
         public WeekView WeekCard => weekView;
         public HelpView Help => helpView;
@@ -95,6 +99,13 @@ namespace Mongscape.Presentation
             runView = new RunHudView(gameObject);
             pauseView = new PauseView(gameObject) { Resume = () => PauseRun?.Invoke(), Recalibrate = () => Recalibrate?.Invoke(), Main = () => ToMenu?.Invoke() };
             helpView = new HelpView(gameObject) { Back = OpenMainMenu };
+            mainView = new MainMenuView(gameObject) { Select = SelectMenu };
+            playView = new PlayModeView(gameObject)
+            {
+                Back = OpenMainMenu, Choose = s => { setupStyle = s; Data?.PreviewStyle(s); },
+                SetCadence = on => Data?.SetCadenceSpeed(on), Start = StartFromPlayMode,
+            };
+            rankingView = new RankingView(gameObject) { Back = OpenMainMenu, Pick = (today, mode) => Ranking.Select(Ranking.MemberTab, mode, today) };
             weekView = new WeekView(gameObject) { Back = () => ShowPage(MenuPage.Profile) };
             resultView = new ResultView(gameObject) { Retry = () => retry?.Invoke(), Calibrate = OpenCalibration, Main = () => ToMenu?.Invoke() };
         }
@@ -104,7 +115,7 @@ namespace Mongscape.Presentation
             if (page == MenuPage.Profile && (Account == null || !Account.SignedIn)) page = MenuPage.Main;
             if (page == MenuPage.Credits && Page != MenuPage.Credits) creditsReturn = Page == MenuPage.Login ? MenuPage.Login : MenuPage.Main;
             Page = page;
-            if (page == MenuPage.Setup) setup.Open(Data);
+            if (page == MenuPage.Setup) { setup.Open(Data); setupStyle = PlayStyleInfo.Playable(Data?.Player?.Style ?? PlayStyle.FullBody, Data == null || Data.BodyStylesAllowed); }
             else if (page == MenuPage.Profile) { Profile.Open(Data, Account); profile.Open(); }
             else if (page == MenuPage.TutorialOffer) tutorialOffer.Open();
             else if (page == MenuPage.Week) weekView.Show(Data?.WeekMinutes ?? 0, Data?.WeekDays, Data?.WeekMaps, ((int)System.DateTime.UtcNow.AddHours(9).DayOfWeek + 6) % 7, Data?.Player?.Style == PlayStyle.UpperBody);
@@ -187,6 +198,13 @@ namespace Mongscape.Presentation
             if (!CalibrationAvailable) calibration?.Close(); else calibration.Tick(Data, Time.realtimeSinceStartup);
             if (runView == null) return;
             helpView.Root.Visible = !Hidden && Page == MenuPage.Help && session != null && session.Flow.State == GameFlowState.TitleIdle;
+            bool titleMenu = !Hidden && !Loading && !Revealing && session != null && session.Flow.State == GameFlowState.TitleIdle;
+            mainView.Root.Visible = titleMenu && Page == MenuPage.Main;
+            if (mainView.Root.Visible) { mainView.Root.Layout(); mainView.Refresh(Data, TitleLogo); }
+            playView.Root.Visible = titleMenu && Page == MenuPage.Setup;
+            if (playView.Root.Visible) { playView.Root.Layout(); setupStyle = PlayStyleInfo.Playable(setupStyle, Data == null || Data.BodyStylesAllowed); playView.Refresh(setupStyle, Data == null || Data.BodyStylesAllowed, Data?.CadenceSpeed ?? true); }
+            rankingView.Root.Visible = titleMenu && Page == MenuPage.Ranking;
+            if (rankingView.Root.Visible) { rankingView.Root.Layout(); rankingView.Refresh(Ranking); }
             if (helpView.Root.Visible) helpView.Root.Layout();
             bool menuScreen = !Hidden && session != null && session.Flow.State == GameFlowState.TitleIdle;
             weekView.Root.Visible = menuScreen && Page == MenuPage.Week; if (weekView.Root.Visible) weekView.Root.Layout();
@@ -284,7 +302,11 @@ namespace Mongscape.Presentation
                 {
                     case MenuPage.Identity: return Rect.zero;
                     // Inside the setup panel, under the play style buttons.
-                    case MenuPage.Setup: return PlayStyleInfo.UsesCamera(Data.Player?.Style ?? PlayStyle.Keyboard) ? Rect.zero : new Rect(195, 540, 192, 108);
+                    // Left of the switch panel, under the cards.
+                    case MenuPage.Setup: return new Rect(60, 420, 260, 146);
+                    // Between the big buttons and the monkey card.
+                    case MenuPage.Main: return new Rect(600, 540, 216, 122);
+                    case MenuPage.Ranking: return new Rect(1044, 590, 216, 122);
                     // Inside the sign-up panel, right of the step's main button.
                     case MenuPage.SignUp: return SignUp.Step == SignUpStep.Capture ? Rect.zero : new Rect(880, 462, 210, 118);
                     default: return CameraCorner;
@@ -293,6 +315,13 @@ namespace Mongscape.Presentation
             if (state == GameFlowState.Running || state == GameFlowState.Caught) return session.Paused ? CameraCorner : Rect.zero;
             if (state == GameFlowState.Result) return calibration.Open ? Rect.zero : CameraCorner;
             return Rect.zero;
+        }
+        private PlayStyle setupStyle = PlayStyle.FullBody;
+        // 시작 on the play style screen: the saved name and weight with the chosen style (no calorie goal).
+        public void StartFromPlayMode()
+        {
+            var player = Data?.Player;
+            BeginRun?.Invoke(new PlayerProfile { Name = player?.Name?.Trim() ?? "", Weight = player?.Weight?.Trim() ?? "", Style = setupStyle });
         }
         private void DrawMenu()
         {
@@ -304,18 +333,25 @@ namespace Mongscape.Presentation
             switch (Page)
             {
                 case MenuPage.None: title.Draw(TitleLogo, Fade, OpenLogin); break;
-                case MenuPage.Setup: setup.Draw(Data, BeginRun, OpenMainMenu, OpenSettings); break;
+                case MenuPage.Setup:
+                    playView.Gestures.Pass();
+                    if (e.type == EventType.KeyDown && (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter)) { e.Use(); StartFromPlayMode(); }
+                    else if (e.type == EventType.KeyDown && e.keyCode >= KeyCode.Alpha1 && e.keyCode <= KeyCode.Alpha3) { e.Use(); var s = (PlayStyle)(e.keyCode - KeyCode.Alpha1); if (PlayStyleInfo.Allowed(s, Data == null || Data.BodyStylesAllowed)) { setupStyle = s; Data?.PreviewStyle(s); } }
+                    break;
                 case MenuPage.Profile:
                     if (Account == null || !Account.SignedIn) OpenMainMenu();
                     else profile.Draw(Profile, OpenMainMenu, Logout, DeleteAccount, () => ShowPage(MenuPage.Week));
                     break;
-                case MenuPage.Ranking: board.Draw(Data, session, OpenMainMenu, "뒤로", null, null); break;
+                case MenuPage.Ranking: rankingView.Gestures.Pass(); break;
                 case MenuPage.Login: ChooseLogin(gate.Draw(Account, TitleLogo)); break;
                 case MenuPage.SignUp: if (Account != null) signUp.Draw(Data, Account, SignUp, EnrollFace, OpenLogin); break;
                 case MenuPage.Identity:
                     if (Account != null) identity.Draw(Data, Account, "얼굴 로그인", "정면을 보고 틀 안에 얼굴을 맞추면 잠시 뒤 자동으로 로그인됩니다.\n가입한 얼굴이면 이름 입력 없이 로그인됩니다.", "얼굴 로그인", LoginWithFace, OpenLogin);
                     break;
-                case MenuPage.Main: SelectMenu(menu.Draw(Data, TitleLogo)); break;
+                case MenuPage.Main:
+                    mainView.Gestures.Pass();
+                    if (e.type == EventType.KeyDown && (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter)) { e.Use(); SelectMenu(MenuAction.Play); }
+                    break;
                 case MenuPage.TutorialOffer: { var choice = tutorialOffer.Draw(offerMode, TutorialMask?.Invoke() ?? 0, Data == null || Data.BodyStylesAllowed, Data?.Player?.Style ?? PlayStyle.Keyboard, out var style, out var chapter); ChooseTutorial(choice, style, chapter); break; }
                 case MenuPage.Credits: if (credits.Draw()) CloseCredits(); break;
                 case MenuPage.Help: helpView.Gestures.Pass(); break;
