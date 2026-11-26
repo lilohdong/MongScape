@@ -78,8 +78,8 @@ namespace Mongscape.Presentation
         public void Duck() { duckUntil = Time.unscaledTime + DuckHold; }
         // In-game gain of each effect relative to the effects volume (files are all peak-normalised to -1 dBFS).
         // Tuned with Tools/Audio/check_sfx_mix.py against the loudest state of every song (see docs/AUDIO.md).
-        private const float JumpGain = .8f, LandGain = .6f, StepGain = .6f, HitGain = 1f, BonkGain = .75f, CueGain = .7f,
-            BeepGain = .9f, GoGain = .7f, SlipGain = .7f, ItemGain = .75f, ShieldGain = .6f;
+        private const float JumpGain = .8f, LandGain = .6f, StepGain = .6f, HitGain = 1f, BonkGain = .75f, CueGain = .75f,
+            BeepGain = .9f, GoGain = .75f, SlipGain = .75f, ItemGain = .8f, ShieldGain = .6f;
         public void SetVolumes(float musicLevel, float effectsLevel) { musicVolume = Mathf.Clamp01(musicLevel); effectsVolume = Mathf.Clamp01(effectsLevel); }
         public void Countdown(bool final) { if (final) Play(go, GoGain); else Play(beep, BeepGain); }
         // A short step for a KneeStep on the stairs (the bootstrap calls it with the camera effect), under the music.

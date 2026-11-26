@@ -9,7 +9,8 @@ rpg-audio/, sci-fi-sounds/, music-jingles/). Each pack is downloaded from
 https://kenney.nl/assets/<slug>.
 
 Every effect is decoded, mixed to mono, trimmed of leading/trailing silence,
-given a 5 ms fade-out, peak-normalised to -1 dBFS and written as OGG Vorbis
+given a 5 ms fade-out, true-peak-normalised to -1.2 dBTP (4x oversampled, so the
+decoded OGG stays under -1 dBTP) and written as OGG Vorbis
 (44.1 kHz mono). In-game loudness is set by the gain table in GameAudio.cs,
 not by the files.
 
@@ -28,7 +29,7 @@ UNITY = os.path.normpath(os.path.join(HERE, "..", "..", "Unity", "Assets", "Game
 LIVE = os.path.join(UNITY, "Resources", "MuhanokAudio", "Sfx")   # loaded by GameAudio at runtime
 NEXT = os.path.join(UNITY, "SfxV2")                               # picked for v2, not wired yet
 SR = 44100
-PEAK_DB = -1.0
+PEAK_DB = -1.2   # true peak, leaves 0.2 dB for the OGG encoder
 
 # (output name, pack slug, file inside the pack, what it is for)
 LIVE_SFX = [
@@ -87,13 +88,25 @@ def clean(x):
     x = x[max(0, idx[0] - 32): idx[-1] + 1]
     fade = min(len(x), int(SR * .005))
     x[-fade:] *= np.linspace(1, 0, fade)
-    return x * (10 ** (PEAK_DB / 20) / np.abs(x).max())
+    return x * (10 ** (PEAK_DB / 20) / true_peak(x))
+
+
+def true_peak(x):
+    from scipy.signal import resample_poly
+    return max(float(np.abs(x).max()), float(np.abs(resample_poly(x, 4, 1)).max()))
 
 
 def encode(x, out):
+    """Writes the OGG; if the decoded file's true peak is above -1 dBTP (encoder overshoot), lowers it and writes again."""
     os.makedirs(os.path.dirname(out), exist_ok=True)
-    subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "f32le", "-ar", str(SR), "-ac", "1", "-i", "-",
-                    "-c:a", "libvorbis", "-q:a", "6", out], input=x.astype(np.float32).tobytes(), check=True)
+    for _ in range(4):
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "f32le", "-ar", str(SR), "-ac", "1", "-i", "-",
+                        "-c:a", "libvorbis", "-q:a", "6", out], input=x.astype(np.float32).tobytes(), check=True)
+        over = true_peak(decode(out)) / 10 ** (-1.0 / 20)
+        if over <= 1.0:
+            return
+        x = x / (over * 1.01)
+    raise RuntimeError(f"{out}: true peak stays above -1 dBTP")
 
 
 def sha(path):
