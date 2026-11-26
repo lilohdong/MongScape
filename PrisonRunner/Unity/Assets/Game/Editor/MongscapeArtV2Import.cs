@@ -166,6 +166,11 @@ namespace Muhanok.Editor
         {
             Directory.CreateDirectory(Preview);
             string path = Preview + "/" + name + ".controller";
+            var wanted = clips.Where(c => c != null).ToList();
+            var existing = AssetDatabase.LoadAssetAtPath<AnimatorController>(path);
+            if (existing != null && existing.layers.Length == 1 &&
+                existing.layers[0].stateMachine.states.Select(s => s.state.motion).SequenceEqual(wanted))
+                return existing;   // unchanged: keep the file (and its ids) as is
             AssetDatabase.DeleteAsset(path);
             var ctrl = AnimatorController.CreateAnimatorControllerAtPath(path);
             var sm = ctrl.layers[0].stateMachine;

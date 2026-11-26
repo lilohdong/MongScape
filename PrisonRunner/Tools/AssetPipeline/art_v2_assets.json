@@ -105,6 +105,30 @@
    "frames": 121
   },
   {
+   "name": "Models/MD_Sign_Mine.fbx",
+   "kind": "prop",
+   "group": "Signs",
+   "loop": false,
+   "avatar_from": "",
+   "frames": 0
+  },
+  {
+   "name": "Models/MD_Sign_Prison.fbx",
+   "kind": "prop",
+   "group": "Signs",
+   "loop": false,
+   "avatar_from": "",
+   "frames": 0
+  },
+  {
+   "name": "Models/MD_Sign_Zoo.fbx",
+   "kind": "prop",
+   "group": "Signs",
+   "loop": false,
+   "avatar_from": "",
+   "frames": 0
+  },
+  {
    "name": "Models/MD_Zoo_Entrance.fbx",
    "kind": "prop",
    "group": "Zoo",
