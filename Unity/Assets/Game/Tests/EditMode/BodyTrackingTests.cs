@@ -13,7 +13,7 @@ namespace Mongscape.Tests
         // Synthetic standing body in normalised image coordinates; offsets move parts of it.
         // Lean tilts the upper body sideways: shoulders, head and arms move, hips and feet stay.
         // Roll tilts the shoulder line: the +X shoulder drops by Roll and the other one rises by Roll, the centre stays.
-        private sealed class Body { public float Dx, Dy, Lean, Roll, Shoulder, Hip, KneeL, KneeR, Ankle, WristL = .6f, WristR = .6f; public bool Legs = true, Knees = true; }
+        private sealed class Body { public float Dx, Dy, Lean, Roll, Shoulder, Hip, KneeL, KneeR, Ankle, WristL = .6f, WristR = .6f, OutL, OutR; public bool Legs = true, Knees = true; }
         private static PoseFrame Frame(Body b, double time)
         {
             var frame = new PoseFrame { HasPose = true, Time = time, Aspect = 4f / 3f };
@@ -25,7 +25,7 @@ namespace Mongscape.Tests
             float knees = b.Knees ? legs : .1f;
             Set(25, .46f, .78f + b.Dy + b.Hip * .5f - b.KneeL, knees); Set(26, .54f, .78f + b.Dy + b.Hip * .5f - b.KneeR, knees);
             Set(27, .46f, .93f + b.Dy - b.Ankle, legs); Set(28, .54f, .93f + b.Dy - b.Ankle, legs);
-            Set(15, .41f + l, b.WristL + b.Dy); Set(16, .59f + l, b.WristR + b.Dy);
+            Set(15, .41f + l - b.OutL, b.WristL + b.Dy); Set(16, .59f + l + b.OutR, b.WristR + b.Dy);
             return frame;
         }
         private static List<string> Play(PlayStyle style, Func<double, Body> script, double seconds, Func<double, bool> cart = null, bool stairs = false)
@@ -174,9 +174,19 @@ namespace Mongscape.Tests
         [Test] public void UpperBodyUsesLeanHandsDuckAndArmPumps()
         {
             CollectionAssert.AreEqual(new[] { "lane-1", "lane0" }, Play(PlayStyle.UpperBody, t => new Body { Dx = In(t, .2, .8) ? -.10f : 0 }, 1.3));
-            CollectionAssert.AreEqual(new[] { "jump" }, Play(PlayStyle.UpperBody, t => new Body { WristL = In(t, .2, .6) ? .08f : .6f, WristR = In(t, .2, .6) ? .08f : .6f }, 1.2));
+            // The jump is the T pose: both arms out at shoulder height (plan 5-1).
+            CollectionAssert.AreEqual(new[] { "jump" }, Play(PlayStyle.UpperBody, t => In(t, .2, .6) ? new Body { WristL = .36f, WristR = .36f, OutL = .17f, OutR = .17f } : new Body(), 1.2));
+            CollectionAssert.DoesNotContain(Play(PlayStyle.UpperBody, t => new Body { WristL = In(t, .2, .6) ? .08f : .6f, WristR = In(t, .2, .6) ? .08f : .6f }, 1.2), "jump", "Both hands up is the arms-up move, not the jump");
+            CollectionAssert.DoesNotContain(Play(PlayStyle.UpperBody, t => In(t, .2, .6) ? new Body { WristL = .36f, OutL = .17f } : new Body(), 1.2), "jump", "One arm out is the reach");
             CollectionAssert.AreEqual(new[] { "crouch", "stand" }, Play(PlayStyle.UpperBody, t => new Body { Shoulder = In(t, .2, 1) ? .07f : 0 }, 1.4));
             Assert.AreEqual(0, Play(PlayStyle.UpperBody, t => { int s = (int)(t / .3) % 2; bool on = In(t, .2, 1.8); return new Body { WristL = on ? (s == 0 ? .4f : .62f) : .6f, WristR = on ? (s == 1 ? .4f : .62f) : .6f }; }, 2.0).Count(e => e == "knee"), "Arm swings are steps; the stair exercise is the pull-down (exercise plan 6)");
+        }
+        [Test] public void AReachingArmHoldsTheUpperBodyLane()
+        {
+            // The shoulder line tilts while one arm reaches out: the lane stays (plan 3-0, 5-1).
+            CollectionAssert.DoesNotContain(Play(PlayStyle.UpperBody, t => In(t, .2, 1) ? new Body { Roll = .03f, WristR = .36f, OutR = .17f } : new Body(), 1.4), "lane1");
+            CollectionAssert.DoesNotContain(Play(PlayStyle.UpperBody, t => In(t, .2, 1) ? new Body { Roll = -.03f, WristR = .36f, OutR = .17f } : new Body(), 1.4), "lane-1");
+            CollectionAssert.Contains(Play(PlayStyle.UpperBody, t => new Body { Dx = In(t, .2, .8) ? -.10f : 0 }, 1.3), "lane-1", "Without a reach the lean still moves");
         }
         [Test] public void SmallArmSwingsAreRunningNotKneeSteps()
         {

@@ -89,7 +89,7 @@ namespace Mongscape.Domain
         public void SetDuckAhead(bool on) { duckAhead = on; }
         public void Recalibrate()
         {
-            calibrated = false; samples = 0; smoothed = false; Reading.Clear(); airborne = hopping = handsUp = duckOnLoss = false; jumpBigDone = kneeBigDone = laneBigDone = pullUp = pullDownBig = false; dropRatio = 0; actionLockUntil = 0; laneCandidate = 0;
+            calibrated = false; samples = 0; smoothed = false; Reading.Clear(); airborne = hopping = handsUp = armsOut = duckOnLoss = false; jumpBigDone = kneeBigDone = laneBigDone = pullUp = pullDownBig = false; dropRatio = 0; actionLockUntil = 0; laneCandidate = 0;
             crouchPendingSince = -1; crouchSince = -10; lastTrackTime = -1; laneLastTime = -1; lastKneeStep = -10; kneeSide = 0; kneeUpL = kneeUpR = false; pumpUntil = 0; stepSign = pumpSign = 0; StepsPerMinute = 0;
             Array.Clear(stepTimes, 0, stepTimes.Length); stepIndex = 0; lastStep = -10; bounce = 0; stepPeakValid = jumpedSinceStep = bobValid = bodyRiseValid = false; calibrationBrokeAt = -10;
             Status = PoseStatus.Calibrating;
@@ -351,6 +351,9 @@ namespace Mongscape.Domain
             stepPeakValid = jumpedSinceStep = false;
         }
 
+        // A wrist at least reach shoulder widths sideways from the shoulder centre (either side; the screen is mirrored).
+        private bool Out(int wrist, float scale, float reach) => ActionSeen(wrist) && Math.Abs(px[wrist] - ShoulderX) / Math.Max(1e-4f, scale) >= reach;
+        private bool armsOut;
         private void TrackUpper(float aspect, double now)
         {
             // The upper body leans the same way on foot and in the cart.
@@ -371,18 +374,25 @@ namespace Mongscape.Domain
             bool bigPump = wristsSeen && Math.Abs(py[PoseJoint.LeftWrist] - py[PoseJoint.RightWrist]) / scale > tuning.ArmPumpAmplitude;
             float tilt = handRising || bigPump ? 0f : (Roll - bRoll) * tuning.UpperLaneEnter / Math.Max(.1f, tuning.UpperLeanEnterDegrees);
             float lean = Math.Abs(tilt) > Math.Abs(offset) ? tilt : offset;
-            UpdateLane(lean, tuning.UpperLaneEnter, tuning.UpperLaneExit, now, Locked(now));
+            // A wrist far out to the side (reaching, or a T jump) holds the lane where it is (plan 3-0, 5-1).
+            bool reaching = Out(PoseJoint.LeftWrist, scale, tuning.UpperReachHold) || Out(PoseJoint.RightWrist, scale, tuning.UpperReachHold);
+            if (!reaching) UpdateLane(lean, tuning.UpperLaneEnter, tuning.UpperLaneExit, now, Locked(now));
             // Big lean: the shoulder line tilts 20 degrees or more (or the shoulders shift half again past the lane line).
             if (Reading.Lane != 0 && !laneBigDone && now - lastLaneChange < .5 && (Math.Abs(Roll - bRoll) >= tuning.UpperBigLeanDegrees || Math.Abs(offset) >= tuning.UpperLaneEnter * 1.5f)) { laneBigDone = true; Reading.BigLane = true; }
             // Hands must rise above the calibrated head height; the live nose drops when ducking and would fake a jump.
             float head = !float.IsNaN(bNose) ? bNose : bSy - bScale;
             bool hands = wristsSeen && py[PoseJoint.LeftWrist] < head - tuning.UpperHandsAboveNose * scale && py[PoseJoint.RightWrist] < head - tuning.UpperHandsAboveNose * scale;
-            // On the stairs the hands over the head are the pull-down exercise, not a jump.
-            if (hands && !handsUp && now - lastJump > .25 && !Locked(now) && !stairs) { Reading.JumpEdge = true; lastJump = now; crouchPendingSince = -1; }
-            // Big jump: both arms straight up.
-            if (hands && !jumpBigDone && now - lastJump < .6 && Straight(PoseJoint.LeftShoulder, PoseJoint.LeftElbow, PoseJoint.LeftWrist) && Straight(PoseJoint.RightShoulder, PoseJoint.RightElbow, PoseJoint.RightWrist)) { jumpBigDone = true; Reading.BigJump = true; }
+            // The jump is the T pose: both arms out to the sides at shoulder height (plan 5-1). Hands over the head are the zoo's
+            // arms-up move and, on the stairs, the pull-down exercise; one arm out is the reach.
+            bool tPose = wristsSeen && Out(PoseJoint.LeftWrist, scale, tuning.UpperTReach) && Out(PoseJoint.RightWrist, scale, tuning.UpperTReach)
+                && Math.Abs(py[PoseJoint.LeftWrist] - ShoulderY) / scale < tuning.UpperTBand && Math.Abs(py[PoseJoint.RightWrist] - ShoulderY) / scale < tuning.UpperTBand;
+            if (tPose && !armsOut && now - lastJump > .25 && !Locked(now) && !stairs) { Reading.JumpEdge = true; lastJump = now; crouchPendingSince = -1; }
+            // Big jump: both arms straight out.
+            if (tPose && !jumpBigDone && now - lastJump < .6 && Straight(PoseJoint.LeftShoulder, PoseJoint.LeftElbow, PoseJoint.LeftWrist) && Straight(PoseJoint.RightShoulder, PoseJoint.RightElbow, PoseJoint.RightWrist)) { jumpBigDone = true; Reading.BigJump = true; }
+            if (tPose) armsOut = true;
+            else if (!wristsSeen || !Out(PoseJoint.LeftWrist, scale, tuning.UpperReachHold) || !Out(PoseJoint.RightWrist, scale, tuning.UpperReachHold)) { armsOut = false; jumpBigDone = false; }
             if (hands) handsUp = true;
-            else if (!wristsSeen || py[PoseJoint.LeftWrist] > ShoulderY || py[PoseJoint.RightWrist] > ShoulderY) { handsUp = false; jumpBigDone = false; }
+            else if (!wristsSeen || py[PoseJoint.LeftWrist] > ShoulderY || py[PoseJoint.RightWrist] > ShoulderY) handsUp = false;
             // Stair exercise (pull-down): hands over the head is one step, pulled down below the nose the next; below the shoulders is big.
             if (stairs && wristsSeen)
             {
@@ -393,13 +403,13 @@ namespace Mongscape.Domain
                 if (pullDownBig && py[PoseJoint.LeftWrist] > ShoulderY && py[PoseJoint.RightWrist] > ShoulderY) { pullDownBig = false; Reading.BigKnee = true; }
             }
             else pullUp = pullDownBig = false;
-            UpdateCrouch((drop > tuning.UpperCrouchDrop || noseDuck) && !handsUp, drop < tuning.UpperCrouchDrop * .65f && !noseDuck, now, tuning.UpperCrouchConfirmSeconds, 0f);
+            UpdateCrouch((drop > tuning.UpperCrouchDrop || noseDuck) && !handsUp && !armsOut, drop < tuning.UpperCrouchDrop * .65f && !noseDuck, now, tuning.UpperCrouchConfirmSeconds, 0f);
             // Deep lean forward: the shoulders down by a head (calibrated nose to shoulder line).
             float headSize = !float.IsNaN(bNose) ? bSy - bNose : bScale * .8f;
             Reading.CrouchDeep = Reading.Crouch && headSize > 0 && ShoulderY - bSy >= headSize;
             // Alternating arm swings are the steps (running in place); the stair exercise is the pull-down above, so they never overlap.
             // A swing moves the whole arm: wrists flicked with the elbows still are not steps (QA 2026-11-25).
-            if (wristsSeen && !handsUp)
+            if (wristsSeen && !handsUp && !armsOut && !reaching)
             {
                 float diff = (py[PoseJoint.LeftWrist] - py[PoseJoint.RightWrist]) / scale;
                 bool elbowsSeen = ActionSeen(PoseJoint.LeftElbow) && ActionSeen(PoseJoint.RightElbow);
@@ -412,7 +422,7 @@ namespace Mongscape.Domain
                     pumpSign = sign;
                 }
             }
-            if (Reading.Lane == 0 && !handsUp && !Reading.Crouch && Math.Abs(lean) < tuning.UpperLaneExit * .5f) Drift();
+            if (Reading.Lane == 0 && !handsUp && !armsOut && !reaching && !Reading.Crouch && Math.Abs(lean) < tuning.UpperLaneExit * .5f) Drift();
         }
 
         // A crouch released within cancelSeconds of confirming ends without the refractory lock, so the jump it led into can count.
