@@ -41,6 +41,38 @@
    "frames": 0
   },
   {
+   "name": "Characters/AN_Monkey_CellEscape.fbx",
+   "kind": "humanoid",
+   "group": "MonkeyRescue",
+   "loop": false,
+   "avatar_from": "",
+   "frames": 54
+  },
+  {
+   "name": "Characters/AN_Monkey_RescuePop.fbx",
+   "kind": "humanoid",
+   "group": "MonkeyRescue",
+   "loop": false,
+   "avatar_from": "",
+   "frames": 40
+  },
+  {
+   "name": "Characters/AN_Monkey_WallStuck_Wave_L.fbx",
+   "kind": "humanoid",
+   "group": "MonkeyRescue",
+   "loop": true,
+   "avatar_from": "",
+   "frames": 37
+  },
+  {
+   "name": "Characters/AN_Monkey_WallStuck_Wave_R.fbx",
+   "kind": "humanoid",
+   "group": "MonkeyRescue",
+   "loop": true,
+   "avatar_from": "",
+   "frames": 37
+  },
+  {
    "name": "Models/MD_Zoo_LionCage.fbx",
    "kind": "prop_anim",
    "group": "Lion",

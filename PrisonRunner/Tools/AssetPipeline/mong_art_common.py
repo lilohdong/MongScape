@@ -62,9 +62,16 @@ def mat(name, hex_color, rough=.62, metal=0.0, emit=None, strength=0.0, alpha=No
     if emit:
         p.inputs['Emission Color'].default_value = (*hex_linear(emit), 1)
         p.inputs['Emission Strength'].default_value = strength
-    if alpha is not None:
-        p.inputs['Alpha'].default_value = alpha
+    if alpha is not None:  # see-through glow (light cone): mix Transparent and the principled surface
+        nt = m.node_tree
+        out = next(n for n in nt.nodes if n.type == 'OUTPUT_MATERIAL')
+        mix = nt.nodes.new('ShaderNodeMixShader'); tr = nt.nodes.new('ShaderNodeBsdfTransparent')
+        mix.inputs['Fac'].default_value = alpha
+        nt.links.new(tr.outputs[0], mix.inputs[1]); nt.links.new(p.outputs[0], mix.inputs[2])
+        nt.links.new(mix.outputs[0], out.inputs['Surface'])
         try: m.surface_render_method = 'BLENDED'
+        except Exception: pass
+        try: m.use_backface_culling = False
         except Exception: pass
     m.diffuse_color = (*lin, 1)
     _registry[name] = {'hex': hex_color.upper(), 'smoothness': round(1 - rough, 2) if rough < .9 else 0.1,
@@ -330,6 +337,13 @@ def studio(ground=True):
     sc.render.film_transparent = False
     sc.render.image_settings.file_format = 'PNG'
 
+def solo(objects):
+    """Render only these objects (plus the studio ground/lights)."""
+    keep = set(objects)
+    for o in bpy.context.scene.objects:
+        if o.type in ('MESH', 'CURVE', 'FONT') and not o.get('mong_studio'):
+            o.hide_render = o not in keep
+
 def _bounds(objects, frame=None):
     pts = []
     dg = bpy.context.evaluated_depsgraph_get()
@@ -388,3 +402,22 @@ def render_frames(folder, prefix, objects, frames, view='three_quarter', res=(64
 
 def args():
     return sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
+
+# ---------------------------------------------------------------- sign text
+GAME_FONT = ROOT / 'Unity/Assets/Game/Content/UI/Resources/MuhanokUI/BlackHanSans-Regular.ttf'  # OFL, the HUD title font
+
+def text_mesh(name, body, pos, size, material, depth=.03, rot=(math.radians(90), 0, 0), align='CENTER'):
+    """Flat extruded word in the game's title font, converted to a mesh. Default faces -Y (readable from the front)."""
+    bpy.ops.object.text_add(location=pos, rotation=rot)
+    ob = bpy.context.object; ob.name = name
+    ob.data.body = body; ob.data.size = size; ob.data.extrude = depth
+    ob.data.align_x = align; ob.data.align_y = 'CENTER'
+    try:
+        ob.data.font = bpy.data.fonts.load(str(GAME_FONT), check_existing=True)
+    except Exception as e:
+        print('font fallback', e)
+    ob.data.materials.append(material)
+    bpy.ops.object.convert(target='MESH')
+    ob = bpy.context.object
+    for p in ob.data.polygons: p.use_smooth = False
+    return ob

@@ -14,12 +14,18 @@ NAME = {'L': 'Left', 'R': 'Right'}
 
 def arm(side, down=80, forward=0, bend=15, hand=0, twist=0):
     s = S[side]; n = NAME[side]
+    # The existing skin creases when the UpperArm alone goes above the shoulder (art review 2026-11-26):
+    # cap the raise at 50 deg above horizontal and let the Shoulder bone take up to 22 deg of it.
+    down = max(down, -50)
+    shrug = max(0.0, min(22.0, (15 - down) * .35)) if down < 15 else 0.0
+    down = down + shrug
     base = Quaternion((0, 1, 0), math.radians(s * down))
     # swing forward about Z (horizontal plane) after lowering; for a hanging arm the X axis does the swing
     hang = max(0.0, min(1.0, down / 90.0))
     fx = -forward * hang
     fz = -s * forward * (1 - hang)
-    return {n + 'UpperArm': {'r': (fx, twist, fz), 'base': base},
+    return {n + 'Shoulder': {'r': (0, -s * shrug, 0)},
+            n + 'UpperArm': {'r': (fx, twist, fz), 'base': base},
             n + 'LowerArm': {'r': (0, 0, -s * bend)},   # elbow flex, same axis as the existing clips
             n + 'Hand': {'r': (0, 0, -s * hand)}}
 
