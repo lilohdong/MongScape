@@ -123,7 +123,7 @@ if '--no-render' not in A.args():
         for wname, act, view in (('MD_Mine_BrokenWall_L', 'AN_Monkey_WallStuck_Wave_R', (.55, -1, .15)),
                                  ('MD_Mine_BrokenWall_R', 'AN_Monkey_WallStuck_Wave_L', (-.55, -1, .15))):
             w = bpy.data.objects[wname]; bpy.context.scene.collection.objects.link(w); w.location = (0, 0, 0)
-            rig.location = (0, .3, 0); rig.animation_data.action = actions[act]
+            rig.location = (0, .02, 0); rig.animation_data.action = actions[act]   # = MonkeyAnchor of the wall
             bpy.context.scene.frame_start, bpy.context.scene.frame_end = 1, 37
             A.render_frames(out, act + '_in_wall', [mesh, w], [5, 10, 14, 23], view, size=4.0, center=(0, 0, 1.5),
                             gif_frames=list(range(1, 38, 2)))
