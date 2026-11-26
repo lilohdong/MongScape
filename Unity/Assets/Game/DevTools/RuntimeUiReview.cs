@@ -40,6 +40,9 @@ namespace Mongscape.DevTools
             while ((game = FindFirstObjectByType<GameBootstrap>()) == null || game.Session == null || game.Session.Flow.State != GameFlowState.TitleIdle) yield return null;
             yield return new WaitForSecondsRealtime(3f);
             var hud = game.Hud; var data = (IHudData)game;
+            // --mongscape-uicapture-quick: only the run, pause and result (no settings window or face login, which list or open cameras).
+            bool quick = Array.IndexOf(Environment.GetCommandLineArgs(), "--mongscape-uicapture-quick") >= 0;
+            if (quick) { game.UseAccountServices(new ReviewAccountGateway()); Seed(data); goto run; }
             // One look at the login gate with the configured face server (connected or not), read-only: nothing is sent but /health.
             game.OpenLogin();
             float checkStarted = Time.realtimeSinceStartup;
@@ -74,6 +77,7 @@ namespace Mongscape.DevTools
             hud.ShowPage(MenuPage.Setup); yield return Shot("08_Setup");
             hud.ShowIdentity();yield return Shot("08_Face_Login");hud.ShowPage(MenuPage.Setup);
 
+            run:
             game.StartPlayerRun(new PlayerProfile { Name = "탈옥왕", Weight = "65", Style = PlayStyle.Keyboard,CalorieGoal=180 });
             while (game.IsLoading || game.IsRevealing || game.Session.Flow.State != GameFlowState.Running) yield return null;
             // Nobody steers: a shield kept active lets the run go on long enough for the HUD and pause shots.
@@ -112,6 +116,7 @@ namespace Mongscape.DevTools
             hud.Result.ShowMore(true); yield return Shot("11c_Result_More"); hud.Result.ShowMore(false);
             hud.Result.ShowInfo(true); yield return Shot("11d_Result_Info"); hud.Result.ShowInfo(false);
 
+            if (quick) { game.ExitToMenu(); yield return new WaitForSecondsRealtime(.8f); Debug.Log("MUHANOK_UI_CAPTURE_PASS: " + destination); UnityEngine.Application.Quit(0); yield break; }
             game.ExitToMenu(); yield return Shot("12_MainMenu_AfterRun");
             game.OpenStartSetup(); yield return Shot("13_Setup");
             // Close the text-entry page while the player window is still alive, then let queued IME events settle.

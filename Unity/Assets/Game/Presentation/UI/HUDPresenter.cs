@@ -78,7 +78,8 @@ namespace Mongscape.Presentation
         private readonly RunHudModel runModel = new RunHudModel();
         // The UI Toolkit running HUD; the zoo sets the rear-view mirror through it.
         public RunHudView RunView => runView;
-        private PauseScreen pause;
+        private PauseView pauseView;
+        public PauseView Pause => pauseView;
         public void Configure(RunSession run, Action again)
         {
             session = run; retry = again;
@@ -87,7 +88,8 @@ namespace Mongscape.Presentation
             title = new TitleScreen(skin); setup = new SetupScreen(skin); loading = new LoadingScreen(skin); identity=new IdentityScreen(skin); signUp=new SignUpScreen(skin,identity);
             menu = new MainMenuScreen(overlaySkin); credits = new CreditsScreen(overlaySkin); tutorialOffer = new TutorialOfferScreen(overlaySkin); gate = new LoginGateScreen(overlaySkin); profile = new ProfileScreen(overlaySkin); board = new LeaderboardScreen(overlaySkin, Ranking);
             calibration = new CalibrationPanel(overlaySkin, skin);
-            runView = new RunHudView(gameObject); pause = new PauseScreen(skin);
+            runView = new RunHudView(gameObject);
+            pauseView = new PauseView(gameObject) { Resume = () => PauseRun?.Invoke(), Recalibrate = () => { Data?.Recalibrate(); PauseRun?.Invoke(); }, Main = () => ToMenu?.Invoke() };
             resultView = new ResultView(gameObject) { Retry = () => retry?.Invoke(), Calibrate = OpenCalibration, Main = () => ToMenu?.Invoke() };
         }
         public void ShowPage(MenuPage page)
@@ -182,6 +184,8 @@ namespace Mongscape.Presentation
             bool showRun = inRun && !Hidden && !Loading && !Revealing && !session.Paused
                 && !(Data != null && Data.RunCalibration != RunCalibrationState.None && session.Flow.State == GameFlowState.Running);
             runView.Root.Visible = showRun;
+            pauseView.Root.Visible = inRun && session.Paused && !Hidden && !Loading && !Revealing;
+            if (pauseView.Root.Visible) pauseView.Root.Layout();
             if (session == null || Hidden || Loading || Revealing) return;
             if (inRun)
                 runModel.Tick(session, Map, Data?.Player?.Style ?? PlayStyle.Keyboard, Data?.PoseStatus ?? PoseStatus.Off, PoliceAlert?.Invoke() ?? false, Time.unscaledTime);
@@ -211,7 +215,7 @@ namespace Mongscape.Presentation
             else if (state == GameFlowState.TitleIdle) DrawMenu();
             else if (state == GameFlowState.Running || state == GameFlowState.Caught)
             {
-                if (session.Paused) pause.Draw(session, Data, PauseRun, Recalibrate, ToMenu);
+                if (session.Paused) pauseView.Gestures.Pass();
                 // Camera runs hold on the calibration screen until the player is measured, then the countdown starts.
                 else if (Data != null && Data.RunCalibration != RunCalibrationState.None && state == GameFlowState.Running) calibration.DrawRun(Data);
                 // The running HUD is the UI Toolkit RunHudView (drawn by its own panel).
