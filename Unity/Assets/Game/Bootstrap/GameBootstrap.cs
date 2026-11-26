@@ -151,6 +151,8 @@ namespace Mongscape.Bootstrap
             audioPlayer = gameObject.AddComponent<GameAudio>();
             audioPlayer.Configure(Session, Settings != null ? Settings.MusicVolume : .35f, Settings != null ? Settings.EffectsVolume : .7f);
             hud.RankCracked = audioPlayer.Crack;
+            // The prison's cell door, lock gauge and searchlight (plan 2-3a).
+            gameObject.AddComponent<PrisonStage>().Configure(Session, audioPlayer);
             SetupSettings();
             if(automated)player.Style=PlayStyle.Keyboard;
             Session.Flow.Changed += StateChanged;
@@ -404,6 +406,9 @@ namespace Mongscape.Bootstrap
                     Pose.UsesCamera && Pose.Tracking, OnOrBeforeStairs());
                 Session.ApplyPace(pace);
                 TickBigMoves();
+                // Prison hiding (plan 2-3a): the body's held crouch and its depth; the keyboard (S) hides with the runner's crouch.
+                bool hideBody = Pose.UsesCamera && Pose.Tracking;
+                Session.HidePose = hideBody && Pose.Reading.Crouch; Session.HideDepth = hideBody ? Pose.Reading.CrouchDepth : -1f;
                 float previousZ = Session.Runner.Z;
                 Session.Tick(dt); Results.Race.Update(Session.Score.Score); Map.Tick(Session.Runner.Z); Hero.Apply(Session.Runner); Map.Evaluate(previousZ);
                 Map.AnimateGates(Session.Runner.Z);

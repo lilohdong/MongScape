@@ -95,6 +95,8 @@ namespace Mongscape.Presentation.Map
             // A calm opening cart is planned like a fork chunk: both rails stay whole.
             bool calm=plan!=null&&plan.CalmCart(sequence);
             Layout.Plan(random,RouteType,sequence,slots,floorSlots,odds,plan!=null&&plan.Extended,fork||calm,boarding,pacer,speed,MapCourse.Mix(MapCourse.KindAt(plan,sequence)));
+            // The prison branch has no hazards: its stairs, cell doors and searchlight are the exercise.
+            if(PrisonCourse.BranchIndex(plan,sequence)>=0)Layout.ClearHazards();
             if(Gates!=null) foreach(var gate in Gates) gate.ResetGate();
             if(SlideGates!=null)foreach(var gate in SlideGates)gate.ResetGate();
             if(FloorItems!=null)for(int i=0;i<FloorItems.Length;i++){FloorItems[i].ResetItem();FloorItems[i].gameObject.SetActive(Layout.FloorItems[i]);}

@@ -40,7 +40,8 @@ namespace Mongscape.Tests
             int count=0;for(int i=CartFork.DestinationChunk;i<RoutePlan.ExtendedLapChunks;i++)if(p.TypeAt(i)==4||p.TypeAt(i)==5)count++;
             int destination=p.DestinationAt(6);
             int extraStairs=0;for(int i=CartFork.DestinationChunk+1;i<RoutePlan.ExtendedLapChunks;i++)if(p.TypeAt(i)==7)extraStairs++;
-            Assert.AreEqual(destination==0?8:0,count+(destination==0?extraStairs:0),"The prison corridor fills indices 8..15, minus stairs placed in it");
+            Assert.AreEqual(destination==0?6:0,count,"The prison has a cell and a flat chunk in each of its three sets");
+            Assert.AreEqual(destination==0?2:0,extraStairs,"The prison's second and third sets start with stairs");
             Assert.AreEqual(destination<0?12:destination>0?0:7,p.TypeAt(CartFork.DestinationChunk),"The three destinations must enter three actual biomes");
             for(int i=0;i<2*RoutePlan.ExtendedLapChunks-1;i++)Assert.AreEqual(p.BaseHeight(i)+RouteSurface.Rise(p.TypeAt(i)),p.BaseHeight(i+1),.001f);
             Assert.AreEqual(0,p.CycleAt(RoutePlan.ExtendedLapChunks-1)); Assert.AreEqual(1,p.CycleAt(RoutePlan.ExtendedLapChunks));
@@ -56,16 +57,10 @@ namespace Mongscape.Tests
                 Assert.AreEqual(0,p.CycleAt(17));Assert.AreEqual(1,p.CycleAt(18));
                 if(destination==0)
                 {
-                    var expected=new System.Collections.Generic.List<int>{0,1,2,1,2,1,3,7};
-                    for(int i=0;i<8;i++)expected.Add(4+i%2);
-                    expected.Add(6);expected.Add(RouteSurface.PrisonExit);
+                    var expected=new System.Collections.Generic.List<int>{0,1,2,1,2,1,3};
+                    expected.AddRange(PrisonCourse.Chunks);
                     Assert.AreEqual(18,expected.Count);
-                    // Corridor stairs (type 7) may replace corridor chunks; everything else is fixed.
-                    for(int i=0;i<18;i++)
-                    {
-                        if(i>7&&i<16&&p.TypeAt(i)==7)continue;
-                        Assert.AreEqual(expected[i],p.TypeAt(i),"prison chunk "+i);
-                    }
+                    for(int i=0;i<18;i++)Assert.AreEqual(expected[i],p.TypeAt(i),"prison chunk "+i);
                 }
                 else
                 {

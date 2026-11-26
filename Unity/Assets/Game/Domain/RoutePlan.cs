@@ -194,12 +194,14 @@ namespace Mongscape.Domain
         {
             this.seed = seed;
             config = tuning; random = new Random(seed);
+            SetBranchLayout(SectionKind.Prison, PrisonCourse.Branch);
             Append(Extended ? ExtendedLap(0) : AuthoredLap);
         }
         private RoutePlan(RunConfig tuning, int seed, int[] warmup)
         {
             this.seed = seed;
             config = tuning; random = new Random(seed); plainLaps = 1;
+            SetBranchLayout(SectionKind.Prison, PrisonCourse.Branch);
             Append(warmup);
         }
         // Tutorial: a fixed warm-up lap without a fork, followed by the ordinary laps.

@@ -56,7 +56,8 @@ namespace Mongscape.Tests
                     Assert.AreEqual(MapCourse.KindOf(shown[lane + 1]), MapCourse.KindAt(plan, CartFork.DestinationChunk + 1));
                     Assert.AreEqual(ExerciseKind.Warmup, MapCourse.KindAt(plan, 1));
                     int stairs = 0; for (int i = 0; i < RoutePlan.ExtendedLapChunks; i++) if (RouteSurface.IsStair(plan.TypeAt(i))) stairs++;
-                    Assert.AreEqual(MapCourse.Stairs(1, shown[lane + 1]), stairs, "Stairs follow the course at the start of the run");
+                    // The prison has its fixed three sets; the mine and the zoo follow the course.
+                    Assert.AreEqual(shown[lane + 1] == 0 ? PrisonCourse.Sets : MapCourse.Stairs(1, shown[lane + 1]), stairs, "Stairs follow the course at the start of the run");
                 }
         }
 

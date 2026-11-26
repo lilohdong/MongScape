@@ -298,6 +298,7 @@ namespace Mongscape.Domain
             UpdateCrouch(drop > tuning.CrouchDrop && !airborne && now >= landingUntil, drop < tuning.CrouchDrop * .65f, now, tuning.CrouchConfirmSeconds, tuning.CrouchJumpCancelSeconds);
             // Big: a half squat (knee angle, or the hips well down when the ankles are out of view).
             Reading.CrouchDeep = Reading.Crouch && (KneeAngle() <= tuning.DeepKneeAngle || (bHy - HipY) / scale <= -tuning.DeepHipDrop);
+            Reading.CrouchDepth = Depth(1.5f);
             // Big: hips and shoulders both over the jump line for a moment after take-off.
             if (!airborne) jumpBigDone = false;
             else if (!jumpBigDone && now - lastJump >= tuning.BigJumpAirSeconds && hipRise > jumpLine && shoulderRise > jumpLine) { jumpBigDone = true; Reading.BigJump = true; }
@@ -423,6 +424,7 @@ namespace Mongscape.Domain
             // Deep lean forward: the shoulders down by a head (calibrated nose to shoulder line).
             float headSize = !float.IsNaN(bNose) ? bSy - bNose : bScale * .8f;
             Reading.CrouchDeep = Reading.Crouch && headSize > 0 && ShoulderY - bSy >= headSize;
+            Reading.CrouchDepth = Depth(1f);
             // Alternating arm swings are the steps (running in place); the stair exercise is the pull-down above, so they never overlap.
             // A swing moves the whole arm: wrists flicked with the elbows still are not steps (QA 2026-11-25).
             if (wristsSeen && !handsUp && !armsOut && !reaching)
@@ -442,6 +444,9 @@ namespace Mongscape.Domain
         }
 
         // A crouch released within cancelSeconds of confirming ends without the refractory lock, so the jump it led into can count.
+        // Crouch depth for the prison lock: .3 at the crouch line, rising to .7 at (1 + span) times the line, 1 when deep.
+        private float Depth(float span)
+            => !Reading.Crouch ? 0f : Reading.CrouchDeep ? 1f : .3f + .4f * Math.Max(0f, Math.Min(1f, (dropRatio - 1f) / span));
         private void UpdateCrouch(bool down, bool released, double now, float confirmSeconds, float cancelSeconds)
         {
             if (Reading.Crouch) { if (released) { Reading.Crouch = false; if (now - crouchSince >= cancelSeconds) Lock(now, tuning.RefractorySeconds); } return; }

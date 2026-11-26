@@ -57,12 +57,14 @@ namespace Mongscape.Tests
             Assert.IsFalse(run.Approach(.6f)); Assert.IsTrue(run.Approach(.6f));
             Assert.AreEqual(1, run.Warnings); Assert.AreEqual(.5f, run.ChaserGauge, .001f); Assert.AreEqual(WarningCause.Gauge, run.LastWarning);
         }
-        [Test] public void InThePrisonAMissedKneeStepBringsTheWardenCloser()
+        // Plan 2-3a: an ordinary missed knee beat in the prison only slows; only the warden-chased stairs catch (PrisonCourseTests).
+        [Test] public void InThePrisonAMissedKneeStepOnlySlows()
         {
             RouteSurface.UsePlan(Choose(SectionKind.Prison));
             var run = Running(); run.Runner.SetStartZ(CartFork.DestinationChunk * L + 1f); run.Tick(.01f);
-            run.Slip(SlipSource.KneeMiss); Assert.AreEqual(0, run.Warnings); Assert.AreEqual(.5f, run.ChaserGauge, .001f);
-            run.Slip(SlipSource.KneeMiss); Assert.AreEqual(1, run.Warnings); Assert.AreEqual(ChaserKind.Warden, run.Chaser.Kind);
+            run.Slip(SlipSource.KneeMiss); run.Slip(SlipSource.KneeMiss);
+            Assert.AreEqual(0, run.Warnings); Assert.IsTrue(run.Runner.Slowing); Assert.AreEqual(GameFlowState.Running, run.Flow.State);
+            Assert.AreEqual(ChaserKind.Warden, run.Chaser.Kind);
         }
         [Test] public void ThePolicePounceWhenThePaceGaugeFillsInTheMine()
         {

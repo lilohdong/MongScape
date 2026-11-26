@@ -143,6 +143,9 @@ namespace Mongscape.Domain
         public bool BigJump, BigKnee, BigLane, CrouchDeep;
         // Both forearms crossed in front of the chest (the X pause gesture, plan 6-7a); holds while crossed.
         public bool ArmsCrossed;
-        public void Clear() { Lane = 0; JumpEdge = KneeStep = Crouch = Active = BigJump = BigKnee = BigLane = CrouchDeep = ArmsCrossed = false; }
+        // How deep the held crouch is (prison hiding, plan 2-3a): 0 standing, about .3 just under the line, up to .7 lower,
+        // 1 at a half squat (CrouchDeep).
+        public float CrouchDepth;
+        public void Clear() { Lane = 0; JumpEdge = KneeStep = Crouch = Active = BigJump = BigKnee = BigLane = CrouchDeep = ArmsCrossed = false; CrouchDepth = 0f; }
     }
 }
