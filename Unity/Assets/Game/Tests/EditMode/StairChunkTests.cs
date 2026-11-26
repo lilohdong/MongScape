@@ -53,9 +53,10 @@ namespace Mongscape.Tests
                         string note = "seed " + seed + " lap " + lap + " branch " + branch;
                         if (branch == 0)
                         {
-                            Assert.Contains(7, stairs, note); Assert.AreEqual(7, types[CartFork.DestinationChunk], note);
-                            Assert.AreEqual(expected, stairs.Count, "Prison stairs: the entrance plus corridor stairs, " + note);
-                            foreach (int i in stairs) { Assert.AreEqual(7, types[i], "Prison stairs are the type-7 stair chunk: " + note); if (i != 7) Assert.IsTrue(i >= 9 && i <= 14, "Extra prison stair sits in the corridor: " + note); }
+                            // The prison keeps its fixed three sets whatever the lap (PrisonCourse, plan 3-3).
+                            for (int i = 0; i < PrisonCourse.Chunks.Length; i++) Assert.AreEqual(PrisonCourse.Chunks[i], types[CartFork.DestinationChunk + i], note);
+                            seen.Add(branch + ":" + lap);
+                            continue;
                         }
                         else
                         {
