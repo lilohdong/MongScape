@@ -365,6 +365,9 @@ namespace Mongscape.Domain
         {
             Config = config; Score = new ScoreSystem(Workout); Runner = new RunnerController(config); Stair = new StairJudge(config); smoothSpeed = TargetSpeed; Sections.Exited += LeaveSection;
             Sections.Entered += span => { if (span.Kind == SectionKind.Prison && span.Branch) Prison.Begin(span.Visit); };
+            // A cell door and the roof bonus each free one monkey (plan 2-3a).
+            Prison.CellOpened += _ => Rescue(RescueSource.PrisonLock);
+            Prison.RoofRescue += () => Rescue(RescueSource.PrisonLock);
             // Seen by the searchlight (plan 2-3a): one warning, rung by the warden's alarm bell (ChaserDef.Warden).
             Prison.Alarm += set => Warn(WarningCause.Spotted);
         }
@@ -441,7 +444,7 @@ namespace Mongscape.Domain
         // Call after Reset when a run starts: fixes the traits and hands out the starting shield (Shield Lv3).
         public void ApplyTraits(RunTraits traits)
         {
-            Traits = traits ?? RunTraits.None; Items.Traits = Traits; thickFurLeft = Traits.ThickFur; loyaltyLeft = Traits.Loyalty;
+            Traits = traits ?? RunTraits.None; Items.Traits = Traits; Prison.LockBonus = tutorial ? 0f : Traits.LockGaugeBonus; thickFurLeft = Traits.ThickFur; loyaltyLeft = Traits.Loyalty;
             if (Traits.StartsWithShield && !tutorial) Items.GiveStartingShield();
         }
         // A monkey joins the troop (a mine wall rescue, a prison lock, the call item). Ignored outside a running run and in the tutorial.

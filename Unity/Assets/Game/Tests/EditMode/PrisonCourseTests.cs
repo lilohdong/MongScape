@@ -93,6 +93,20 @@ namespace Mongscape.Tests
             }
         }
 
+        [Test] public void DexterityOpensTheLockSooner()
+        {
+            float OpenedAt(float bonus)
+            {
+                var course = new PrisonCourse { LockBonus = bonus }; course.Begin(1);
+                float openedAt = -1, t = 0; course.CellOpened += _ => openedAt = t;
+                course.Tick(Dt, Cell(0), 5f, false, 0f);
+                for (; t < 20f && openedAt < 0; t += Dt) course.Tick(Dt, Cell(0), PrisonCourse.DoorZ, true, .5f);
+                return openedAt;
+            }
+            float plain = OpenedAt(0f), skilled = OpenedAt(.3f);
+            Assert.Greater(skilled, 0f); Assert.Less(skilled, plain * .8f, "Dexterity Lv3: 30% faster");
+        }
+
         [Test] public void KeyboardFillsAtTheBaseRate()
         {
             var course = new PrisonCourse(); course.Begin(1);
