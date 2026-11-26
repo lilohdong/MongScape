@@ -167,10 +167,14 @@ namespace Mongscape.Presentation
                 {
                     FindBananas();
                     if (peels.Count == 0) { Hide(); return; }
-                    bool passed = true; foreach (var peel in peels) passed &= peel.Passed;
+                    // The warning lesson's peel is behind a banana retry's start: only the peels ahead count.
+                    bool passed = true; FloorItemController ahead = null;
+                    foreach (var peel in peels)
+                    {
+                        if (peel.Passed || peel.transform.position.z < runner.Z - 1f) continue;
+                        passed = false; ahead ??= peel;
+                    }
                     if (passed) { Next(now); return; }
-                    // The first peel not passed yet (the warning lesson stepped on the first one).
-                    var ahead = peels[0]; foreach (var peel in peels) if (!peel.Passed) { ahead = peel; break; }
                     LessonDistance = ahead.transform.position.z - runner.Z;
                     Show(LessonDistance <= ShowDistance, false, now);
                     return;
