@@ -4,21 +4,24 @@ using UnityEngine;
 
 namespace Muhanok.Presentation
 {
-    // All sound is synthesised at runtime, so no licensed audio files are needed.
-    // Music: a step sequencer whose tempo/energy follows the interval phase. Siren: rises with chase pressure.
+    // Effects come from Kenney CC0 files in Resources/MuhanokAudio/Sfx (see Content/Audio/README.md). An effect whose file is
+    // missing falls back to the tone synthesised below. Music: a step sequencer whose tempo/energy follows the interval phase.
+    // Siren: synthesised (Kenney has none), rises with chase pressure.
     public sealed class GameAudio : MonoBehaviour
     {
         private const int Rate = 44100;
         private RunSession session;
         private AudioSource music, siren, effects;
-        private AudioClip crack;
-        private AudioClip coin, jump, hit, item, shield, beep, go, step;
+        private const string SfxFolder = "MuhanokAudio/Sfx/";
+        private AudioClip crack, coin;
+        private AudioClip[] jump, land, hit, bonk, cue, item, shield, beep, go, step, slip;
+        private readonly System.Random pick = new System.Random();
         private float musicVolume = .35f, effectsVolume = .7f;
         // Read on the audio thread.
         private volatile float tempo = 96f, energy = .3f, level;
         private double phase;
         private int lastCoins, lastItems, lastShields;
-        private bool wasAirborne;
+        private bool wasAirborne, wasSlowing;
         private GameFlowState lastState;
         public void Configure(RunSession run, float musicLevel, float effectsLevel)
         {
@@ -27,13 +30,17 @@ namespace Muhanok.Presentation
             siren = Source("Siren", true); siren.clip = Siren(); siren.loop = true; siren.volume = 0; siren.Play();
             effects = Source("Effects", false);
             coin = Tone(.12f, f => 1046 + (f > .05f ? 520 : 0), .5f);
-            jump = Tone(.18f, f => 300 + f * 2600, .35f);
-            item = Tone(.4f, f => 523 * Mathf.Pow(2, Mathf.Floor(f * 10) / 12f * 4), .4f);
-            shield = Tone(.35f, f => 880 - f * 900, .45f);
-            beep = Tone(.15f, f => 660, .4f);
-            go = Tone(.35f, f => 990, .45f);
-            hit = Noise(.4f);
-            step = Tone(.09f, f => 150 - f * 80, .6f);
+            beep = Load(() => Tone(.15f, f => 660, .4f), "count_beep");
+            go = Load(() => Tone(.35f, f => 990, .45f), "count_go");
+            jump = Load(() => Tone(.18f, f => 300 + f * 2600, .35f), "jump");
+            step = Load(() => Tone(.09f, f => 150 - f * 80, .6f), "footstep_0", "footstep_1", "footstep_2", "footstep_3", "footstep_4");
+            land = Load(() => Tone(.09f, f => 150 - f * 80, .6f), "land_0", "land_1", "land_2");
+            hit = Load(() => Noise(.4f), "hit");
+            bonk = Load(() => beep[0], "bonk_0", "bonk_1", "bonk_2");
+            cue = Load(() => beep[0], "cue");
+            slip = Load(() => Tone(.3f, f => 700 - f * 500, .4f), "slip");
+            item = Load(() => Tone(.4f, f => 523 * Mathf.Pow(2, Mathf.Floor(f * 10) / 12f * 4), .4f), "item");
+            shield = Load(() => Tone(.35f, f => 880 - f * 900, .45f), "shield");
             crack = Shatter(.16f);
         }
         private AudioSource Source(string id, bool loop)
@@ -41,13 +48,34 @@ namespace Muhanok.Presentation
             var node = new GameObject(id); node.transform.SetParent(transform, false);
             var source = node.AddComponent<AudioSource>(); source.playOnAwake = false; source.loop = loop; source.spatialBlend = 0; return source;
         }
+        // Loads the named effect files (variants of one sound); an effect with no file found uses the synthesised fallback.
+        private static AudioClip[] Load(Func<AudioClip> fallback, params string[] names)
+        {
+            var clips = new System.Collections.Generic.List<AudioClip>(names.Length);
+            foreach (var name in names) { var clip = Resources.Load<AudioClip>(SfxFolder + name); if (clip != null) clips.Add(clip); }
+            if (clips.Count == 0) clips.Add(fallback());
+            return clips.ToArray();
+        }
+        // True when the named effect has a file (it is not the synthesised fallback); tests use it.
+        public static bool HasEffectFile(string name) => Resources.Load<AudioClip>(SfxFolder + name) != null;
+        private void Play(AudioClip[] clips, float gain)
+        {
+            if (effects == null || clips == null || clips.Length == 0) return;
+            effects.PlayOneShot(clips[clips.Length == 1 ? 0 : pick.Next(clips.Length)], effectsVolume * gain);
+        }
+        // In-game gain of each effect relative to the effects volume (files are all peak-normalised to -1 dBFS).
+        private const float JumpGain = .45f, LandGain = .4f, StepGain = .35f, HitGain = 1f, BonkGain = .75f, CueGain = .5f,
+            BeepGain = .6f, GoGain = .7f, SlipGain = .8f, ItemGain = .7f, ShieldGain = .8f;
         public void SetVolumes(float musicLevel, float effectsLevel) { musicVolume = Mathf.Clamp01(musicLevel); effectsVolume = Mathf.Clamp01(effectsLevel); }
-        public void Countdown(bool final) { if (effects != null) effects.PlayOneShot(final ? go : beep, effectsVolume); }
-        // A short thump for a KneeStep on the stairs (the bootstrap calls it with the camera effect), at the effects volume.
-        public void Footstep() { if (effects != null && step != null) effects.PlayOneShot(step, effectsVolume * .8f); }
+        public void Countdown(bool final) { if (final) Play(go, GoGain); else Play(beep, BeepGain); }
+        // A short step for a KneeStep on the stairs (the bootstrap calls it with the camera effect), under the music.
+        public void Footstep() => Play(step, StepGain);
         // A short glassy break when the ranking strip passes a row.
         public void Crack() { if (effects != null && crack != null) effects.PlayOneShot(crack, effectsVolume * .55f); }
-        public void Bonk(){if(effects!=null)effects.PlayOneShot(beep,effectsVolume*.65f);}
+        // The guard's baton hits in the capture scene.
+        public void Bonk() => Play(bonk, BonkGain);
+        // A coach hint line appears.
+        public void Cue() => Play(cue, CueGain);
 
         private void Update()
         {
@@ -65,13 +93,18 @@ namespace Muhanok.Presentation
             if (state == GameFlowState.Running)
             {
                 if (session.Score.Coins > lastCoins) effects.PlayOneShot(coin, effectsVolume * .6f);
-                if (session.Items.Collected > lastItems) effects.PlayOneShot(item, effectsVolume);
-                if (session.ShieldSaves > lastShields) effects.PlayOneShot(shield, effectsVolume);
+                if (session.Items.Collected > lastItems) Play(item, ItemGain);
+                if (session.ShieldSaves > lastShields) Play(shield, ShieldGain);
                 bool airborne = session.Runner.Y > .05f;
-                if (airborne && !wasAirborne) effects.PlayOneShot(jump, effectsVolume * .5f);
+                if (airborne && !wasAirborne) Play(jump, JumpGain);
+                if (!airborne && wasAirborne) Play(land, LandGain);
                 wasAirborne = airborne;
+                // A missed knee step on the stairs also slows the runner; only a real slip (banana, floor) squelches.
+                bool slowing = session.Runner.Slowing;
+                if (slowing && !wasSlowing && session.LastSlipSource != SlipSource.KneeMiss) Play(slip, SlipGain);
+                wasSlowing = slowing;
             }
-            if (state == GameFlowState.Caught && lastState != GameFlowState.Caught) effects.PlayOneShot(hit, effectsVolume);
+            if (state == GameFlowState.Caught && lastState != GameFlowState.Caught) Play(hit, HitGain);
             lastCoins = session.Score.Coins; lastItems = session.Items.Collected; lastShields = session.ShieldSaves; lastState = state;
         }
 

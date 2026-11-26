@@ -1,0 +1,209 @@
+{
+  "license": "CC0-1.0 (Creative Commons Zero), Kenney (www.kenney.nl)",
+  "effects": [
+    {
+      "file": "jump.ogg",
+      "use": "Jump: a cloth whoosh",
+      "pack": "rpg-audio",
+      "source": "https://kenney.nl/assets/rpg-audio",
+      "original": "cloth1.ogg",
+      "original_sha256": "ddb93a3671233f95da0e0b10367f082f7eb42fa6caaddcf776410aa8833c747d",
+      "seconds": 0.586,
+      "license": "CC0-1.0"
+    },
+    {
+      "file": "land_0.ogg",
+      "use": "Landing after a jump",
+      "pack": "impact-sounds",
+      "source": "https://kenney.nl/assets/impact-sounds",
+      "original": "impactSoft_medium_000.ogg",
+      "original_sha256": "7d3ba0bb5e60a11b5d3e558c141303dcf494256675fbf753c0d252d2cf0481e3",
+      "seconds": 0.115,
+      "license": "CC0-1.0"
+    },
+    {
+      "file": "land_1.ogg",
+      "use": "Landing after a jump",
+      "pack": "impact-sounds",
+      "source": "https://kenney.nl/assets/impact-sounds",
+      "original": "impactSoft_medium_001.ogg",
+      "original_sha256": "7642a4fd43e547afe4f7adfadb3dabb681c0ff512f52c1674bae30a726841faf",
+      "seconds": 0.18,
+      "license": "CC0-1.0"
+    },
+    {
+      "file": "land_2.ogg",
+      "use": "Landing after a jump",
+      "pack": "impact-sounds",
+      "source": "https://kenney.nl/assets/impact-sounds",
+      "original": "impactSoft_medium_002.ogg",
+      "original_sha256": "5069e3571a77d7f7aae9ef71d0364aa245fb7d64a7c8cc9956f221d03088c089",
+      "seconds": 0.132,
+      "license": "CC0-1.0"
+    },
+    {
+      "file": "hit.ogg",
+      "use": "Collision / caught",
+      "pack": "impact-sounds",
+      "source": "https://kenney.nl/assets/impact-sounds",
+      "original": "impactPunch_heavy_000.ogg",
+      "original_sha256": "b33a8f14068aec24ec69ba85e5e87fdc41228975f6a1a3e44a6e7d6fc3d9f8d8",
+      "seconds": 0.494,
+      "license": "CC0-1.0"
+    },
+    {
+      "file": "bonk_0.ogg",
+      "use": "Guard's baton hits during the capture scene",
+      "pack": "impact-sounds",
+      "source": "https://kenney.nl/assets/impact-sounds",
+      "original": "impactWood_heavy_000.ogg",
+      "original_sha256": "15ff82332f342c30e469215539e1cc57e11b221aa2cf7e11e811d313a9927f3d",
+      "seconds": 0.31,
+      "license": "CC0-1.0"
+    },
+    {
+      "file": "bonk_1.ogg",
+      "use": "Guard's baton hits during the capture scene",
+      "pack": "impact-sounds",
+      "source": "https://kenney.nl/assets/impact-sounds",
+      "original": "impactWood_heavy_001.ogg",
+      "original_sha256": "f1b07a53ac10c615fff9ba470511fdeb722b5902e1a8520759fc20ad6f546015",
+      "seconds": 0.31,
+      "license": "CC0-1.0"
+    },
+    {
+      "file": "bonk_2.ogg",
+      "use": "Guard's baton hits during the capture scene",
+      "pack": "impact-sounds",
+      "source": "https://kenney.nl/assets/impact-sounds",
+      "original": "impactWood_heavy_002.ogg",
+      "original_sha256": "ce1e06f2a05f2634c645cb72f6a1623e64bc2d92be34917430a61031fb6597d4",
+      "seconds": 0.31,
+      "license": "CC0-1.0"
+    },
+    {
+      "file": "cue.ogg",
+      "use": "Coach hint",
+      "pack": "interface-sounds",
+      "source": "https://kenney.nl/assets/interface-sounds",
+      "original": "bong_001.ogg",
+      "original_sha256": "d21d0f0b782445db579d11e2506b24cd1ac9d664ee33aeaf807761aa7b6fd710",
+      "seconds": 0.12,
+      "license": "CC0-1.0"
+    },
+    {
+      "file": "count_beep.ogg",
+      "use": "Countdown beep",
+      "pack": "digital-audio",
+      "source": "https://kenney.nl/assets/digital-audio",
+      "original": "pepSound1.ogg",
+      "original_sha256": "f2f44effce087e47683f0fea05a71002bd8dca78fb10bf93d9f0b38d49f9590e",
+      "seconds": 0.328,
+      "license": "CC0-1.0"
+    },
+    {
+      "file": "count_go.ogg",
+      "use": "Countdown start",
+      "pack": "digital-audio",
+      "source": "https://kenney.nl/assets/digital-audio",
+      "original": "highUp.ogg",
+      "original_sha256": "cbc1c3c7ccf5d7903818144a4c3f5b2ed2385095792f29d8d7c76360ba4fa559",
+      "seconds": 0.381,
+      "license": "CC0-1.0"
+    },
+    {
+      "file": "footstep_0.ogg",
+      "use": "Knee step on the prison stairs",
+      "pack": "impact-sounds",
+      "source": "https://kenney.nl/assets/impact-sounds",
+      "original": "footstep_concrete_000.ogg",
+      "original_sha256": "d7267e183067757c92c169de2a379abea592cfca6b39bb2e8feea15221ad79fe",
+      "seconds": 0.103,
+      "license": "CC0-1.0"
+    },
+    {
+      "file": "footstep_1.ogg",
+      "use": "Knee step on the prison stairs",
+      "pack": "impact-sounds",
+      "source": "https://kenney.nl/assets/impact-sounds",
+      "original": "footstep_concrete_001.ogg",
+      "original_sha256": "507a75eb19b897087855a3be3cf11a12d7fa37d143ad535eeebe0b8031c7325d",
+      "seconds": 0.105,
+      "license": "CC0-1.0"
+    },
+    {
+      "file": "footstep_2.ogg",
+      "use": "Knee step on the prison stairs",
+      "pack": "impact-sounds",
+      "source": "https://kenney.nl/assets/impact-sounds",
+      "original": "footstep_concrete_002.ogg",
+      "original_sha256": "b21fa546d74941196b25da8a20b7010abd8c05c4fcf93545d1f344e66a664e13",
+      "seconds": 0.11,
+      "license": "CC0-1.0"
+    },
+    {
+      "file": "footstep_3.ogg",
+      "use": "Knee step on the prison stairs",
+      "pack": "impact-sounds",
+      "source": "https://kenney.nl/assets/impact-sounds",
+      "original": "footstep_concrete_003.ogg",
+      "original_sha256": "8b513c2f0316324060b9174b8f28df6c2147418c506e6a53b77f18e149a5547b",
+      "seconds": 0.108,
+      "license": "CC0-1.0"
+    },
+    {
+      "file": "footstep_4.ogg",
+      "use": "Knee step on the prison stairs",
+      "pack": "impact-sounds",
+      "source": "https://kenney.nl/assets/impact-sounds",
+      "original": "footstep_concrete_004.ogg",
+      "original_sha256": "24dd8db2413e5b81ad181e1205c12a1c7801da5f85715d471b92a4b2f632e45e",
+      "seconds": 0.111,
+      "license": "CC0-1.0"
+    },
+    {
+      "file": "slip.ogg",
+      "use": "Slipping on a banana",
+      "pack": "sci-fi-sounds",
+      "source": "https://kenney.nl/assets/sci-fi-sounds",
+      "original": "slime_000.ogg",
+      "original_sha256": "480ee82b690136ea9db6966a3c3033356b8274752795c4e37afd6b6defcfacff",
+      "seconds": 0.496,
+      "license": "CC0-1.0"
+    },
+    {
+      "file": "item.ogg",
+      "use": "Item pickup",
+      "pack": "digital-audio",
+      "source": "https://kenney.nl/assets/digital-audio",
+      "original": "powerUp7.ogg",
+      "original_sha256": "9048d651b51f528099c384566b0d4c6c597bee8b56c48f3adab7a901feba0fa5",
+      "seconds": 0.292,
+      "license": "CC0-1.0"
+    },
+    {
+      "file": "shield.ogg",
+      "use": "Shield saves the runner",
+      "pack": "sci-fi-sounds",
+      "source": "https://kenney.nl/assets/sci-fi-sounds",
+      "original": "forceField_000.ogg",
+      "original_sha256": "c2916f2a062c8ddd1aca2826d134fe90847037db31342726ffb0f9097afe339c",
+      "seconds": 0.758,
+      "license": "CC0-1.0"
+    }
+  ],
+  "missing_in_kenney": [
+    {
+      "name": "siren",
+      "use": "Police siren"
+    },
+    {
+      "name": "lion_roar",
+      "use": "Lion roar"
+    },
+    {
+      "name": "spotlight_alarm",
+      "use": "Searchlight alarm"
+    }
+  ]
+}
