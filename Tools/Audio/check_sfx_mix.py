@@ -28,11 +28,11 @@ EFFECTS = [
     (os.path.join(NEXT, "warning.ogg"), 1.0), (os.path.join(NEXT, "caught.ogg"), 1.0), (os.path.join(NEXT, "lock_open.ogg"), 1.0),
     (os.path.join(NEXT, "lock_click.ogg"), .7), (os.path.join(NEXT, "monkey_rescue.ogg"), .7),
     (os.path.join(NEXT, "fork_blocked.ogg"), 1.0), (os.path.join(NEXT, "gate_down.ogg"), .9), (os.path.join(NEXT, "new_record.ogg"), 1.0),
-    (os.path.join(NEXT, "spotlight_alarm.ogg"), .45), (os.path.join(LIVE, "cue.ogg"), .75), (os.path.join(LIVE, "count_beep.ogg"), .9),
+    (os.path.join(LIVE, "alarm_bell.ogg"), .45), (os.path.join(LIVE, "lion_roar.ogg"), .6), (os.path.join(LIVE, "cue.ogg"), .75), (os.path.join(LIVE, "count_beep.ogg"), .9),
     ("siren", 1.0),
 ]
 # Effects that duck the music by DUCK_DB while they play (GameAudio.Duck); margins are reported with and without.
-DUCKED = {"hit.ogg", "warning.ogg", "caught.ogg", "fork_blocked.ogg", "spotlight_alarm.ogg"}
+DUCKED = {"hit.ogg", "warning.ogg", "caught.ogg", "fork_blocked.ogg", "alarm_bell.ogg", "lion_roar.ogg"}
 DUCK_DB = 5.0
 
 

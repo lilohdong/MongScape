@@ -1,5 +1,5 @@
 {
-  "license": "CC0-1.0 (Creative Commons Zero), Kenney (www.kenney.nl)",
+  "license": "CC0-1.0 (Creative Commons Zero). Kenney (www.kenney.nl) unless an entry names another source",
   "effects": [
     {
       "file": "jump.ogg",
@@ -199,16 +199,35 @@
       "original_sha256": "c2916f2a062c8ddd1aca2826d134fe90847037db31342726ffb0f9097afe339c",
       "seconds": 0.753,
       "license": "CC0-1.0"
+    },
+    {
+      "file": "lion_roar.ogg",
+      "use": "Lion roar warning in the zoo (cartoon voice roar, pitched up 3 semitones)",
+      "pack": "oga-80-cc0-creture-sfx-2",
+      "source": "https://opengameart.org/content/80-cc0-creture-sfx-2",
+      "original": "roar_04.ogg",
+      "original_sha256": "4bd8be77b058410e1af9a3a5aa5c62b8ec9ac214672be4ab84180e156e8c0a20",
+      "seconds": 0.811,
+      "license": "CC0-1.0",
+      "author": "rubberduck (OpenGameArt)",
+      "download": "https://opengameart.org/sites/default/files/80-CC0-creature-sfx-2.zip",
+      "processing": {
+        "pitch_semitones": 3,
+        "drive": 2.0
+      }
+    },
+    {
+      "file": "alarm_bell.ogg",
+      "use": "Prison searchlight alarm (GameAudio.ChaserCue): two sharp tones (1.4 / 1.9 kHz) alternating, 4 times, about 1 s",
+      "source": "Synthesised by Tools/Audio/make_sfx.py (project)",
+      "seconds": 0.96,
+      "license": "Project"
     }
   ],
   "missing_in_kenney": [
     {
       "name": "siren",
       "use": "Police siren (kept as the synthesised loop in GameAudio.cs)"
-    },
-    {
-      "name": "lion_roar",
-      "use": "Lion roar"
     }
   ]
 }

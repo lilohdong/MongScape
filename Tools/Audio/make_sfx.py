@@ -53,6 +53,9 @@ LIVE_SFX = [
     ("slip",        "digital-audio",    "phaserDown1.ogg",            "Slipping on a banana: cartoon slide down"),
     ("item",        "digital-audio",    "powerUp7.ogg",               "Item pickup"),
     ("shield",      "sci-fi-sounds",    "forceField_000.ogg",         "Shield saves the runner"),
+    # Chaser cues (GameAudio.ChaserCue). Not Kenney: owner decision 2026-11-27 allows another CC0 source for the roar.
+    ("lion_roar",   "oga-80-cc0-creture-sfx-2", "roar_04.ogg",        "Lion roar warning in the zoo (cartoon voice roar, pitched up 3 semitones)",
+     {"pitch": 3, "drive": 2.0}),
 ]
 NEXT_SFX = [
     ("lock_click",    "rpg-audio",       "metalClick.ogg",             "Prison lock: click while picking"),
@@ -65,8 +68,11 @@ NEXT_SFX = [
     ("caught",        "music-jingles",   "jingles_PIZZI01.ogg",        "Caught (falling pizzicato)"),
     ("new_record",    "music-jingles",   "jingles_PIZZI02.ogg",        "New record (rising pizzicato)"),
 ]
-MISSING = [("siren", "Police siren (kept as the synthesised loop in GameAudio.cs)"), ("lion_roar", "Lion roar")]
-SYNTH = [("spotlight_alarm", "Searchlight alarm: two sharp tones (1.4 / 1.9 kHz) alternating, 4 times, about 1 s")]
+MISSING = [("siren", "Police siren (kept as the synthesised loop in GameAudio.cs)")]
+# Sources outside Kenney: folder name in <kenney_dir> -> (page, author, licence). The roar pack is unzipped from
+# https://opengameart.org/sites/default/files/80-CC0-creature-sfx-2.zip into oga-80-cc0-creture-sfx-2/.
+OTHER = {"oga-80-cc0-creture-sfx-2": ("https://opengameart.org/content/80-cc0-creture-sfx-2", "rubberduck (OpenGameArt)", "CC0-1.0")}
+SYNTH = [("alarm_bell", "Prison searchlight alarm (GameAudio.ChaserCue): two sharp tones (1.4 / 1.9 kHz) alternating, 4 times, about 1 s")]
 
 
 def find(pack_dir, name):
@@ -114,6 +120,12 @@ def sha(path):
 
 
 def process(kenney, x, opts):
+    if "pitch" in opts:   # shift pitch, keep the length (resample, then time-stretch back with ffmpeg atempo)
+        r = 2 ** (opts["pitch"] / 12)
+        y = subprocess.run(["ffmpeg", "-v", "error", "-f", "f32le", "-ar", str(SR), "-ac", "1", "-i", "-", "-af",
+                            f"asetrate={SR * r:.0f},aresample={SR},atempo={1 / r:.6f}", "-f", "f32le", "-"],
+                           input=x.astype(np.float32).tobytes(), capture_output=True, check=True).stdout
+        x = np.frombuffer(y, np.float32).copy()
     if "layer" in opts:
         pack, src, gain = opts["layer"]
         y = clean(decode(find(os.path.join(kenney, pack), src))) * gain
@@ -149,12 +161,17 @@ def build(kenney, table, folder, synth=()):
         encode(x, out)
         row = {"file": name + ".ogg", "use": use, "pack": pack, "source": f"https://kenney.nl/assets/{pack}",
                "original": src, "original_sha256": sha(path), "seconds": round(len(x) / SR, 3), "license": "CC0-1.0"}
+        if pack in OTHER:
+            row["source"], row["author"], row["license"] = OTHER[pack]
+            row["download"] = "https://opengameart.org/sites/default/files/80-CC0-creature-sfx-2.zip"
+        if "pitch" in opts:
+            row.setdefault("processing", {})["pitch_semitones"] = opts["pitch"]
         if "layer" in opts:
             lpack, lsrc, lgain = opts["layer"]
             lpath = find(os.path.join(kenney, lpack), lsrc)
             row["layered_with"] = {"pack": lpack, "original": lsrc, "original_sha256": sha(lpath), "gain": lgain}
         if "max_sec" in opts or "drive" in opts:
-            row["processing"] = {k: opts[k] for k in ("max_sec", "drive") if k in opts}
+            row.setdefault("processing", {}).update({k: opts[k] for k in ("max_sec", "drive") if k in opts})
         rows.append(row)
         print(f"{name:14s} <- {pack}/{src}  {len(x) / SR:.2f}s")
     for name, use in synth:
@@ -164,12 +181,13 @@ def build(kenney, table, folder, synth=()):
                      "seconds": round(len(x) / SR, 3), "license": "Project"})
         print(f"{name:14s} <- synthesised  {len(x) / SR:.2f}s")
     with open(os.path.join(folder, "SOURCES.json"), "w", encoding="utf-8") as f:
-        json.dump({"license": "CC0-1.0 (Creative Commons Zero), Kenney (www.kenney.nl)", "effects": rows,
+        json.dump({"license": "CC0-1.0 (Creative Commons Zero). Kenney (www.kenney.nl) unless an entry names another source",
+                   "effects": rows,
                    "missing_in_kenney": [{"name": n, "use": u} for n, u in MISSING]}, f, indent=2)
 
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         sys.exit(__doc__)
-    build(sys.argv[1], LIVE_SFX, LIVE)
-    build(sys.argv[1], NEXT_SFX, NEXT, SYNTH)
+    build(sys.argv[1], LIVE_SFX, LIVE, SYNTH)
+    build(sys.argv[1], NEXT_SFX, NEXT)

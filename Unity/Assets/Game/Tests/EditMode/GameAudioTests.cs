@@ -10,7 +10,7 @@ namespace Mongscape.Tests
         [TestCase("jump")] [TestCase("land_0")] [TestCase("land_1")] [TestCase("land_2")] [TestCase("hit")]
         [TestCase("bonk_0")] [TestCase("bonk_1")] [TestCase("bonk_2")] [TestCase("cue")] [TestCase("count_beep")] [TestCase("count_go")]
         [TestCase("footstep_0")] [TestCase("footstep_1")] [TestCase("footstep_2")] [TestCase("footstep_3")] [TestCase("footstep_4")]
-        [TestCase("slip")] [TestCase("item")] [TestCase("shield")]
+        [TestCase("slip")] [TestCase("item")] [TestCase("shield")] [TestCase("lion_roar")] [TestCase("alarm_bell")]
         public void EffectFileIsPresent(string name) { Assert.IsTrue(GameAudio.HasEffectFile(name), name); }
 
         [Test] public void MissingEffectFallsBackToSynthesis() { Assert.IsFalse(GameAudio.HasEffectFile("no_such_effect")); }

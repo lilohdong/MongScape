@@ -1,5 +1,5 @@
 {
-  "license": "CC0-1.0 (Creative Commons Zero), Kenney (www.kenney.nl)",
+  "license": "CC0-1.0 (Creative Commons Zero). Kenney (www.kenney.nl) unless an entry names another source",
   "effects": [
     {
       "file": "lock_click.ogg",
@@ -93,23 +93,12 @@
       "original_sha256": "4967dc3cd31257716f455ef50f8980378726ce086954c7a5563c0c57ee129e3e",
       "seconds": 0.944,
       "license": "CC0-1.0"
-    },
-    {
-      "file": "spotlight_alarm.ogg",
-      "use": "Searchlight alarm: two sharp tones (1.4 / 1.9 kHz) alternating, 4 times, about 1 s",
-      "source": "Synthesised by Tools/Audio/make_sfx.py (project)",
-      "seconds": 0.96,
-      "license": "Project"
     }
   ],
   "missing_in_kenney": [
     {
       "name": "siren",
       "use": "Police siren (kept as the synthesised loop in GameAudio.cs)"
-    },
-    {
-      "name": "lion_roar",
-      "use": "Lion roar"
     }
   ]
 }
