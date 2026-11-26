@@ -3,70 +3,95 @@ using System.Collections.Generic;
 
 namespace Mongscape.Domain
 {
-    // Exercise plan 10-3: 카메라 확인 → 보정 → 제자리 달리기 → 경찰 → 사이드 스텝 → 점프 → 숙이기 → 계단 → 바나나 → 수레·갈림길.
-    public enum TutorialStep { Camera, Calibrate, Cadence, Police, Lane, Jump, Crouch, HighKnee, Banana, Rail, Fork, Done }
-    // What a step waits for: a framed body, a calibrated body, a held pace, the police shaken off, a lesson obstacle
-    // (or broken rail, or both bananas) passed cleanly, or a lean at the cart fork.
-    public enum TutorialPass { Framed, Calibrated, Paced, PoliceShaken, ObstaclePassed, ForkChosen, None }
-    // The lesson hazards of the course; every random hazard and item is removed.
-    public enum TutorialHazard { None, LaneBlock, JumpRow, CrouchRow, StairChunk, Bananas, RailGap }
+    // What the tutorial offer asks: nothing, the chapter screen ("튜토리얼 할까요?"), or the short basics chapter for earlier members.
+    public enum TutorialOffer { None, Full, Short }
 
-    // Lessons for one play style (about 15 s each, under 3 minutes). Steps the style, route or options lack are left out:
-    // keyboard play needs no camera check, calibration, cadence or police; with "달리기 속도 조절" off the police step goes
-    // (the cadence step then only shows that stepping turns into calories); a route without forks has no lean.
-    // Members who finished the earlier tutorial get the short version once: only what this update changed (0~3, 8, 9).
+    // Plan 6-1b: the tutorial is three chapters. A visit plays one chapter and goes back to the menu.
+    public enum TutorialChapter { Basics, Zoo, Prison }
+
+    // Basics (mine): camera, calibration, running in place, lane, jump, crouch, rescue, banana with the warning rule picture,
+    // the X pause, cart fork. Zoo: beat sync, one verse, the lion's mirror. Prison: one stair, one searchlight set, the alarm rule.
+    public enum TutorialStep { Camera, Calibrate, Cadence, Lane, Jump, Crouch, Rescue, Banana, WarnRule, PauseX, Fork, Sync, Verse, Rearview, Stair, Hide, AlarmRule, Done }
+
+    // What a step waits for: a framed body, a calibrated body, a held pace, a lesson obstacle (or both bananas, or the stair)
+    // passed cleanly, a lean at the cart fork, a station the director runs itself (rescue, beat sync, verse, hiding),
+    // a picture shown for a few seconds, or the pause (gesture or Esc).
+    public enum TutorialPass { Framed, Calibrated, Paced, ObstaclePassed, ForkChosen, Station, Picture, Paused, None }
+
+    // The lesson hazards of the course; every random hazard, item and coin is removed.
+    public enum TutorialHazard { None, LaneBlock, JumpRow, CrouchRow, StairChunk, Bananas }
+
+    // Lessons for one chapter and play style. Steps the style lacks are left out (plan 6-3): keyboard play needs no camera
+    // check, calibration, cadence or beat sync (the keys are shown instead of a demo). Members who finished the earlier
+    // tutorial get a short basics chapter once: only what this update changed (calibration, rescue, banana and warning rule).
     public sealed class TutorialScript
     {
         private readonly List<TutorialStep> steps = new List<TutorialStep>(12);
+        public TutorialChapter Chapter { get; }
         public PlayStyle Style { get; }
-        public bool CadenceSpeed { get; }
         public bool Short { get; }
         public IReadOnlyList<TutorialStep> Steps => steps;
         public int Index { get; private set; }
         public TutorialStep Current => steps[Index];
         public bool Finished => Current == TutorialStep.Done;
-        // Retries of the current step and of the whole tutorial.
+        // Retries of the current step and of the whole chapter.
         public int Retries { get; private set; }
         public int TotalRetries { get; private set; }
-        // From this many retries of one step, the demo window grows into "따라 하기".
+        // From this many retries of one step, the demo window grows into the joint comparison (plan 6-0).
         public const int FollowAlongRetries = 3;
         public bool FollowAlong => Retries >= FollowAlongRetries;
-        public static readonly TutorialStep[] UpdateSteps = { TutorialStep.Camera, TutorialStep.Calibrate, TutorialStep.Cadence, TutorialStep.Police, TutorialStep.Banana, TutorialStep.Rail, TutorialStep.Fork };
-        public TutorialScript(PlayStyle style, bool forks = true, bool cadenceSpeed = true, bool shortVersion = false)
+        public static readonly TutorialStep[] UpdateSteps = { TutorialStep.Calibrate, TutorialStep.Rescue, TutorialStep.Banana, TutorialStep.WarnRule };
+
+        public TutorialScript(TutorialChapter chapter, PlayStyle style, bool forks = true, bool shortVersion = false)
         {
-            Style = style; CadenceSpeed = cadenceSpeed; Short = shortVersion;
+            Chapter = chapter; Style = style; Short = shortVersion && chapter == TutorialChapter.Basics;
             bool camera = PlayStyleInfo.UsesCamera(style);
-            foreach (TutorialStep step in Enum.GetValues(typeof(TutorialStep)))
+            foreach (var step in StepsOf(chapter))
             {
-                if (!camera && (step == TutorialStep.Camera || step == TutorialStep.Calibrate || step == TutorialStep.Cadence || step == TutorialStep.Police)) continue;
-                if (step == TutorialStep.Police && !cadenceSpeed) continue;
+                if (!camera && (step == TutorialStep.Camera || step == TutorialStep.Calibrate || step == TutorialStep.Cadence || step == TutorialStep.Sync)) continue;
                 if (step == TutorialStep.Fork && !forks) continue;
-                if (shortVersion && step != TutorialStep.Done && Array.IndexOf(UpdateSteps, step) < 0) continue;
+                if (Short && Array.IndexOf(UpdateSteps, step) < 0) continue;
                 steps.Add(step);
             }
+            steps.Add(TutorialStep.Done);
         }
+        public static IReadOnlyList<TutorialStep> StepsOf(TutorialChapter chapter) => chapter == TutorialChapter.Zoo ? ZooSteps : chapter == TutorialChapter.Prison ? PrisonSteps : BasicsSteps;
+        private static readonly TutorialStep[] BasicsSteps = { TutorialStep.Camera, TutorialStep.Calibrate, TutorialStep.Cadence, TutorialStep.Lane, TutorialStep.Jump, TutorialStep.Crouch,
+            TutorialStep.Rescue, TutorialStep.Banana, TutorialStep.WarnRule, TutorialStep.PauseX, TutorialStep.Fork };
+        private static readonly TutorialStep[] ZooSteps = { TutorialStep.Sync, TutorialStep.Verse, TutorialStep.Rearview };
+        private static readonly TutorialStep[] PrisonSteps = { TutorialStep.Stair, TutorialStep.Hide, TutorialStep.AlarmRule };
         public bool Has(TutorialStep step) => steps.Contains(step);
         // The step's pass condition was met: the next lesson starts with a fresh retry count.
         public bool Pass() { if (Finished) return false; Index++; Retries = 0; return true; }
-        // A mistake restarts the same step in front of its obstacle.
+        // A mistake restarts the same step.
         public void Fail() { if (Finished) return; Retries++; TotalRetries++; }
         public TutorialPass Condition => PassOf(Current);
-        public MotionCommand? Awaited => AwaitedOf(Current);
 
-        public static TutorialPass PassOf(TutorialStep step) => step == TutorialStep.Camera ? TutorialPass.Framed : step == TutorialStep.Calibrate ? TutorialPass.Calibrated
-            : step == TutorialStep.Cadence ? TutorialPass.Paced : step == TutorialStep.Police ? TutorialPass.PoliceShaken
-            : step == TutorialStep.Fork ? TutorialPass.ForkChosen : step == TutorialStep.Done ? TutorialPass.None : TutorialPass.ObstaclePassed;
-        // Lane, banana and fork steps accept either side (Left stands for both); the broken rail needs the lean away from the gap.
+        public static TutorialPass PassOf(TutorialStep step)
+        {
+            switch (step)
+            {
+                case TutorialStep.Camera: return TutorialPass.Framed;
+                case TutorialStep.Calibrate: return TutorialPass.Calibrated;
+                case TutorialStep.Cadence: return TutorialPass.Paced;
+                case TutorialStep.Fork: return TutorialPass.ForkChosen;
+                case TutorialStep.Rescue: case TutorialStep.Sync: case TutorialStep.Verse: case TutorialStep.Hide: return TutorialPass.Station;
+                case TutorialStep.WarnRule: case TutorialStep.Rearview: case TutorialStep.AlarmRule: return TutorialPass.Picture;
+                case TutorialStep.PauseX: return TutorialPass.Paused;
+                case TutorialStep.Done: return TutorialPass.None;
+                default: return TutorialPass.ObstaclePassed;
+            }
+        }
+        // Lane, banana and fork steps accept either side (Left stands for both).
         public static MotionCommand? AwaitedOf(TutorialStep step) => step == TutorialStep.Lane || step == TutorialStep.Fork || step == TutorialStep.Banana ? MotionCommand.Left
-            : step == TutorialStep.Rail ? TutorialCourse.RailLean
-            : step == TutorialStep.Jump ? MotionCommand.Jump : step == TutorialStep.Crouch ? MotionCommand.Crouch : step == TutorialStep.HighKnee ? MotionCommand.KneeStep : (MotionCommand?)null;
+            : step == TutorialStep.Jump ? MotionCommand.Jump : step == TutorialStep.Crouch ? MotionCommand.Crouch : step == TutorialStep.Stair ? MotionCommand.KneeStep : (MotionCommand?)null;
         public static bool Accepts(TutorialStep step, MotionCommand command)
         {
             if (step == TutorialStep.Lane || step == TutorialStep.Fork || step == TutorialStep.Banana) return command == MotionCommand.Left || command == MotionCommand.Right;
             var awaited = AwaitedOf(step);
             return awaited.HasValue && awaited.Value == command;
         }
-        // The runner already shows the awaited action (from any input source). The banana step is passed only by getting past both peels.
+        // The runner already shows the awaited action (from any input source).
         public static bool Performed(TutorialStep step, RunnerController runner)
         {
             switch (step)
@@ -74,127 +99,160 @@ namespace Mongscape.Domain
                 case TutorialStep.Lane: return runner.Lane != TutorialCourse.BlockedLane;
                 case TutorialStep.Jump: return runner.Y > .01f;
                 case TutorialStep.Crouch: return runner.Crouching;
-                case TutorialStep.HighKnee: return runner.KneeStepping;
-                // The same lean the rail gap judges (CartRailGap: lean toward the intact rail of at least .55).
-                case TutorialStep.Rail: return runner.Riding && runner.CartLean * -TutorialCourse.RailMissingSide >= .55f;
+                case TutorialStep.Stair: return runner.KneeStepping;
                 case TutorialStep.Fork: return runner.Lane != 0;
                 default: return false;
             }
         }
-        public static string Title(TutorialStep step) => step == TutorialStep.Camera ? "카메라 확인" : step == TutorialStep.Calibrate ? "보정"
-            : step == TutorialStep.Cadence ? "제자리 달리기" : step == TutorialStep.Police ? "경찰" : step == TutorialStep.Lane ? "사이드 스텝"
-            : step == TutorialStep.Jump ? "점프" : step == TutorialStep.Crouch ? "숙이기" : step == TutorialStep.HighKnee ? "계단"
-            : step == TutorialStep.Banana ? "바나나" : step == TutorialStep.Rail ? "끊긴 레일 피하기" : step == TutorialStep.Fork ? "갈림길 고르기" : "튜토리얼 완료";
-        public static string Instruction(TutorialStep step, PlayStyle style, bool cadenceSpeed = true)
+
+        public static string ChapterTitle(TutorialChapter chapter) => chapter == TutorialChapter.Zoo ? "동물원 연습" : chapter == TutorialChapter.Prison ? "감옥 연습" : "기본";
+        public static string ChapterLength(TutorialChapter chapter) => chapter == TutorialChapter.Zoo ? "1분" : chapter == TutorialChapter.Prison ? "40초" : "2분";
+        public static string Title(TutorialStep step)
+        {
+            switch (step)
+            {
+                case TutorialStep.Camera: return "카메라 확인"; case TutorialStep.Calibrate: return "보정"; case TutorialStep.Cadence: return "제자리 달리기";
+                case TutorialStep.Lane: return "레인 이동"; case TutorialStep.Jump: return "점프"; case TutorialStep.Crouch: return "숙이기";
+                case TutorialStep.Rescue: return "구출"; case TutorialStep.Banana: return "바나나"; case TutorialStep.WarnRule: return "경고";
+                case TutorialStep.PauseX: return "일시정지"; case TutorialStep.Fork: return "갈림길"; case TutorialStep.Sync: return "싱크 조절";
+                case TutorialStep.Verse: return "노트"; case TutorialStep.Rearview: return "사자"; case TutorialStep.Stair: return "계단";
+                case TutorialStep.Hide: return "탐조등"; case TutorialStep.AlarmRule: return "경보"; default: return "완료";
+            }
+        }
+        // One verb line per step (plan 6-0, writing rules: no separators). The keyboard line only names the keys.
+        public static string Instruction(TutorialStep step, PlayStyle style)
         {
             bool keys = style == PlayStyle.Keyboard, upper = style == PlayStyle.UpperBody;
             switch (step)
             {
-                case TutorialStep.Camera: return upper ? "허리 위가 화면에 다 들어오게 앉거나 서 주세요." : "머리부터 발끝까지 화면에 들어오게 서 주세요.";
-                case TutorialStep.Calibrate: return "카메라 앞에 바르게 서 주세요. 자세를 맞추면 출발합니다.";
-                // Cadence off: stepping earns no calories (only jumps, crouches, knee raises and lane changes do).
-                case TutorialStep.Cadence: return !cadenceSpeed ? (upper ? "팔을 흔들어 보세요. 속도 조절 꺼짐: 팔 흔들기는 칼로리 제외" : "제자리 달리기를 해 보세요. 속도 조절 꺼짐: 걸음은 칼로리 제외")
-                    : upper ? "팔을 번갈아 빠르게 흔들어 보세요. 빠를수록 빨리 달려요!" : "제자리 달리기를 해 보세요. 빠를수록 빨리 달려요!";
-                case TutorialStep.Police: return "잠깐 멈춰 보세요. 느려지면 경찰이 다가와요!";
-                case TutorialStep.Lane: return keys ? "A·D(←·→) 키로 옆 줄로 피하세요." : upper ? "상체를 옆으로 기울여 피하세요." : "옆으로 크게 한 걸음! 상체만 기울이면 안 돼요.";
-                case TutorialStep.Jump: return keys ? "스페이스 키로 점프!" : upper ? "두 팔을 옆으로 쫙 벌려 점프!" : "제자리에서 점프! 높이 뛰면 더 높이 떠요.";
-                case TutorialStep.Crouch: return keys ? "S(↓) 키를 누르고 있으면 숙입니다." : upper ? "몸을 낮춰 숙이세요!" : "무릎을 굽혀 숙이세요! 깊게 앉으면 더 길게 미끄러져요.";
-                case TutorialStep.HighKnee: return keys ? "W(↑) 키를 번갈아 연타해 계단을 오르세요!" : upper ? "두 팔을 머리 위로 뻗었다가 어깨 아래까지 당겨 내려 계단을 오르세요!" : "뛰지 말고 제자리에서 걷듯이, 무릎을 번갈아 높이 드세요!";
-                case TutorialStep.Banana: return keys ? "빨갛게 빛나는 바나나를 A·D 키로 피하세요! 두 번 밟으면 잡혀요." : "빨갛게 빛나는 바나나를 옆으로 피하세요! 두 번 밟으면 잡혀요.";
-                case TutorialStep.Rail:
-                {
-                    bool right = TutorialCourse.RailLean == MotionCommand.Right;
-                    return keys ? (right ? "D(→)" : "A(←)") + " 키로 레일이 남은 쪽으로 기울이세요."
-                        : (upper ? "몸을 " : "제자리에서 상체를 ") + (right ? "오른쪽" : "왼쪽") + "으로 기울여 끊긴 레일을 피하세요.";
-                }
-                // In the cart the full body leans in place; side steps do nothing there.
-                case TutorialStep.Fork: return keys ? "위 안내를 보고 A 또는 D 키로 갈 코스를 고르세요." : upper ? "위 안내를 보고 몸을 기울여 갈 코스를 고르세요." : "위 안내를 보고 제자리에서 상체를 기울여 갈 코스를 고르세요.";
-                default: return "기본 동작을 모두 익혔어요!";
+                case TutorialStep.Camera: return upper ? "허리까지 보이게 앉기" : "발끝까지 보이게 서기";
+                case TutorialStep.Calibrate: return "가만히 서기";
+                case TutorialStep.Cadence: return upper ? "팔 번갈아 흔들기" : "제자리에서 달리기";
+                case TutorialStep.Lane: return keys ? "A 또는 D 누르기" : upper ? "어깨 옆으로 기울이기" : "옆으로 크게 한 걸음";
+                case TutorialStep.Jump: return keys ? "Space 누르기" : upper ? "두 팔 옆으로 쫙 펴기" : "점프하기";
+                case TutorialStep.Crouch: return keys ? "S 누르고 있기" : upper ? "상체 앞으로 숙이기" : "무릎 굽혀 숙이기";
+                case TutorialStep.Rescue: return keys ? "Q 또는 E 누르기" : upper ? "한 팔 옆으로 뻗기" : "벽 쪽으로 손 뻗기";
+                case TutorialStep.Banana: return keys ? "A 또는 D로 피하기" : "빨간 바나나 피하기";
+                case TutorialStep.PauseX: return keys ? "Esc 누르기" : "두 팔을 X로 겹치기";
+                case TutorialStep.Fork: return keys ? "A 또는 D 누르기" : "몸 기울여 길 고르기";
+                case TutorialStep.Sync: return upper ? "박자에 맞춰 두 팔 펴기" : "박자에 맞춰 점프하기";
+                case TutorialStep.Verse: return keys ? "Space와 W 누르기" : "점프하고 만세 하기";
+                case TutorialStep.Stair: return keys ? "W 번갈아 누르기" : upper ? "팔꿈치 당겨 내리기" : "제자리에서 걷듯 무릎 들기";
+                case TutorialStep.Hide: return keys ? "S 누르고 버티기" : upper ? "상체 숙여 버티기" : "숙여서 버티기";
+                case TutorialStep.WarnRule: case TutorialStep.Rearview: case TutorialStep.AlarmRule: return "그림 보기";
+                default: return "다 했어요";
             }
         }
-        // Second line once the police came close: run again to shake them off.
-        public const string PoliceAway = "다시 뛰어서 경찰을 떼어내세요!";
-        // Jump and crouch are timed: before their call the line only prepares the player, so nobody acts too early.
+        // Jump and crouch are timed: the call waits for the moment acting clears the obstacle (ActionTiming); before that the
+        // line only prepares the player.
         public static bool Timed(TutorialStep step) => step == TutorialStep.Jump || step == TutorialStep.Crouch;
-        public static string Prepare(TutorialStep step, PlayStyle style)
-        {
-            bool keys = style == PlayStyle.Keyboard, upper = style == PlayStyle.UpperBody;
-            if (step == TutorialStep.Jump) return keys ? "「점프!」 신호가 뜨면 스페이스 키를 누르세요." : upper ? "「점프!」 신호가 뜨면 두 손을 머리 위로 드세요." : "「점프!」 신호가 뜨면 제자리에서 점프하세요.";
-            if (step == TutorialStep.Crouch) return keys ? "「숙이기!」 신호가 뜨면 S(↓) 키를 누르고 있으세요." : upper ? "「숙이기!」 신호가 뜨면 몸을 낮추세요." : "「숙이기!」 신호가 뜨면 무릎을 굽혀 숙이세요.";
-            return Instruction(step, style);
-        }
-        // The demo clip of the character window (Mixamo/Blender clips of the monkey that exist today); null when there is none
-        // (the camera check and calibration need none; the upper-body moves have no clip yet).
+        public static string Prepare(TutorialStep step, PlayStyle style) => step == TutorialStep.Jump ? "준비하기" : step == TutorialStep.Crouch ? "준비하기" : Instruction(step, style);
+
+        // The demo clip of the mirror monkey (plan 6-0): the 11 demo motions of art round 2 plus the X and the T of the pause and
+        // upper-body jump; null when there is none (keyboard play has no demo, the camera check and calibration need none).
+        public const string ClipPrefix = "AN_Monkey_Demo_";
+        public static readonly string[] AllClips = { "RunInPlace", "SideStep_L", "SideStep_R", "Jump", "HalfSquat", "ArmReach_L", "ArmReach_R", "CartLean_L", "CartLean_R", "HandsUp", "HighKnee", "ArmsCrossX", "ArmsT" };
         public static string DemoClip(TutorialStep step, PlayStyle style)
         {
-            if (style == PlayStyle.UpperBody) return null;
+            if (style == PlayStyle.Keyboard) return null;
+            bool upper = style == PlayStyle.UpperBody;
+            string clip;
             switch (step)
             {
-                case TutorialStep.Cadence: case TutorialStep.Police: return "AN_Monkey_Run";
-                case TutorialStep.Lane: case TutorialStep.Banana: return "AN_Monkey_LaneStep_R";
-                case TutorialStep.Jump: return "AN_Monkey_Jump";
-                case TutorialStep.Crouch: return "AN_Monkey_CrouchSlide";
-                case TutorialStep.HighKnee: return "AN_Monkey_HighKnee";
-                case TutorialStep.Rail: case TutorialStep.Fork: return "AN_Monkey_CartRide";
+                case TutorialStep.Cadence: clip = "RunInPlace"; break;
+                case TutorialStep.Lane: clip = upper ? "CartLean_R" : "SideStep_R"; break;
+                case TutorialStep.Banana: clip = "SideStep_L"; break;
+                case TutorialStep.Jump: clip = upper ? "ArmsT" : "Jump"; break;
+                case TutorialStep.Crouch: clip = "HalfSquat"; break;
+                case TutorialStep.Rescue: clip = "ArmReach_R"; break;
+                case TutorialStep.PauseX: clip = "ArmsCrossX"; break;
+                case TutorialStep.Fork: clip = "CartLean_L"; break;
+                case TutorialStep.Sync: clip = upper ? "ArmsT" : "Jump"; break;
+                case TutorialStep.Verse: clip = "HandsUp"; break;
+                case TutorialStep.Stair: clip = "HighKnee"; break;
+                case TutorialStep.Hide: clip = "HalfSquat"; break;
                 default: return null;
             }
+            return ClipPrefix + clip;
         }
-        // Shown for members who have not finished it and for every guest, once per session.
-        public static bool ShouldOffer(bool member, bool tutorialDone, bool offeredThisSession) => !offeredThisSession && (!member || !tutorialDone);
-        // Members who finished the earlier tutorial are offered the short version once (remembered on this PC).
-        public static bool ShouldOfferUpdate(bool member, bool tutorialDone, bool updateSeen, bool offeredThisSession) => !offeredThisSession && member && tutorialDone && !updateSeen;
+
+        // Offered once per session to everyone who has not finished the basics chapter (guests: on this PC; members: on the account).
+        public static bool ShouldOffer(bool basicsDone, bool offeredThisSession) => !offeredThisSession && !basicsDone;
+        // Members who finished the earlier tutorial are offered the short basics chapter once (remembered on this PC).
+        public static bool ShouldOfferUpdate(bool member, bool earlierDone, bool updateSeen, bool offeredThisSession) => !offeredThisSession && member && earlierDone && !updateSeen;
     }
 
-    // The fixed tutorial map: a warm-up lap in the mine without a fork that holds the lessons, then an ordinary lap whose
-    // first cart chunk keeps one broken rail and whose cart fork is the last lesson. Positions are route z in metres.
+    // Which chapters are done (a bit each, saved by owner: the account id, or "guest" for this PC). Chapter 2 opens after 1, 3 after 2.
+    public static class TutorialProgress
+    {
+        public const string GuestOwner = "guest";
+        public static bool IsDone(int mask, TutorialChapter chapter) => (mask & (1 << (int)chapter)) != 0;
+        public static bool IsOpen(int mask, TutorialChapter chapter) => chapter == TutorialChapter.Basics || IsDone(mask, chapter - 1);
+        public static int Complete(int mask, TutorialChapter chapter) => mask | (1 << (int)chapter);
+        // Locked, open and done as the chapter cards show them.
+        public static string State(int mask, TutorialChapter chapter) => IsDone(mask, chapter) ? "완료" : IsOpen(mask, chapter) ? "열림" : "잠김";
+    }
+
+    // The fixed tutorial maps: chapter 1 is a warm-up lap in the mine without a fork that holds the lessons, then an ordinary lap
+    // whose cart fork is the last lesson; chapters 2 and 3 are short stretches of the zoo and of the prison corridor.
+    // Positions are route z in metres.
     public static class TutorialCourse
     {
         public const int Seed = 723, BlockedLane = 0;
-        // Mine only: start, the pace chunk (cadence and police hold here), lane, jump, slide, a plain walk (time to get ready),
-        // the mine stair, then the banana chunk. The next lap's mine start boards the cart right after.
-        public static readonly int[] WarmupLap = { 0, 0, 0, 0, 0, 0, RouteSurface.MineStair, 0 };
-        public const int PaceChunk = 1, LaneChunk = 2, JumpChunk = 3, CrouchChunk = 4, StairChunk = 6, BananaChunk = 7;
+        // Mine only: start, the pace chunk (cadence holds here), lane, jump, slide, the rescue spot, bananas, the pause spot.
+        public static readonly int[] BasicsLap = { 0, 0, 0, 0, 0, 0, 0, 0 };
+        public static readonly int[] ZooLap = { 12, 12, 12, 12 };
+        // Corridor, corridor, the stair chunk (type 7), corridor, corridor.
+        public static readonly int[] PrisonLap = { 4, 4, 7, 4, 4, 4 };
+        public const int PaceChunk = 1, LaneChunk = 2, JumpChunk = 3, CrouchChunk = 4, RescueChunk = 5, BananaChunk = 6, PauseChunk = 7;
+        public const int PrisonStairChunk = 2;
         public const float LaneBlockZ = 12f;
-        // The cadence and police lessons hold the runner here (route z) until they pass.
-        public static float PaceHoldZ => (PaceChunk + 1) * RouteSurface.Length - 4f;
+        // The stations hold the runner here until they pass: end of the pace chunk (basics), the zoo and the prison after the stair.
+        public static float HoldZ(TutorialChapter chapter, TutorialStep step)
+        {
+            if (chapter == TutorialChapter.Zoo) return 1 * RouteSurface.Length;
+            if (chapter == TutorialChapter.Prison) return (PrisonStairChunk + 2) * RouteSurface.Length;
+            return step == TutorialStep.Cadence ? (PaceChunk + 1) * RouteSurface.Length - 4f
+                : step == TutorialStep.Rescue ? RescueChunk * RouteSurface.Length + 14f
+                : step == TutorialStep.WarnRule ? (BananaChunk + 1) * RouteSurface.Length + 2f : (PauseChunk) * RouteSurface.Length + 10f;
+        }
         // Two peels in the blocked lane of the banana chunk: step aside for both.
         public static readonly float[] BananaZ = { 8f, 16f };
-        public static int ForkLapStart => WarmupLap.Length;
-        // The ordinary lap's first cart chunk (type 1 on every lap layout) keeps its second rail window broken on one side.
-        public static int RailChunk => ForkLapStart + 1;
-        public const int RailGapIndex = 1, RailMissingSide = -1;
-        public static MotionCommand RailLean => RailMissingSide < 0 ? MotionCommand.Right : MotionCommand.Left;
-        public static float RailGapZ => RailChunk * RouteSurface.Length + ObstacleLayout.RailGapZ[RailGapIndex];
+        public static int ForkLapStart => BasicsLap.Length;
         public static float ForkDecisionZ => ForkLapStart * RouteSurface.Length + CartFork.Decision;
-        public static RoutePlan Plan(RunConfig config) => RoutePlan.Tutorial(config, Seed, WarmupLap);
-        // The lessons of the current script (the short version leaves some out); every hazard when none is set.
+        public static int[] LapOf(TutorialChapter chapter) => chapter == TutorialChapter.Zoo ? ZooLap : chapter == TutorialChapter.Prison ? PrisonLap : BasicsLap;
+        public static RoutePlan Plan(RunConfig config, TutorialChapter chapter = TutorialChapter.Basics) => RoutePlan.Tutorial(config, Seed, LapOf(chapter));
+        // The lessons of the current script; every hazard when none is set.
         public static TutorialScript Script;
+        private static bool Basics => Script == null || Script.Chapter == TutorialChapter.Basics;
         private static bool On(TutorialStep step) => Script == null || Script.Has(step);
-        public static TutorialHazard HazardAt(int sequence) => sequence == LaneChunk && On(TutorialStep.Lane) ? TutorialHazard.LaneBlock
-            : sequence == JumpChunk && On(TutorialStep.Jump) ? TutorialHazard.JumpRow : sequence == CrouchChunk && On(TutorialStep.Crouch) ? TutorialHazard.CrouchRow
-            : sequence == StairChunk ? TutorialHazard.StairChunk : sequence == BananaChunk && On(TutorialStep.Banana) ? TutorialHazard.Bananas
-            : sequence == RailChunk && On(TutorialStep.Rail) ? TutorialHazard.RailGap : TutorialHazard.None;
-        // The short update tutorial has no stair lesson but still runs over the stair chunk: a knee miss there is not the
-        // current lesson's mistake (it used to restart the banana step) (QA 2026-11-25 M2).
-        public static bool ForgivesStairMiss(TutorialScript script, int sequence) => sequence == StairChunk && script != null && !script.Has(TutorialStep.HighKnee);
-        public static int ChunkOf(TutorialStep step) => step == TutorialStep.Cadence || step == TutorialStep.Police ? PaceChunk : step == TutorialStep.Lane ? LaneChunk
-            : step == TutorialStep.Jump ? JumpChunk : step == TutorialStep.Crouch ? CrouchChunk : step == TutorialStep.HighKnee ? StairChunk
-            : step == TutorialStep.Banana ? BananaChunk : step == TutorialStep.Rail ? RailChunk : -1;
+        public static TutorialHazard HazardAt(int sequence)
+        {
+            if (!Basics) return TutorialHazard.None;
+            return sequence == LaneChunk && On(TutorialStep.Lane) ? TutorialHazard.LaneBlock
+                : sequence == JumpChunk && On(TutorialStep.Jump) ? TutorialHazard.JumpRow : sequence == CrouchChunk && On(TutorialStep.Crouch) ? TutorialHazard.CrouchRow
+                : sequence == BananaChunk && On(TutorialStep.Banana) ? TutorialHazard.Bananas : TutorialHazard.None;
+        }
+        public static int ChunkOf(TutorialStep step) => step == TutorialStep.Cadence ? PaceChunk : step == TutorialStep.Lane ? LaneChunk
+            : step == TutorialStep.Jump ? JumpChunk : step == TutorialStep.Crouch ? CrouchChunk : step == TutorialStep.Rescue ? RescueChunk
+            : step == TutorialStep.Banana ? BananaChunk : step == TutorialStep.Stair ? PrisonStairChunk : -1;
         // Restart point after a mistake: past the previous lesson, well before this one.
         public static float RestartZ(TutorialStep step)
         {
             switch (step)
             {
-                case TutorialStep.Cadence: case TutorialStep.Police: return PaceChunk * RouteSurface.Length;
+                case TutorialStep.Cadence: return PaceChunk * RouteSurface.Length;
                 case TutorialStep.Lane: return LaneChunk * RouteSurface.Length - 4f;
                 case TutorialStep.Jump: return JumpChunk * RouteSurface.Length - 8f;
                 case TutorialStep.Crouch: return CrouchChunk * RouteSurface.Length - 8f;
-                // Early in the walking chunk after the slide lesson, with time to read the stair call.
-                case TutorialStep.HighKnee: return StairChunk * RouteSurface.Length - 20f;
+                case TutorialStep.Rescue: return RescueChunk * RouteSurface.Length;
                 case TutorialStep.Banana: return BananaChunk * RouteSurface.Length - 6f;
-                // On the cart, well before the broken rail; a fork retry starts past it so the rail is not judged again.
-                case TutorialStep.Rail: return RailChunk * RouteSurface.Length + 2f;
-                case TutorialStep.Fork: return RailGapZ + 4f;
+                // Early in the corridor before the stair, with time to read the call.
+                case TutorialStep.Stair: return PrisonStairChunk * RouteSurface.Length - 20f;
+                // On the cart, before the fork window.
+                case TutorialStep.Fork: return (ForkLapStart + 1) * RouteSurface.Length + 2f;
+                case TutorialStep.Sync: case TutorialStep.Verse: case TutorialStep.Rearview: return HoldZ(TutorialChapter.Zoo, step);
+                case TutorialStep.Hide: case TutorialStep.AlarmRule: return HoldZ(TutorialChapter.Prison, step);
                 default: return 2f;
             }
         }

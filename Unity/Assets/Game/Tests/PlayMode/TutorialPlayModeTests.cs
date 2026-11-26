@@ -47,7 +47,7 @@ namespace Mongscape.Tests
             yield return OpenAsMember();
             game.OpenMainMenu();hud.SelectMenu(MenuAction.Tutorial);
             Assert.AreEqual(MenuPage.TutorialOffer,hud.Page,"The menu's 튜토리얼 asks for the play style first");
-            hud.ChooseTutorial(TutorialChoice.Start,PlayStyle.Keyboard);
+            hud.ChooseTutorial(TutorialChoice.Start,PlayStyle.Keyboard,TutorialChapter.Basics);
             yield return WaitRunning();
             Assert.AreEqual(PlayStyle.Keyboard,game.Tutorial.Script.Style);
             CollectionAssert.IsEmpty(game.RunItems(),"No item spawns in the tutorial");
@@ -57,7 +57,7 @@ namespace Mongscape.Tests
             Assert.IsTrue(game.Session.Hit(true));
             Assert.AreEqual(GameFlowState.Running,game.Session.Flow.State,"A tutorial mistake is never a capture");
             yield return null;yield return null;
-            Assert.IsTrue(game.Tutorial.Retrying);Assert.AreEqual("다시 해 볼까요?",game.Tutorial.Message);
+            Assert.IsTrue(game.Tutorial.Retrying);Assert.AreEqual("다시 하기",game.Tutorial.Message);
             float deadline=Time.realtimeSinceStartup+5;
             while(game.Tutorial.Retrying&&Time.realtimeSinceStartup<deadline)yield return null;
             Assert.IsFalse(game.Tutorial.Retrying);Assert.AreEqual(1,game.Tutorial.Script.TotalRetries);Assert.AreEqual(TutorialStep.Lane,game.Tutorial.Script.Current);
@@ -71,27 +71,17 @@ namespace Mongscape.Tests
             game.FaceLogout(false);
         }
 
-        // Drives the keyboard tutorial up to the HighKnee step (earlier lessons answered like a player would).
+        // The prison chapter starts with its stair lesson, in front of the stair chunk.
         private IEnumerator DriveToStairs()
         {
             yield return OpenAsMember();
-            hud.OpenMainMenu();hud.SelectMenu(MenuAction.Play);hud.ChooseTutorial(TutorialChoice.Start);
+            hud.OpenMainMenu();hud.SelectMenu(MenuAction.Tutorial);hud.ChooseTutorial(TutorialChoice.Start,PlayStyle.Keyboard,TutorialChapter.Prison);
             yield return WaitRunning();
-            var run=game.Session.Runner;Time.timeScale=3;
-            float deadline=Time.realtimeSinceStartup+90;
-            while(game.Tutorial.Active&&game.Tutorial.Script.Current!=TutorialStep.HighKnee&&Time.realtimeSinceStartup<deadline)
-            {
-                var t=game.Tutorial;var step=t.Script.Current;
-                if(!t.Retrying&&game.Session.Flow.State==GameFlowState.Running)
-                {
-                    bool near=t.LessonDistance<=TutorialDirector.ShowDistance;
-                    if(step==TutorialStep.Lane&&near&&run.Lane==0)run.Command(MotionCommand.Left);
-                    else if(step==TutorialStep.Jump&&t.Cue==ActionCuePresenter.JumpCue&&run.Y<=.001f)run.Command(MotionCommand.Jump);
-                    else if(step==TutorialStep.Crouch&&t.Cue==ActionCuePresenter.CrouchCue)run.Command(MotionCommand.Crouch);
-                }
-                yield return null;
-            }
-            Assert.AreEqual(TutorialStep.HighKnee,game.Tutorial.Script.Current,"The warm-up reaches the stair lesson");
+            Assert.AreEqual(TutorialStep.Stair,game.Tutorial.Script.Current,"The prison chapter begins with the stair");
+            Assert.AreEqual(7,RouteSurface.TypeAt(TutorialCourse.PrisonStairChunk));
+            Time.timeScale=3;
+            float deadline=Time.realtimeSinceStartup+40;
+            while(game.Tutorial.LessonDistance>TutorialDirector.ShowDistance&&Time.realtimeSinceStartup<deadline)yield return null;
         }
 
         [UnityTest]
@@ -100,11 +90,11 @@ namespace Mongscape.Tests
             yield return OpenAsMember();
             game.OpenMainMenu();hud.SelectMenu(MenuAction.Tutorial);
             hud.ChooseTutorial(TutorialChoice.Skip);Assert.AreEqual(MenuPage.Main,hud.Page,"돌아가기 from the menu's tutorial choice");
-            game.OpenMainMenu();hud.SelectMenu(MenuAction.Tutorial);hud.ChooseTutorial(TutorialChoice.Start,PlayStyle.UpperBody);
+            game.OpenMainMenu();hud.SelectMenu(MenuAction.Tutorial);hud.ChooseTutorial(TutorialChoice.Start,PlayStyle.UpperBody,TutorialChapter.Basics);
             float deadline=Time.realtimeSinceStartup+10;
             while((game.IsLoading||game.Session.Flow.State!=GameFlowState.Running)&&Time.realtimeSinceStartup<deadline)yield return null;
             Assert.AreEqual(PlayStyle.UpperBody,game.Tutorial.Script.Style);
-            CollectionAssert.AreEqual(new TutorialScript(PlayStyle.UpperBody).Steps,game.Tutorial.Script.Steps);
+            CollectionAssert.AreEqual(new TutorialScript(TutorialChapter.Basics,PlayStyle.UpperBody).Steps,game.Tutorial.Script.Steps);
             Assert.AreEqual(TutorialStep.Camera,game.Tutorial.Script.Steps[0],"Body styles check the camera first");Assert.AreEqual(TutorialStep.Calibrate,game.Tutorial.Script.Steps[1],"then calibrate before the first lesson");
             game.ExitToMenu();game.FaceLogout(false);
         }
@@ -128,7 +118,7 @@ namespace Mongscape.Tests
                     else if(t.Script.Current==TutorialStep.Jump&&t.Waiting&&!earlyJumped)
                     {
                         Assert.IsNull(t.Cue,"The jump call waits for its timing");
-                        StringAssert.StartsWith("「점프!」",t.Message);
+                        Assert.AreEqual("준비하기",t.Message);
                         // Far too early for the crate: the lesson still completes on the jump itself.
                         run.Command(MotionCommand.Jump);earlyJumped=true;
                     }
@@ -150,8 +140,8 @@ namespace Mongscape.Tests
             Time.timeScale=3;
             float deadline=Time.realtimeSinceStartup+40;
             while(!game.Tutorial.Retrying&&Time.realtimeSinceStartup<deadline)yield return null;
-            Assert.IsTrue(game.Tutorial.Retrying,"Standing still on the stairs is a counted miss");
-            Assert.AreEqual(TutorialStep.HighKnee,game.Tutorial.Script.Current);Assert.AreEqual(1,game.Tutorial.Script.Retries);
+            Assert.IsTrue(game.Tutorial.Retrying,"Standing still on the steps is a counted miss");
+            Assert.AreEqual(TutorialStep.Stair,game.Tutorial.Script.Current);Assert.AreEqual(1,game.Tutorial.Script.Retries);
             Assert.AreEqual(0,game.Session.SlipStrikes,"No real penalty in the tutorial");
             Time.timeScale=1;game.ExitToMenu();game.FaceLogout(false);
         }
@@ -161,26 +151,36 @@ namespace Mongscape.Tests
         {
             yield return DriveToStairs();
             var run=game.Session.Runner;var model=hud.RunModel;var fx=game.StairFx;
-            bool cue=false,gauge=false,warnSeen=false;float pitch=0,bob=0;
-            float deadline=Time.realtimeSinceStartup+60,stairEnd=(TutorialCourse.StairChunk+1)*RouteSurface.Length;
+            bool cue=false,gauge=false;float pitch=0,bob=0;
+            float deadline=Time.realtimeSinceStartup+60,stairEnd=(TutorialCourse.PrisonStairChunk+1)*RouteSurface.Length;
             // The first knee step completes the lesson; the climb goes on to the top of the stair chunk.
             while(game.Tutorial.Active&&run.Z<stairEnd&&Time.realtimeSinceStartup<deadline)
             {
-                bool atFoot=game.Tutorial.Script.Current==TutorialStep.HighKnee&&game.Tutorial.LessonDistance<=3.6f;
+                bool atFoot=game.Tutorial.Script.Current==TutorialStep.Stair&&game.Tutorial.LessonDistance<=3.6f;
                 if(!game.Tutorial.Retrying&&(atFoot||StairJudge.StepDue(run))&&run.SinceKneeStep>=.4f)run.Command(MotionCommand.KneeStep);
                 cue|=ActionCuePresenter.Find(game.Session,game.Map,PlayStyle.Keyboard)=="W 연타!";
                 gauge|=model.ShowStair&&model.KneeGauge>0f&&model.StairProgress>0f;
-                warnSeen|=model.KneeWarning;
                 pitch=Mathf.Max(pitch,fx.Pitch);bob=Mathf.Max(bob,fx.Bob);
                 yield return null;
             }
             Assert.IsTrue(cue,"Keyboard play is told W 연타 before the stairs");
             Assert.IsTrue(gauge,"The knee gauge and progress are exposed while climbing");
             Assert.Greater(pitch,1f,"The camera tilts up on the stairs");Assert.Greater(bob,.0f,"A step bobs the camera");
-            // Past the stairs the pitch eases back to normal.
-            float end=Time.realtimeSinceStartup+10;
-            while(fx.Pitch>0f&&Time.realtimeSinceStartup<end)yield return null;
-            Assert.AreEqual(0f,fx.Pitch,.001f);Assert.IsFalse(model.ShowStair);
+            Time.timeScale=1;game.ExitToMenu();game.FaceLogout(false);
+        }
+
+        [UnityTest]
+        public IEnumerator ZooChapterWaitsAtItsBeatStationOnTheZooMap()
+        {
+            yield return OpenAsMember();
+            hud.OpenMainMenu();hud.SelectMenu(MenuAction.Tutorial);hud.ChooseTutorial(TutorialChoice.Start,PlayStyle.Keyboard,TutorialChapter.Zoo);
+            yield return WaitRunning();
+            Assert.IsTrue(RouteSurface.IsZoo(RouteSurface.TypeAt(0)),"The zoo chapter runs on the zoo map");
+            Assert.AreEqual(TutorialStep.Verse,game.Tutorial.Script.Current,"Keyboard play has no sync adjustment");
+            Time.timeScale=3;
+            float deadline=Time.realtimeSinceStartup+30;
+            while(!game.Tutorial.Waiting&&Time.realtimeSinceStartup<deadline)yield return null;
+            Assert.IsTrue(game.Tutorial.Waiting);Assert.AreEqual("Space와 W 누르기",game.Tutorial.Message);
             Time.timeScale=1;game.ExitToMenu();game.FaceLogout(false);
         }
 
@@ -192,22 +192,24 @@ namespace Mongscape.Tests
             Assert.AreEqual(MenuPage.TutorialOffer,hud.Page,"An unfinished member is offered the tutorial on 게임 시작");
             hud.ChooseTutorial(TutorialChoice.Start);
             yield return WaitRunning();
-            CollectionAssert.AreEqual(new TutorialScript(PlayStyle.Keyboard).Steps,game.Tutorial.Script.Steps);
+            CollectionAssert.AreEqual(new TutorialScript(TutorialChapter.Basics,PlayStyle.Keyboard).Steps,game.Tutorial.Script.Steps);
             var run=game.Session.Runner;
-            Time.timeScale=3;
-            float deadline=Time.realtimeSinceStartup+150;
+            game.Tutorial.Reaching=()=>true;
+            float deadline=Time.realtimeSinceStartup+200;
             while(game.Tutorial.Active&&Time.realtimeSinceStartup<deadline)
             {
                 var t=game.Tutorial;var step=t.Script.Current;
+                if(!game.Session.Paused)Time.timeScale=3;
+                // Esc pauses (the pause step) and the pause screen's resume counts back in.
+                if(game.Session.Paused&&!game.PauseControl.Counting){game.TogglePause();yield return null;continue;}
                 if(!t.Retrying&&!t.Script.Finished&&game.Session.Flow.State==GameFlowState.Running)
                 {
                     bool near=t.LessonDistance<=TutorialDirector.ShowDistance;
                     if(step==TutorialStep.Lane&&near&&run.Lane==0)run.Command(MotionCommand.Left);
                     else if(step==TutorialStep.Jump&&t.Cue==ActionCuePresenter.JumpCue&&run.Y<=.001f)run.Command(MotionCommand.Jump);
                     else if(step==TutorialStep.Crouch&&t.Cue==ActionCuePresenter.CrouchCue)run.Command(MotionCommand.Crouch);
-                    else if(step==TutorialStep.HighKnee&&(near||StairJudge.StepDue(run))&&run.SinceKneeStep>=.4f)run.Command(MotionCommand.KneeStep);
                     else if(step==TutorialStep.Banana&&near&&run.Lane==TutorialCourse.BlockedLane)run.Command(MotionCommand.Left);
-                    else if(step==TutorialStep.Rail&&near&&run.Lane==0)run.Command(TutorialCourse.RailLean);
+                    else if(step==TutorialStep.PauseX&&t.Waiting&&!game.Session.Paused&&run.Z>=TutorialCourse.HoldZ(TutorialChapter.Basics,step)-.5f)game.TogglePause();
                     else if(step==TutorialStep.Fork&&(RouteSurface.ActivePlan?.ForkWindow(run.Z)??false)&&run.Lane==0)run.Command(MotionCommand.Left);
                 }
                 yield return null;

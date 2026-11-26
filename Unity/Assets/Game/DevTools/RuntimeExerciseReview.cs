@@ -191,25 +191,23 @@ namespace Mongscape.DevTools
             hud.SetCadenceSpeed(true);
             game.ExitToMenu(); yield return new WaitForSecondsRealtime(.5f);
         }
-        // Stage 6: the new tutorial (camera check, pace gauge with the demo window, police, a lesson with the demo, the
+        // Stage 6: the new tutorial (camera check, pace gauge with the demo window, a lesson with the demo, the
         // follow-along view after three misses, the banana lesson). The camera inputs are synthetic.
         private IEnumerator Stage6()
         {
             game.ExitToMenu(); yield return new WaitForSecondsRealtime(.5f);
-            var t = game.Tutorial; bool framed = false; float spm = 0, pressure = 0;
+            var t = game.Tutorial; bool framed = false; float spm = 0;
             ((IHudData)game).PreviewStyle(PlayStyle.FullBody);
-            game.StartTutorial();
+            game.StartTutorial(TutorialChapter.Basics);
             float wait = Time.realtimeSinceStartup;
             while (game.IsLoading || game.IsRevealing || game.Session.Flow.State != GameFlowState.Running) { if (Time.realtimeSinceStartup - wait > 60) { Fail("tutorial did not start"); yield break; } yield return null; }
-            t.NoCamera = () => false; t.Framed = () => framed; t.StepsPerMinute = () => spm; t.PaceScale = () => Mathf.Lerp(.7f, 1.3f, Mathf.InverseLerp(80, 160, spm)); t.PacePressure = () => pressure; t.Tracking = () => true;
+            t.NoCamera = () => false; t.Framed = () => framed; t.StepsPerMinute = () => spm; t.PaceScale = () => Mathf.Lerp(.7f, 1.3f, Mathf.InverseLerp(80, 160, spm));
             yield return Until(() => t.Script.Current == TutorialStep.Camera, 5);
             yield return Shot("S6_01_Tutorial_CameraCheck");
             framed = true; yield return Until(() => t.Script.Current != TutorialStep.Camera, 6);
             yield return Until(() => t.Script.Current == TutorialStep.Cadence, 10);
             spm = 118; yield return new WaitForSecondsRealtime(1.5f); yield return Shot("S6_02_Tutorial_Cadence_Gauge_Demo");
-            yield return Until(() => t.Script.Current == TutorialStep.Police, 12);
-            spm = 0; pressure = .5f; yield return new WaitForSecondsRealtime(.8f); yield return Shot("S6_03_Tutorial_Police");
-            pressure = 0; spm = 120; yield return Until(() => t.Script.Current == TutorialStep.Lane, 6);
+            spm = 120; yield return Until(() => t.Script.Current == TutorialStep.Lane, 6);
             // Jump: skip ahead to its lesson; three misses grow the demo into "따라 하기".
             while (t.Script.Current != TutorialStep.Jump) t.Script.Pass();
             game.Session.Runner.SetStartZ(TutorialCourse.RestartZ(TutorialStep.Jump) + 2); game.Map.Tick(game.Session.Runner.Z);

@@ -12,7 +12,6 @@ namespace Mongscape.Presentation
     internal sealed class CalibrationPanel
     {
         public const float DoneSeconds = 1f;
-        public const string TutorialLine = "보정: 내 키와 서 있는 자세를 재는 단계입니다";
         readonly OverlaySkin skin;
         readonly HudSkin hudSkin;
         float doneAt = -1;
@@ -81,7 +80,6 @@ namespace Mongscape.Presentation
             Dim();
             skin.BorderBox(new Rect(130, 24, 1020, 672), Palette.A(Palette.Panel, .97f), Palette.Gold, 2);
             Body(data, done, new Rect(150, 34, 980, 70), new Rect(150, 104, 980, 32), new Rect(170, 146, 680, 510), new Vector2(990, 340), 100, 40);
-            if (data.TutorialRun) skin.Text(new Rect(150, 658, 980, 30), TutorialLine, 20, Palette.Cream, TextAnchor.MiddleCenter, false, true);
         }
 
         private void Dim()

@@ -26,8 +26,10 @@ namespace Mongscape.Presentation
         public Action Quit;
         public Func<bool> PoliceAlert;
         // Tutorial: starts it, and decides (and remembers) whether "게임 시작" offers it first.
-        public Action StartTutorial;
-        public Func<bool> OfferTutorial;
+        public Action<TutorialChapter, bool> StartTutorial;
+        public Func<TutorialOffer> OfferTutorial;
+        // Finished chapters of the current player (a bit each), for the chapter cards.
+        public Func<int> TutorialMask;
         private TutorialOfferScreen tutorialOffer;
         private TutorialOfferScreen.Mode offerMode;
         private IdentityScreen identity;
@@ -89,6 +91,7 @@ namespace Mongscape.Presentation
             Page = page;
             if (page == MenuPage.Setup) setup.Open(Data);
             else if (page == MenuPage.Profile) { Profile.Open(Data, Account); profile.Open(); }
+            else if (page == MenuPage.TutorialOffer) tutorialOffer.Open();
             else if (page == MenuPage.Ranking) board.OpenBoard(Data, Account);
             else if (page == MenuPage.Login) Account?.CheckServer();
             else if (page == MenuPage.SignUp) { SignUp.Open(Account); signUp.Open(); }
@@ -106,13 +109,15 @@ namespace Mongscape.Presentation
         // Sign-up capture: the new member is signed in and is offered the tutorial.
         public void EnrollFace() => SignUp.Capture(ok => { if (ok && Page == MenuPage.SignUp) { OfferTutorial?.Invoke(); ShowTutorialOffer(true); } });
         public void ShowTutorialOffer(bool afterSignUp) { offerMode = afterSignUp ? TutorialOfferScreen.Mode.AfterSignUp : TutorialOfferScreen.Mode.BeforePlay; ShowPage(MenuPage.TutorialOffer); }
+        // Members of the earlier tutorial: the short basics chapter, offered once.
+        public void ShowTutorialShort() { offerMode = TutorialOfferScreen.Mode.Short; ShowPage(MenuPage.TutorialOffer); }
         // The main menu's "튜토리얼" opens the same choice of play style; skipping returns to the menu.
         public void ShowTutorialChoice() { offerMode = TutorialOfferScreen.Mode.FromMenu; ShowPage(MenuPage.TutorialOffer); }
         // Starting runs it in the chosen style (or the player's current one); skipping goes on to where the player was heading.
-        public void ChooseTutorial(TutorialChoice choice, PlayStyle? style = null)
+        public void ChooseTutorial(TutorialChoice choice, PlayStyle? style = null, TutorialChapter chapter = TutorialChapter.Basics)
         {
-            if (choice == TutorialChoice.Start) { if (style.HasValue) Data?.PreviewStyle(style.Value); StartTutorial?.Invoke(); }
-            else if (choice == TutorialChoice.Skip) { if (offerMode == TutorialOfferScreen.Mode.BeforePlay) ShowPage(MenuPage.Setup); else OpenMainMenu(); }
+            if (choice == TutorialChoice.Start) { if (style.HasValue) Data?.PreviewStyle(style.Value); StartTutorial?.Invoke(chapter, offerMode == TutorialOfferScreen.Mode.Short); }
+            else if (choice == TutorialChoice.Skip) { if (offerMode == TutorialOfferScreen.Mode.BeforePlay || offerMode == TutorialOfferScreen.Mode.Short) ShowPage(MenuPage.Setup); else OpenMainMenu(); }
         }
         public void ChooseLogin(LoginAction action)
         {
@@ -126,7 +131,7 @@ namespace Mongscape.Presentation
         // Main menu actions. "게임 시작" goes to the run setup, after a one-time tutorial offer; the login entry signs a member out first.
         public void SelectMenu(MenuAction action)
         {
-            if (action == MenuAction.Play) { if (OfferTutorial?.Invoke() ?? false) ShowTutorialOffer(false); else ShowPage(MenuPage.Setup); }
+            if (action == MenuAction.Play) { var offer = OfferTutorial?.Invoke() ?? TutorialOffer.None; if (offer == TutorialOffer.Full) ShowTutorialOffer(false); else if (offer == TutorialOffer.Short) ShowTutorialShort(); else ShowPage(MenuPage.Setup); }
             else if (action == MenuAction.Tutorial) ShowTutorialChoice();
             else if (action == MenuAction.Ranking) ShowPage(MenuPage.Ranking);
             else if (action == MenuAction.Traits) OpenTraits?.Invoke();
@@ -262,7 +267,7 @@ namespace Mongscape.Presentation
                     if (Account != null) identity.Draw(Data, Account, "얼굴 로그인", "정면을 보고 틀 안에 얼굴을 맞추면 잠시 뒤 자동으로 로그인됩니다.\n가입한 얼굴이면 이름 입력 없이 로그인됩니다.", "얼굴 로그인", LoginWithFace, OpenLogin);
                     break;
                 case MenuPage.Main: SelectMenu(menu.Draw(Data, TitleLogo)); break;
-                case MenuPage.TutorialOffer: { var choice = tutorialOffer.Draw(offerMode, Data == null || Data.BodyStylesAllowed, Data?.Player?.Style ?? PlayStyle.Keyboard, out var style); ChooseTutorial(choice, style); break; }
+                case MenuPage.TutorialOffer: { var choice = tutorialOffer.Draw(offerMode, TutorialMask?.Invoke() ?? 0, Data == null || Data.BodyStylesAllowed, Data?.Player?.Style ?? PlayStyle.Keyboard, out var style, out var chapter); ChooseTutorial(choice, style, chapter); break; }
                 case MenuPage.Credits: if (credits.Draw()) CloseCredits(); break;
             }
         }

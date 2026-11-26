@@ -21,10 +21,7 @@ namespace Mongscape.Presentation.Map
                 foreach (float z in TutorialCourse.BananaZ) bananas.PlaceBanana(chunk, TutorialCourse.BlockedLane, chunk.Entry.position.z + z);
             else if (hazard == TutorialHazard.JumpRow) Row(chunk.ExerciseObstacles, 0);
             else if (hazard == TutorialHazard.CrouchRow) Row(chunk.ExerciseObstacles, 1);
-            // StairChunk: the stair chunk itself is the lesson (the stair judge); it has no hazard to switch on.
-            else if (hazard == TutorialHazard.RailGap && chunk.RailGaps != null && chunk.RailGaps.Length > TutorialCourse.RailGapIndex
-                && chunk.RailGaps[TutorialCourse.RailGapIndex] != null)
-                chunk.RailGaps[TutorialCourse.RailGapIndex].Configure(TutorialCourse.RailMissingSide);
+            // The prison stair chunk itself is the lesson (the stair judge); it has no hazard to switch on.
         }
         public void Release(MongscapeMapChunk chunk) => inner?.Release(chunk);
 

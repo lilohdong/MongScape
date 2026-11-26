@@ -7,7 +7,7 @@ namespace Mongscape.Tests
     // clearly crosses them while a standing body does not.
     public sealed class JointDemoTests
     {
-        static readonly TutorialStep[] Steps = { TutorialStep.Jump, TutorialStep.Crouch, TutorialStep.HighKnee, TutorialStep.Lane };
+        static readonly TutorialStep[] Steps = { TutorialStep.Jump, TutorialStep.Crouch, TutorialStep.Stair, TutorialStep.Lane };
 
         [Test] public void TheReferenceCrossesEachLineAndStandingDoesNot([Values(PlayStyle.FullBody, PlayStyle.UpperBody)] PlayStyle style)
         {
@@ -29,13 +29,13 @@ namespace Mongscape.Tests
             var tuning = new MotionTuning();
             Assert.AreEqual(.55f - tuning.JumpRise * .25f, JointDemo.Target(TutorialStep.Jump, b, tuning).At, 1e-6);
             Assert.AreEqual(.3f + tuning.CrouchDrop * .25f, JointDemo.Target(TutorialStep.Crouch, b, tuning).At, 1e-6);
-            Assert.AreEqual(.55f + .18f - tuning.HighKneeLift * .25f, JointDemo.Target(TutorialStep.HighKnee, b, tuning).At, 1e-6);
+            Assert.AreEqual(.55f + .18f - tuning.HighKneeLift * .25f, JointDemo.Target(TutorialStep.Stair, b, tuning).At, 1e-6);
             var lane = JointDemo.Target(TutorialStep.Lane, b, tuning);
             Assert.IsTrue(lane.Vertical); Assert.AreEqual(.5f + tuning.LaneEnter * .25f / (4f / 3f), lane.Other, 1e-6, "Sideways lines in picture-width units");
             Assert.IsFalse(JointDemo.Target(TutorialStep.Banana, b, tuning).Shown); Assert.IsFalse(JointDemo.Compares(TutorialStep.Cadence));
             Assert.IsFalse(JointDemo.Target(TutorialStep.Jump, default, tuning).Shown, "No calibration, no line");
             var noKnees = new PoseBaseline(PlayStyle.FullBody, .5f, .3f, .55f, .25f, float.NaN, .18f, 1);
-            Assert.IsFalse(JointDemo.Target(TutorialStep.HighKnee, noKnees, tuning).Shown);
+            Assert.IsFalse(JointDemo.Target(TutorialStep.Stair, noKnees, tuning).Shown);
             Assert.IsFalse(JointDemo.Crossed(TutorialStep.Jump, b, tuning, null));
         }
     }

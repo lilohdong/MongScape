@@ -78,6 +78,23 @@ namespace Mongscape.Infrastructure
             if(migrate&&file.Entries.Count>0)SaveRecords();
         }
         private void SaveRecords() => Write(RecordsPath, new RecordsFile { Entries = new List<RankingEntry>(Board.All), Stats = Stats, Exercise = new List<ExerciseDay>(Exercise.Days) });
+        // Finished tutorial chapters per owner on this PC (the account id of a member, "guest" for guests).
+        [Serializable] private sealed class TutorialFile { public List<TutorialMark> Marks = new List<TutorialMark>(); }
+        private string TutorialPath => Path.Combine(folder, "tutorial.json");
+        public int TutorialChapters(string owner)
+        {
+            var file = Read<TutorialFile>(TutorialPath);
+            if (file?.Marks != null) foreach (var mark in file.Marks) if (mark.Owner == owner) return mark.Chapters;
+            return 0;
+        }
+        public void MarkTutorial(string owner, TutorialChapter chapter)
+        {
+            var file = Read<TutorialFile>(TutorialPath) ?? new TutorialFile();
+            file.Marks ??= new List<TutorialMark>();
+            foreach (var mark in file.Marks) if (mark.Owner == owner) { mark.Chapters = TutorialProgress.Complete(mark.Chapters, chapter); Write(TutorialPath, file); return; }
+            file.Marks.Add(new TutorialMark { Owner = owner, Chapters = TutorialProgress.Complete(0, chapter) });
+            Write(TutorialPath, file);
+        }
         private static T Read<T>(string path) where T : class
         {
             try { return File.Exists(path) ? JsonUtility.FromJson<T>(File.ReadAllText(path)) : null; }
