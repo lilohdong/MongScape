@@ -119,9 +119,11 @@ namespace Mongscape.Tests
                     game.Session.Runner.Command(MotionCommand.Jump);game.Session.Runner.Tick(.2f,0);
                     foreach(var hazard in animal.Hazards){hazard.ResetPass();hazard.Evaluate(game.Session,z-1);}
                     Assert.AreEqual(GameFlowState.Running,game.Session.Flow.State,"A jump must pass the animal row");
-                    game.Session.Reset();game.Session.Runner.SetStartZ(z);
+                    game.Session.Reset();game.Session.Runner.SetStartZ(z);game.Session.Sections.Update(RouteSurface.ActivePlan,z);
                     foreach(var hazard in animal.Hazards){hazard.ResetPass();hazard.Evaluate(game.Session,z-1);}
-                    Assert.AreEqual(GameFlowState.Caught,game.Session.Flow.State,"Standing must fail the animal row");
+            // Plan 6-8, zoo: a hit trips the runner and brings the lion closer (the gauge), it is no warning and no capture.
+            Assert.AreEqual(GameFlowState.Running,game.Session.Flow.State,"Standing hits the animal row");Assert.AreEqual(0,game.Session.Warnings);
+            Assert.Greater(game.Session.ChaserGauge,0f);Assert.IsTrue(game.Session.Runner.Slowing);
                     break;
                 }
                 if(animals>0)break;
@@ -145,10 +147,12 @@ namespace Mongscape.Tests
             game.Session.Runner.Command(MotionCommand.Crouch);game.Session.Runner.Tick(.1f,0);
             foreach(var hazard in row){hazard.ResetPass();hazard.Evaluate(game.Session,z-1);}
             Assert.AreEqual(GameFlowState.Running,game.Session.Flow.State,"A crouch must pass the log");
-            game.Session.Reset();game.Session.Runner.SetStartZ(z);
+            game.Session.Reset();game.Session.Runner.SetStartZ(z);game.Session.Sections.Update(RouteSurface.ActivePlan,z);
             game.Session.Runner.Command(MotionCommand.Jump);game.Session.Runner.Tick(.2f,0);
             foreach(var hazard in row){hazard.ResetPass();hazard.Evaluate(game.Session,z-1);}
-            Assert.AreEqual(GameFlowState.Caught,game.Session.Flow.State,"A jump must not pass the log");
+            // Plan 6-8, zoo: a hit trips the runner and brings the lion closer (the gauge), it is no warning and no capture.
+            Assert.AreEqual(GameFlowState.Running,game.Session.Flow.State,"A jump hits the log");Assert.AreEqual(0,game.Session.Warnings);
+            Assert.Greater(game.Session.ChaserGauge,0f);Assert.IsTrue(game.Session.Runner.Slowing);
         }
         private static int ZooBranch(GameBootstrap game)
         {

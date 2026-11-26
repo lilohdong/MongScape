@@ -29,7 +29,10 @@ namespace Mongscape.Tests
             Assert.Greater(game.Session.Runner.Z,beforeReveal,"Gameplay resumes after the real scene is revealed");
             game.TogglePause();float z=game.Session.Runner.Z;game.Session.Tick(1);
             Assert.IsTrue(game.Session.Paused);Assert.AreEqual(z,game.Session.Runner.Z);Assert.AreEqual(0,game.Session.Workout.EstimatedKcal);
-            game.TogglePause();Assert.IsFalse(game.Session.Paused);Assert.AreEqual(1,Time.timeScale);
+            // Resuming counts 3, 2, 1 first (plan 6-7a): still paused while counting, then play goes on.
+            game.TogglePause();Assert.IsTrue(game.PauseControl.Counting);Assert.IsTrue(game.Session.Paused);Assert.AreEqual(3,game.PauseControl.CountdownNumber);
+            game.PauseControl.Tick(game.Session,3.1,false,false,false,false);
+            Assert.IsFalse(game.Session.Paused);Assert.AreEqual(1,Time.timeScale);
         }
         [UnityTest] public IEnumerator PrisonDoorsCloseToFloorAndLeaveOtherLanesOpen()
         {

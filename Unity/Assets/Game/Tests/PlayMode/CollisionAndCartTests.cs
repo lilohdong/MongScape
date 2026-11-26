@@ -37,7 +37,10 @@ namespace Mongscape.Tests
             Assert.AreEqual(Mongscape.Domain.ObstacleLayout.OpeningZ,mine.transform.InverseTransformPoint(row.transform.position).z,.05f,"Jump or duck, the opening row stands at the fixed spot");
             game.Session.Runner.SetStartZ(row.transform.position.z);
             foreach(var obstacle in mine.ExerciseObstacles)if(obstacle.FullExerciseRow)obstacle.Evaluate(game.Session,game.Session.Runner.Z-1);
-            Assert.AreEqual(GameFlowState.Caught,game.Session.Flow.State);
+            // Plan 6-8: a collision in the mine is one warning and a fall, not the end of the run.
+            // Between two lanes both pieces of the row are touched (each counts today), so at least one warning.
+            Assert.GreaterOrEqual(game.Session.Warnings,1,"The row was hit from between the lanes");
+            Assert.AreEqual(GameFlowState.Running,game.Session.Flow.State,"Caught only after the pursuit");Assert.IsTrue(game.Session.Runner.Slowing);
         }
         [UnityTest] public IEnumerator DedicatedCartTrackHasOnlyRailHazardsAndCorrectLeanPassesBothSides()
         {
@@ -217,7 +220,11 @@ namespace Mongscape.Tests
             var hazard=new GameObject("Fatal swept contact");var obstacle=hazard.AddComponent<ObstacleController>();obstacle.Kind=ObstacleKind.Barrier;
             RouteSurface.Sample(game.Session.Runner.Z,out float offset,out _);
             hazard.transform.position=new Vector3(game.Session.Runner.X+offset,0,game.Session.Runner.Z);
-            obstacle.Evaluate(game.Session,game.Session.Runner.Z-1);Assert.AreEqual(GameFlowState.Caught,game.Session.Flow.State);
+            // Plan 6-8: the first contact is a warning, the second starts the police pursuit, which catches after CatchSeconds.
+            obstacle.Evaluate(game.Session,game.Session.Runner.Z-1);Assert.AreEqual(1,game.Session.Warnings);Assert.AreEqual(GameFlowState.Running,game.Session.Flow.State);
+            obstacle.ResetPass();obstacle.Evaluate(game.Session,game.Session.Runner.Z-1);Assert.AreEqual(2,game.Session.Warnings);Assert.IsTrue(game.Session.SlipPursuit);
+            for(int i=0;i<20&&game.Session.Flow.State==GameFlowState.Running;i++)game.Session.Tick(.1f);
+            Assert.AreEqual(GameFlowState.Caught,game.Session.Flow.State);
             foreach(var actor in Object.FindObjectsByType<RunnerView>(FindObjectsSortMode.None))if(actor!=game.Hero)
             {
                 Assert.Greater(Vector3.Dot(actor.transform.forward,(game.Hero.transform.position-actor.transform.position).normalized),.9f,"Caught police must face the player");
