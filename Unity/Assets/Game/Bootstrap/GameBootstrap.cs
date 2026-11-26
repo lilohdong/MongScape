@@ -10,7 +10,7 @@ using UnityEngine.Timeline;
 
 namespace Mongscape.Bootstrap
 {
-    public sealed class GameBootstrap : MonoBehaviour, IHudData, ISettingsHost, IIdentityData
+    public sealed partial class GameBootstrap : MonoBehaviour, IHudData, ISettingsHost, IIdentityData
     {
         public GameSettings Settings;
         public MongscapeMapChunk[] ChunkPrefabs;
@@ -47,48 +47,26 @@ namespace Mongscape.Bootstrap
         // Cadence -> runner speed and police (exercise plan 4); on for camera runs with the setup option on.
         private readonly CadencePace pace = new CadencePace();
         private bool cadenceRun;
-        // The running ranking strip (exercise plan 10-2): this week's board of the play style, loaded once per run.
-        private readonly RankRace race = new RankRace();
         // Big movements (exercise plan 6).
         private int seenBigJumps, seenBigKnees, seenBigLanes;
         private bool wasDeep;
         private double bigUntil = -10, deepSince = -10;
         // Exercise plan 8: active seconds per course this run (for the weekly balance) and the streak coins of the last run.
         private readonly double[] kindSeconds = new double[4];
-        private int lastStreakCoins;
-        private int raceTicket;
-        // The account (member or guest) is the only source of the current player.
-        public AccountSession Account { get; } = new AccountSession();
+        // Account and face login (AccountFlow); the account is the only source of the current player.
+        public AccountFlow Accounts { get; private set; }
+        public AccountSession Account => Accounts?.Account;
         // Run settings of the current or next run, taken from the account.
         // Runs started from the setup screen are recorded on the leaderboard.
         private PlayerProfile player = new PlayerProfile();
-        private IAccountGateway gateway;
-        private AccountRunUploader runs;
-        private Texture2D portrait;
-        private string shownAccount = "";
-        // Account server state for the login gate, and the face capture (the webcam, or a fake in tests).
-        private string serverProblem = "";
-        private int serverTicket;
-        private bool serverChecking;
-        private System.Action<System.Action<string[]>> captureFaces;
-        // A member call answered 401: that token expired on the server. The member is signed out here (no /logout) and the
-        // login gate opens with the notice; during a run (and its result) this waits until the menu is back.
-        public const string ExpiredNotice = "로그인이 만료되었어요. 다시 로그인해 주세요.";
-        private string expiredToken, loginNotice = "";
-        private bool playerRun, bannerSounded, goSounded, lastNewBest;
-        private RankingEntry lastEntry;
-        private int lastBestScore = -1;
-        // The member's /stats (best score per play style) and the totals read after the last run was saved.
-        private StatsReply memberStats, lastStats;
-        private string memberStatsId = "";
-        private bool lastStatsFailed;
-        private int lastTodayRank;
+        public const string ExpiredNotice = AccountFlow.ExpiredNotice;
+        private bool playerRun, bannerSounded, goSounded;
+        // The end of a run (ranking, exercise record, member save) and the running ranking strip.
+        public RunResults Results { get; private set; }
         private UserSettings userSettings, settingsDefaults;
         private GraphicsSettingsApplier graphics;
         private SettingsWindow settingsWindow;
         private PerformanceOverlay overlay;
-        private int lastRank;
-        private LocalProfileClient identity;
         private FaceAvatarView faceAvatar;
         public PoliceCaptureSequence Capture { get; private set; }
         public PolicePursuitCue PursuitCue { get; private set; }
@@ -117,15 +95,16 @@ namespace Mongscape.Bootstrap
             keyboard = new KeyboardGameInput(); poseInput = new PoseGameInput(); router = new InputRouter(Session, keyboard, poseInput);
             Pose = new PoseTracker(poseInput, Settings != null ? Settings.Camera : null, Settings != null ? Settings.Motion : null, () => Session.Runner.Lane, () => Session.Runner.Riding&&!(RouteSurface.ActivePlan?.ForkWindow(Session.Runner.Z)??false), () => Session.Runner.Riding, OnOrBeforeStairs);
             Store = new PlayerProgressStore(DataRoot());
+            Accounts = new AccountFlow(gameObject.AddComponent<LocalProfileClient>(), () => Pose.CameraTexture, () => Store,
+                () => Session.Flow.State == GameFlowState.TitleIdle && !hud.Loading, ShowExpiredGate);
+            Results = new RunResults(Accounts, () => Store);
             player = Account.Profile.Clone();
             Hero = CreateActor("CHR_Monkey_Prisoner", MonkeyPrefab);
             guard = CreateActor("CHR_Police_Officer", PolicePrefab);
             Capture=gameObject.AddComponent<PoliceCaptureSequence>();Capture.Configure(Hero,guard);
             PursuitCue=gameObject.AddComponent<PolicePursuitCue>();PursuitCue.Configure(Session);
-            identity=gameObject.AddComponent<LocalProfileClient>(); faceAvatar=Hero.gameObject.AddComponent<FaceAvatarView>();
-            gateway=new ExpiryWatchingGateway(identity,SessionExpired); runs=new AccountRunUploader(Account,gateway);
-            captureFaces=done=>identity.CaptureFaces(Pose.CameraTexture,done);
-            Account.Changed+=AccountChanged;
+            faceAvatar=Hero.gameObject.AddComponent<FaceAvatarView>();
+            Accounts.PlayerSwitched+=PlayerSwitched;
             gameObject.AddComponent<CartRideView>().Configure(Session,Hero,CartRidePrefab);
             gameObject.AddComponent<PowerUpAuraView>().Configure(Session,Hero);
             OutputCamera.GetComponent<CinematicFocus>()?.Configure(Session,Hero);
@@ -247,7 +226,7 @@ namespace Mongscape.Bootstrap
         public void OpenLogin()
         {
             if(Session.Flow.State!=GameFlowState.TitleIdle||hud.Loading) return;
-            loginNotice=""; hud.OpenLogin();
+            Accounts.ClearLoginNotice(); hud.OpenLogin();
         }
         // Straight to the run setup (tests).
         public void OpenStartSetup()
@@ -260,7 +239,7 @@ namespace Mongscape.Bootstrap
         {
             if(Session.Flow.State!=GameFlowState.TitleIdle||hud.Loading||!Session.Workout.SetWeight(weight)) return;
             menuCamera=false;
-            playerRun=false; cadenceRun=false; race.Clear(); raceTicket++; Session.Workout.Met=PlayStyleInfo.Met(player.Style);Session.Workout.StyleScale=IntensityMet.Scale(player.Style);
+            playerRun=false; cadenceRun=false; Results.ClearRace(); Session.Workout.Met=PlayStyleInfo.Met(player.Style);Session.Workout.StyleScale=IntensityMet.Scale(player.Style);
             Session.Workout.CadenceCounts=true;
             StartCoroutine(PrepareRun(723));
         }
@@ -273,16 +252,16 @@ namespace Mongscape.Bootstrap
             if(!Session.Workout.SetWeight(profile.Weight)) Session.Workout.SetWeight("");
             // No camera: a body style falls back to the keyboard for this run, and the saved default is left alone.
             if(!PlayableStyle(profile.Style)){profile.Style=PlayStyle.Keyboard;}
-            else if(profile.Style!=Account.Settings.Style){var saved=Account.Settings;saved.Style=profile.Style;SaveSettings(saved);}
+            else if(profile.Style!=Account.Settings.Style){var saved=Account.Settings;saved.Style=profile.Style;Accounts.SaveSettings(saved);}
             player=profile; playerRun=true; KeyboardGameInput.SetTextInput(false);
             // The best to beat is read before the run (and before its save).
-            RefreshMemberStats();
+            Accounts.RefreshMemberStats();
             Session.Workout.Met=PlayStyleInfo.Met(profile.Style);Session.Workout.StyleScale=IntensityMet.Scale(profile.Style);
             Session.Workout.SetGoal(profile.CalorieGoal);
             cadenceRun = PlayStyleInfo.UsesCamera(profile.Style) && userSettings.CadenceSpeed;
             // Cadence off: stepping in place earns no calories, only jumps, crouches, knee raises and lane changes do.
             Session.Workout.CadenceCounts = userSettings.CadenceSpeed;
-            LoadRace(profile.Style);
+            Results.LoadRace(profile.Style, userSettings.RankStripMine);
             menuCamera=false; Pose.SetStyle(profile.Style);
             StartCoroutine(PrepareRun(Settings != null && Settings.Run.RandomizeLayout ? Random.Range(1, int.MaxValue) : 723));
         }
@@ -295,7 +274,7 @@ namespace Mongscape.Bootstrap
             if(!PlayableStyle(player.Style)) player.Style=PlayStyle.Keyboard;
             Session.Workout.SetWeight(""); Session.Workout.Met=PlayStyleInfo.Met(player.Style);Session.Workout.StyleScale=IntensityMet.Scale(player.Style);
             menuCamera=false; Pose.SetStyle(player.Style);
-            cadenceRun=PlayStyleInfo.UsesCamera(player.Style)&&userSettings.CadenceSpeed; race.Clear(); raceTicket++; Session.Workout.CadenceCounts=userSettings.CadenceSpeed;
+            cadenceRun=PlayStyleInfo.UsesCamera(player.Style)&&userSettings.CadenceSpeed; Results.ClearRace(); Session.Workout.CadenceCounts=userSettings.CadenceSpeed;
             Session.IsTutorial=true; Tutorial.Begin(player.Style,Session.Config.ExtendedRoutes,userSettings.CadenceSpeed,tutorialShort); tutorialShort=false;
             StartCoroutine(PrepareRun(TutorialCourse.Seed));
         }
@@ -321,11 +300,7 @@ namespace Mongscape.Bootstrap
         // A member's profile remembers the finished tutorial; then back to the main menu.
         private void FinishTutorial()
         {
-            if(Account.IsMember)
-            {
-                string id=Account.Id; Account.SetTutorialDone(true);
-                gateway.UpdateProfile(Account.Token,new AccountProfileUpdate{TutorialDone=true},reply=>{ if(reply!=null&&reply.HasProfile&&reply.profile.id==id&&reply.profile.tutorial_done) Account.Apply(reply.profile); });
-            }
+            Accounts.MarkTutorialDone();
             ExitToMenu();
         }
         private IEnumerator PrepareRun(int seed)
@@ -390,7 +365,7 @@ namespace Mongscape.Bootstrap
             // reaching for a button never stands still long enough to finish it (the pointer checks pose freshness itself).
             GesturePointer.Feed(Pose.LastFrame,menu&&GesturePointer.Enabled&&Pose.CameraLive&&!hud.CalibrationOpen,now);
             OperatorKeys();
-            if (ExpiryPending && Session.Flow.State == GameFlowState.TitleIdle && !hud.Loading) ApplyExpiry();
+            if (Accounts.ExpiryPending && Session.Flow.State == GameFlowState.TitleIdle && !hud.Loading) Accounts.ApplyExpiry();
             TickInput();
             if (Session.Flow.State == GameFlowState.Caught && Time.timeScale < 1 && Time.realtimeSinceStartup - caughtAt > .7f) Time.timeScale = 1;
             if(Session.Paused||hud.Loading||hud.Revealing) return;
@@ -413,7 +388,7 @@ namespace Mongscape.Bootstrap
                 Session.CadenceScale = pace.Scale; Session.PacePressure = pace.Pressure;
                 TickBigMoves();
                 float previousZ = Session.Runner.Z;
-                Session.Tick(dt); race.Update(Session.Score.Score); Map.Tick(Session.Runner.Z); Hero.Apply(Session.Runner); Map.Evaluate(previousZ);
+                Session.Tick(dt); Results.Race.Update(Session.Score.Score); Map.Tick(Session.Runner.Z); Hero.Apply(Session.Runner); Map.Evaluate(previousZ);
                 Map.AnimateGates(Session.Runner.Z);
                 // Intensity MET of this moment from the cadence; no grace period after the last step (standing counts nothing).
                 double clock=Time.realtimeSinceStartupAsDouble;
@@ -496,7 +471,7 @@ namespace Mongscape.Bootstrap
 #endif
         }
         internal HUDPresenter Hud => hud;
-        internal RankRace Race => race;
+        internal RankRace Race => Results.Race;
         // Recordings go to <persistent data>/PoseRecordings; copy them (with filled-in labels) to Tools/QA/PoseRecordings/team.
         public static string PoseRecordingFolder => System.IO.Path.Combine(UnityEngine.Application.persistentDataPath, "PoseRecordings");
         private void TogglePoseRecording()
@@ -564,41 +539,12 @@ namespace Mongscape.Bootstrap
                 bool tooling=System.Array.IndexOf(args,"--mongscape-capture")>=0||System.Array.IndexOf(args,"--mongscape-smoke")>=0
                     ||System.Array.IndexOf(args,"--mongscape-review")>=0||System.Array.IndexOf(args,"--mongscape-tests")>=0
                     ||System.Array.IndexOf(args,"--mongscape-uicapture")>=0;
-                lastEntry=null; lastStreakCoins=0; lastRank=lastTodayRank=0; lastBestScore=-1; lastNewBest=false; lastStats=null; lastStatsFailed=false;
+                Results.Clear();
                 if(!tooling&&playerRun) RecordFinishedRun();
             }
         }
-        // The run that just ended goes on this PC's ranking; a member's run is also saved on the account server,
-        // which credits the coins. Guests collect no coins.
-        public void RecordFinishedRun()
-        {
-            if(Session.IsTutorial) return;
-            var now=System.DateTime.Now;
-            string name=Account.Nickname;
-            var mode=player.Style;
-            lastEntry=new RankingEntry{Name=name,Score=Session.Score.Score,Distance=Session.Score.Distance,Coins=Session.Score.Coins,
-                Style=PlayStyleInfo.Label(mode),Mode=(int)mode,Kcal=PlayStyleInfo.UsesCamera(mode)?Session.Workout.EstimatedKcal:0,
-                Ticks=now.Ticks,AccountId=Account.IsMember?Account.Id:"",ScoreVersion=RunScore.Version};
-            lastStats=null; lastStatsFailed=false;
-            // Personal best per play style: a member's from /stats read before this save; none for guests.
-            int previousBest=!Account.IsMember?-1:MemberBest(mode);
-            lastNewBest=previousBest>=0&&lastEntry.Score>previousBest; lastBestScore=previousBest>0?previousBest:-1;
-            lastRank=Store.Record(lastEntry,Session.Workout.EstimatedKcal);
-            // Weekly goal and streak: camera runs only. The streak is this PC's; a member's weekly minutes also go to the
-            // server with the run (moderate_seconds). Members get the streak coins with this run.
-            lastStreakCoins=PlayStyleInfo.UsesCamera(mode)?Store.RecordExercise(ExerciseOwner,System.DateTime.UtcNow,Session.Workout.ActiveSeconds,Session.Workout.ModerateSeconds,kindSeconds):0;
-            if(!Account.IsMember)lastStreakCoins=0;
-            lastTodayRank=Store.Board.RankOf(lastEntry,true,mode);
-            if(!Account.IsMember) return;
-            // The result screen shows the member's totals once the server has this run.
-            string id=Account.Id;
-            var record=AccountRun.Create(Session,mode,Session.Score.Coins+lastStreakCoins);
-            runs.Save(record,saved=>
-            {
-                if(!saved){if(Account.Id==id)lastStatsFailed=true;return;}
-                RefreshMemberStats(reply=>{if(Account.Id!=id)return;lastStats=reply!=null&&reply.ok?reply:null;lastStatsFailed=lastStats==null;});
-            });
-        }
+        // The run that just ended: see RunResults.
+        public void RecordFinishedRun() => Results.Record(Session, player.Style, kindSeconds);
         private string ExerciseOwner => Account.IsMember ? Account.Id : "";
         private void ResetBigMoves()
         {
@@ -625,51 +571,6 @@ namespace Mongscape.Bootstrap
             if (bigKnee && Session.Big(RunSession.BigMove.Knee)) bigUntil = clock + 1;
             if (bigLane && Session.Big(RunSession.BigMove.Lane)) bigUntil = clock + 1;
         }
-        // The ranking strip's rows: this week's member board (best per member, without the player's own row) and this PC's guest
-        // runs of the week, one row per name (its best), or with "내 기록만" only the member's own runs on this PC. Guests have no
-        // "내 기록만" (every guest on a PC shares one empty id). The live score is the HUD's (QA 2026-11-25 M4, L5).
-        private void LoadRace(PlayStyle mode)
-        {
-            race.Clear(); int mine = ++raceTicket;
-            var now = System.DateTime.Now; var weekStart = now.Date.AddDays(-(((int)now.DayOfWeek + 6) % 7));
-            string me = Account.IsMember ? Account.Id : "";
-            bool onlyMine = userSettings.RankStripMine && Account.IsMember;
-            var rows = RankRace.LocalRows(Store.Board.View(false, now, mode), weekStart, onlyMine, me);
-            race.Load(rows);
-            if (onlyMine || gateway == null) return;
-            System.Action<LeaderboardReply> loaded = reply =>
-            {
-                if (mine != raceTicket || reply == null || !reply.ok || reply.entries == null) return;
-                int own = reply.me != null ? reply.me.rank : 0;
-                foreach (var e in reply.entries) if (e != null && e.rank != own) rows.Add(new RankRace.Row(e.name, e.score));
-                // Loaded again before the run starts moving; the strip only shows once the run is under way.
-                race.Load(rows);
-            };
-            string token = Account.IsMember ? Account.Token : "";
-            gateway.WeekLeaderboard(token, mode, loaded);
-        }
-        // The member's best score for one play style from the last /stats; -1 when it is not known.
-        private int MemberBest(PlayStyle mode)
-        {
-            var stats=memberStats;
-            return Account.IsMember&&stats!=null&&memberStatsId==Account.Id&&stats.best_score!=null&&stats.best_score.Length>(int)mode?stats.best_score[(int)mode]:-1;
-        }
-        // Reads /stats for the signed-in member and keeps it for the HUD best and the next result.
-        private void RefreshMemberStats(System.Action<StatsReply> done=null)
-        {
-            if(!Account.IsMember||string.IsNullOrEmpty(Account.Token)){done?.Invoke(null);return;}
-            string id=Account.Id;
-            gateway.Stats(Account.Token,reply=>
-            {
-                if(reply!=null&&reply.ok&&Account.IsMember&&Account.Id==id)
-                {
-                    memberStats=reply;memberStatsId=id;
-                    // The weekly goal bar follows the server's sum over every PC of the member.
-                    Store.Exercise.SyncWeek(id,System.DateTime.UtcNow,reply.week_moderate_seconds);
-                }
-                done?.Invoke(reply);
-            });
-        }
         public void Retry()
         {
             if (!Session.Flow.Transition(GameFlowState.Retry)) return;
@@ -688,7 +589,7 @@ namespace Mongscape.Bootstrap
             bool again = playerRun; var profile = player;
             Retry();
             // An expired member goes to the login gate (next frame) instead of another run.
-            if (again && !ExpiryPending) StartPlayerRun(profile);
+            if (again && !Accounts.ExpiryPending) StartPlayerRun(profile);
         }
         // "메인으로" from the result or pause screen; a paused run ends without a record.
         public void ExitToMenu()
@@ -696,6 +597,7 @@ namespace Mongscape.Bootstrap
             if (Session.Paused) { Session.Paused = false; Time.timeScale = 1; }
             playerRun = false;
             Retry();
+            Results = new RunResults(Accounts, () => Store);
             player = Account.Profile.Clone();
             OpenMainMenu();
         }
@@ -708,15 +610,14 @@ namespace Mongscape.Bootstrap
 #endif
         }
         // Members are signed out when the game closes; the request is not awaited.
-        private void OnApplicationQuit() { if(Account.IsMember&&!string.IsNullOrEmpty(Account.Token)) gateway?.Logout(Account.Token,null); }
-        private void OnDestroy() { GesturePointer.Reset(); Time.timeScale=1; graphics?.Dispose(); Pose?.Dispose(); RouteSurface.UsePlan(null); KeyboardGameInput.SetTextInput(false); ClearPortrait(); }
+        private void OnApplicationQuit() => Accounts?.LogoutOnQuit();
+        private void OnDestroy() { GesturePointer.Reset(); Time.timeScale=1; graphics?.Dispose(); Pose?.Dispose(); RouteSurface.UsePlan(null); KeyboardGameInput.SetTextInput(false); Accounts?.ClearPortrait(); }
 
         // Tests and tools: another account server (or a fake), another PC store and a face capture without a webcam. Call on the title screen.
         public void UseAccountServices(IAccountGateway accountGateway, PlayerProgressStore store = null, System.Action<System.Action<string[]>> faces = null)
         {
-            if (accountGateway != null) { gateway = new ExpiryWatchingGateway(accountGateway, SessionExpired); runs.Gateway = gateway; serverTicket++; serverChecking = false; serverProblem = ""; }
+            Accounts.UseServices(accountGateway, faces);
             if (store != null) Store = store;
-            if (faces != null) captureFaces = faces;
         }
         // Items placed on the map: what the member unlocked (none for guests).
         public System.Collections.Generic.List<ItemKind> RunItems()
@@ -724,255 +625,5 @@ namespace Mongscape.Bootstrap
             if (Session != null && Session.IsTutorial) return new System.Collections.Generic.List<ItemKind>();
             return Account.RunItems();
         }
-        // Guests keep settings in session memory; a member's settings also go to the server.
-        private void SaveSettings(AccountSettings settings)
-        {
-            Account.UpdateSettings(settings);
-            if (!Account.IsMember) return;
-            string id = Account.Id;
-            gateway.UpdateProfile(Account.Token, AccountProfileUpdate.From(Account.Settings), reply => { if (reply.HasProfile && reply.profile.id == id) Account.Apply(reply.profile); });
-        }
-
-        // IHudData
-        PlayerProfile IHudData.Player => player;
-        PlayerProfile IHudData.SavedProfile => Account.Profile;
-        Texture IHudData.CameraTexture => Pose.CameraTexture;
-        // Listed, or already delivering frames (a camera the driver listed late still counts).
-        bool IHudData.CameraDetected => cameraDetected || Pose.CameraTexture != null && Pose.CameraTexture.width > 16;
-        bool IHudData.BodyStylesAllowed => automated || userSettings == null || ((IHudData)this).CameraDetected;
-        // Body styles need a connected camera, except in automated test/tool runs.
-        private bool PlayableStyle(PlayStyle style)
-        {
-            if(!PlayStyleInfo.UsesCamera(style)) return true;
-            if(!cameraDetected&&!automated) cameraDetected=WebCamTexture.devices.Length>0;
-            return ((IHudData)this).BodyStylesAllowed;
-        }
-        PoseFrame IHudData.PoseFrame => Pose.LastFrame;
-        PoseStatus IHudData.PoseStatus => Pose.Status;
-        string IHudData.PoseMessage => Pose.Message;
-        string IHudData.PoseDiagnostics => BuildInfo.DevelopmentTools && userSettings != null && userSettings.PoseDiagnostics ? Pose.Diagnostics : "";
-        MotionReading IHudData.Motion => Pose.Reading;
-        float IHudData.SecondsSinceJump => (float)(Time.realtimeSinceStartupAsDouble - Pose.LastJumpTime);
-        float IHudData.SecondsSinceKneeStep => (float)(Time.realtimeSinceStartupAsDouble - Pose.LastKneeStepTime);
-        float IHudData.CalibrationProgress => Pose.CalibrationProgress;
-        bool IHudData.PoseKneesMissing => Pose.KneesMissing;
-        float IHudData.StepsPerMinute => Pose.StepsPerMinute;
-        CadenceStage IHudData.Cadence => Pose.CadenceStage;
-        bool IHudData.PoseCalibrationMoving => Pose.CalibrationMoving;
-        FramingIssue IHudData.PoseFraming => Pose.Framing;
-        RunCalibrationState IHudData.RunCalibration => RunCalibration;
-        bool IHudData.TutorialRun => Session.IsTutorial;
-        bool IHudData.PoseRecording => Pose.Recording;
-        bool IHudData.BodyActive => Pose.Tracking && Pose.Reading.Active;
-        PlayerWallet IHudData.Wallet => Account.Wallet;
-        Leaderboard IHudData.Board => Store.Board;
-        PlayerStats IHudData.Stats => Store.Stats;
-        RankingEntry IHudData.LastEntry => lastEntry;
-        // A guest's run was recorded as "게스트" and can still be named on the result screen.
-        bool IHudData.CanNameLastRun => lastEntry != null && !Account.IsMember && string.IsNullOrEmpty(lastEntry.AccountId);
-        bool IHudData.NameLastRun(string name) => ((IHudData)this).CanNameLastRun && AccountSession.NicknameProblem(name) == null && Store.Rename(lastEntry, name);
-        int IHudData.LastRank => lastRank;
-        int IHudData.LastTodayRank => lastTodayRank;
-        bool IHudData.LastNewBest => lastNewBest;
-        int IHudData.LastBestScore => lastBestScore;
-        StatsReply IHudData.LastStats => lastStats;
-        bool IHudData.LastStatsFailed => lastStatsFailed;
-        int IHudData.BestScore => MemberBest(player.Style);
-        bool IHudData.RunSaveFailed => runs != null && runs.LastFailed;
-        public float StartBanner => Session.Flow.State == GameFlowState.Running ? Mathf.Max(0, 2.2f - (Time.realtimeSinceStartup - runStartedAt)) : 0;
-        float IHudData.CaughtFlash => Session.Flow.State == GameFlowState.Caught ? Mathf.Clamp01(1 - (Time.realtimeSinceStartup - caughtAt) / .6f) : 0;
-        void IHudData.PreviewStyle(PlayStyle style) { menuCamera=false; player.Style = style; Pose.SetStyle(style); }
-        // Members buy on the server and take its balance and unlocked items; guests have no coins.
-        void IHudData.Unlock(ItemKind kind, System.Action<bool, string> done)
-        {
-            if (!Account.IsMember) { done?.Invoke(false, "회원가입하면 코인을 모아 아이템을 해금할 수 있어요"); return; }
-            string id = Account.Id;
-            gateway.Buy(Account.Token, kind, reply =>
-            {
-                if (reply != null && reply.HasProfile && reply.profile.id == id && Account.Apply(reply.profile)) { done?.Invoke(true, ""); return; }
-                NoteServer(reply);
-                string reason = reply == null || !string.IsNullOrEmpty(reply.message) || reply.status == 0 ? ServerReason(reply)
-                    : reply.status == 409 ? "이미 해금한 아이템입니다." : "코인이 부족합니다.";
-                done?.Invoke(false, reason);
-            });
-        }
-        // The member's nickname stays the server's; a guest's name lives in session memory only.
-        void IHudData.SaveProfile(PlayerProfile profile)
-        {
-            if (profile == null) return;
-            if (!Account.IsMember) Account.SetNickname(profile.Name);
-            SaveSettings(AccountSession.SettingsOf(profile));
-            player=Account.Profile.Clone();
-        }
-        void IHudData.Recalibrate() => Pose.Recalibrate();
-        bool IHudData.CadenceSpeed => userSettings == null || userSettings.CadenceSpeed;
-        void IHudData.SetCadenceSpeed(bool on) { if (userSettings == null || userSettings.CadenceSpeed == on) return; userSettings.CadenceSpeed = on; UserSettingsStore.Save(userSettings); }
-        RankRace IHudData.Race => Session.IsTutorial || !playerRun ? null : race;
-        bool IHudData.HazardNear => Session.Flow.State == GameFlowState.Running && Map.HazardAhead(Session.Runner.Z, Mathf.Max(8f, Session.CurrentSpeed * 1.2f));
-        float IHudData.PacePressure => Session.PacePressure;
-        // Guests on one PC share an empty owner id, so a guest sees no course tip, no streak, and the minutes of this run only
-        // instead of the PC's week (QA 2026-11-25 L3).
-        ExerciseKind IHudData.Recommended => Account.IsMember ? Store.Exercise.Recommend(ExerciseOwner, System.DateTime.UtcNow) : ExerciseKind.Warmup;
-        double IHudData.WeekMinutes => Account.IsMember ? Store.Exercise.WeekModerateMinutes(ExerciseOwner, System.DateTime.UtcNow) : Session.Workout.ModerateSeconds / 60;
-        int IHudData.Streak => Account.IsMember ? Store.Exercise.Streak(ExerciseOwner, System.DateTime.UtcNow) : 0;
-        int IHudData.LastStreakCoins => lastStreakCoins;
-        bool IHudData.JointCompareOpen => Tutorial != null && Tutorial.ComparingJoints;
-
-        // A new member (or back to a guest) replaces the player and the face badge; coin or setting updates do not.
-        private void AccountChanged()
-        {
-            string id = Account.IsMember ? Account.Id : "";
-            if (id == shownAccount) return;
-            shownAccount = id; tutorialOffered = false;
-            if (!Account.IsMember) ClearPortrait();
-            faceAvatar.Apply(portrait);
-            // The HUD best and the next result compare with this member's /stats.
-            memberStats = null; memberStatsId = "";
-            if (Account.IsMember && gateway != null) RefreshMemberStats();
-            player = Account.Profile.Clone();
-        }
-        private void SignedInReply(AccountReply reply)
-        {
-            if (reply == null || !reply.HasProfile) return;
-            ClearPortrait();
-            // The face crop only exists in this reply; it becomes the badge and is never stored.
-            if (!string.IsNullOrEmpty(reply.avatar))
-            {
-                portrait = new Texture2D(2, 2, TextureFormat.RGB24, false);
-                try { if (!portrait.LoadImage(System.Convert.FromBase64String(reply.avatar))) ClearPortrait(); } catch { ClearPortrait(); }
-            }
-            shownAccount = ""; loginNotice = ""; expiredToken = null;
-            Account.SignInMember(reply.profile, reply.token);
-        }
-        private void ClearPortrait() { if (portrait != null) Destroy(portrait); portrait = null; }
-        // Back to a guest at once; /logout is sent without waiting.
-        private void SignOutMember()
-        {
-            if (!Account.IsMember) return;
-            string token = Account.Token;
-            Account.SignOut();
-            if (!string.IsNullOrEmpty(token)) gateway.Logout(token, null);
-        }
-        // Only the signed-in member's own token counts; a late 401 for an earlier member is ignored.
-        private void SessionExpired(string token)
-        {
-            if (!Account.IsMember || token != Account.Token) return;
-            expiredToken = token;
-            if (Session.Flow.State == GameFlowState.TitleIdle && !hud.Loading) ApplyExpiry();
-        }
-        private bool ExpiryPending => expiredToken != null && Account.IsMember && expiredToken == Account.Token;
-        private void ApplyExpiry()
-        {
-            bool expired = ExpiryPending; expiredToken = null;
-            if (!expired) return;
-            Account.SignOut(); loginNotice = ExpiredNotice;
-            if (settingsWindow != null && settingsWindow.IsOpen) settingsWindow.Close(true);
-            hud.OpenLogin();
-        }
-
-        // Local or central voluntary identity UI
-        public bool IdentityBusy=>identity.Busy;
-        public bool SignedIn=>Account.IsMember;
-        public string IdentityMessage=>identity.Message;
-        public Texture Portrait=>portrait;
-        public bool ServerChecking=>serverChecking;
-        public string ServerProblem=>serverProblem;
-        public string LoginNotice=>loginNotice;
-        // Asked each time the login gate opens; until the server answers, face login and sign-up wait. Only the latest answer counts.
-        public void CheckServer()
-        {
-            int mine=++serverTicket; serverChecking=true;
-            gateway.Health(reply=>{ if(mine!=serverTicket)return; serverChecking=false; serverProblem=reply!=null&&reply.ok?"":ServerReason(reply); });
-        }
-        public void CheckNickname(string name,System.Action<bool,string> done)
-        {
-            string problem=AccountSession.NicknameProblem(name);
-            if(problem!=null){done?.Invoke(false,problem);return;}
-            gateway.NameCheck(name.Trim(),reply=>
-            {
-                if(reply==null||!reply.ok){NoteServer(reply);done?.Invoke(false,ServerReason(reply));return;}
-                done?.Invoke(reply.available,reply.available?"":string.IsNullOrEmpty(reply.message)?"사용할 수 없는 닉네임입니다.":reply.message);
-            });
-        }
-        public void FaceLogin(System.Action<bool> done)
-        {
-            if (IdentityBusy || Account.IsMember) return;
-            captureFaces(images => gateway.Login(images, reply => FaceReply(reply, done)));
-        }
-        // Sign-up: the nickname and settings chosen in the sign-up steps, not the guest's.
-        public void FaceEnroll(string nickname, AccountSettings settings, System.Action<bool> done)
-        {
-            if (IdentityBusy || Account.IsMember || AccountSession.NicknameProblem(nickname) != null) return;
-            settings ??= new AccountSettings();
-            captureFaces(images => gateway.Enroll(new AccountEnrollment { name = nickname.Trim(), consent = true, images = images, weight = settings.Weight, style = (int)settings.Style, goal = settings.Goal }, reply => FaceReply(reply, done)));
-        }
-        private void FaceReply(AccountReply reply, System.Action<bool> done)
-        {
-            NoteServer(reply); SignedInReply(reply);
-            done?.Invoke(reply != null && reply.HasProfile && Account.IsMember);
-        }
-        // A request that could not reach the server disables face login and sign-up on the gate until the next check.
-        // An expired member token (401) is handled for every call by ExpiryWatchingGateway (SessionExpired).
-        private void NoteServer(AccountResult reply) { if (reply != null && !reply.ok && reply.status == 0) serverProblem = ServerReason(reply); }
-        private static string ServerReason(AccountResult reply) => reply != null && !string.IsNullOrEmpty(reply.message) ? reply.message : "얼굴 서버에 연결할 수 없습니다.";
-        public void FaceLogout(bool delete)
-        {
-            if (IdentityBusy || !Account.IsMember) return;
-            if (!delete) { SignOutMember(); return; }
-            DeleteAccount(null);
-        }
-        // 내 정보: nickname and settings in one /profile/update; the session changes only after the server accepted them.
-        public void SaveMemberProfile(string nickname, AccountSettings settings, System.Action<bool,string> done)
-        {
-            if (!Account.IsMember) { done?.Invoke(false, "회원만 저장할 수 있습니다."); return; }
-            string problem = AccountSession.NicknameProblem(nickname);
-            if (problem != null) { done?.Invoke(false, problem); return; }
-            var update = AccountProfileUpdate.From(settings ?? Account.Settings);
-            string name = nickname.Trim(), id = Account.Id;
-            if (name != Account.Nickname) update.Name = name;
-            gateway.UpdateProfile(Account.Token, update, reply =>
-            {
-                if (reply != null && reply.HasProfile && reply.profile.id == id && Account.Apply(reply.profile))
-                {
-                    player = Account.Profile.Clone();
-                    done?.Invoke(true, ""); return;
-                }
-                NoteServer(reply);
-                done?.Invoke(false, reply != null && reply.status == 409 && string.IsNullOrEmpty(reply.message) ? "이미 사용 중인 닉네임입니다." : ServerReason(reply));
-            });
-        }
-        // Server totals for 내 정보; null when there is no member or no token.
-        public void MemberStats(System.Action<StatsReply> done)
-        {
-            if (!Account.IsMember || string.IsNullOrEmpty(Account.Token)) { done?.Invoke(null); return; }
-            gateway.Stats(Account.Token, done);
-        }
-        // 회원 랭킹 for anyone; a member's token adds their own row ("me").
-        public void MemberLeaderboard(PlayStyle mode, bool today, System.Action<LeaderboardReply> done)
-        {
-            if (gateway == null) { done?.Invoke(new LeaderboardReply { message = "서버에 연결할 수 없어요" }); return; }
-            gateway.Leaderboard(Account.IsMember ? Account.Token : "", mode, today, done);
-        }
-        // Account deletion (face, profile and runs on the server, and the member's rows on this PC's ranking); the player becomes a guest.
-        public void DeleteAccount(System.Action<bool,string> done)
-        {
-            if (IdentityBusy || !Account.IsMember) { done?.Invoke(false, "회원만 탈퇴할 수 있습니다."); return; }
-            string id = Account.Id;
-            gateway.Delete(Account.Token, reply =>
-            {
-                bool ok = reply != null && reply.ok;
-                if (ok) { Store.RemoveAccount(id); if (Account.IsMember && Account.Id == id) Account.SignOut(); }
-                else NoteServer(reply);
-                done?.Invoke(ok, ok ? "" : ServerReason(reply));
-            });
-        }
-
-        // ISettingsHost
-        UserSettings ISettingsHost.Settings => userSettings;
-        UserSettings ISettingsHost.Defaults => settingsDefaults;
-        System.Collections.Generic.IReadOnlyList<string> ISettingsHost.CameraDevices => PoseTracker.CameraDevices();
-        IHudData ISettingsHost.Hud => this;
-        void ISettingsHost.RefreshCamera() => Pose.RefreshCamera();
-        bool ISettingsHost.MemberSignedIn => Account.IsMember;
     }
 }
