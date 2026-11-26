@@ -38,7 +38,7 @@ namespace Mongscape.Domain
         public bool UsesDistanceCurve => Difficulty == DifficultyRule.DistanceCurve;
 
         public static readonly SectionDef Mine = new SectionDef(SectionKind.Mine, SpeedRule.DistanceCurve, DifficultyRule.DistanceCurve, ChaserDef.Police);
-        public static readonly SectionDef Zoo = new SectionDef(SectionKind.Zoo, SpeedRule.SongFixed, DifficultyRule.VisitTier, ChaserDef.Lion);
+        public static readonly SectionDef Zoo = new SectionDef(SectionKind.Zoo, SpeedRule.SetFixed, DifficultyRule.VisitTier, ChaserDef.Lion);
         public static readonly SectionDef Prison = new SectionDef(SectionKind.Prison, SpeedRule.SetFixed, DifficultyRule.VisitSet, ChaserDef.Warden);
         public static SectionDef Of(SectionKind kind) => kind == SectionKind.Zoo ? Zoo : kind == SectionKind.Prison ? Prison : Mine;
         // RoutePlan destinations: -1 zoo, 0 prison, 1 mine.

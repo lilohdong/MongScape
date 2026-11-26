@@ -209,11 +209,11 @@ namespace Mongscape.Tests
             var zoo=game.GetComponent<Mongscape.Presentation.Map.ZooMapView>();
             deadline=Time.realtimeSinceStartup+40;
             while(!zoo.Chase.Active&&Time.realtimeSinceStartup<deadline)yield return null;
-            Assert.IsTrue(zoo.Chase.Active&&zoo.Chase.Practice,"The zoo song plays");Assert.AreEqual(ZooPractice.Chart,zoo.Chase.Map.Chart);
+            Assert.IsTrue(zoo.Chase.Active&&zoo.Chase.Practice,"The zoo song plays");Assert.Greater(zoo.Chase.Obstacles.Count,3);
             while(game.Tutorial.Active&&game.Tutorial.Script.Current==TutorialStep.Verse&&Time.realtimeSinceStartup<deadline)
             {
-                var notes=zoo.Chase.Map.Notes;
-                for(int i=0;i<notes.Count;i++)if(!zoo.Chase.IsJudged(i)&&Mathf.Abs(notes[i].Time-zoo.Chase.SongTime)<.2f)zoo.Chase.Input(notes[i].Kind);
+                var obstacles=zoo.Chase.Obstacles;
+                for(int i=0;i<obstacles.Count;i++)if(!zoo.Chase.IsJudged(i)&&Mathf.Abs(obstacles[i].Distance-zoo.Chase.Distance)<2f)zoo.Chase.Input(obstacles[i].Kind);
                 yield return null;
             }
             Assert.AreEqual(TutorialStep.Rearview,game.Tutorial.Script.Current,"The verse passes");

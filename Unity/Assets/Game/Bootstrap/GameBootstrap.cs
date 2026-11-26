@@ -50,6 +50,11 @@ namespace Mongscape.Bootstrap
         // Cadence -> runner speed and police (exercise plan 4); on for camera runs with the setup option on.
         private readonly CadencePace pace = new CadencePace();
         private bool cadenceRun;
+        // Keyboard running: F and J in turn give the same steps a minute as running in place (no calories).
+        private readonly KeyStepCadence keySteps = new KeyStepCadence();
+        private bool keyRun;
+        private float StepRate => keyRun ? keySteps.StepsPerMinute(Time.realtimeSinceStartupAsDouble) : Pose.StepsPerMinute;
+        private bool PaceTracked => keyRun || Pose.UsesCamera && Pose.Tracking;
         // Big movements (exercise plan 6).
         private int seenBigJumps, seenBigKnees, seenBigLanes;
         private bool wasDeep;
@@ -253,7 +258,7 @@ namespace Mongscape.Bootstrap
         {
             if(Session.Flow.State!=GameFlowState.TitleIdle||hud.Loading||!Session.Workout.SetWeight(weight)) return;
             menuCamera=false;
-            playerRun=false; cadenceRun=false; Results.ClearRace(); Session.Workout.Met=PlayStyleInfo.Met(player.Style);Session.Workout.Style=player.Style;
+            playerRun=false; cadenceRun=false; keyRun=false; Results.ClearRace(); Session.Workout.Met=PlayStyleInfo.Met(player.Style);Session.Workout.Style=player.Style;
             Session.Workout.CadenceCounts=true;
             StartCoroutine(PrepareRun(723));
         }
@@ -272,7 +277,8 @@ namespace Mongscape.Bootstrap
             Accounts.RefreshMemberStats();
             Session.Workout.Met=PlayStyleInfo.Met(profile.Style);Session.Workout.Style=profile.Style;
             Session.Workout.SetGoal(profile.CalorieGoal);
-            cadenceRun = PlayStyleInfo.UsesCamera(profile.Style) && userSettings.CadenceSpeed;
+            keyRun = profile.Style == PlayStyle.Keyboard && userSettings.CadenceSpeed; keySteps.Reset();
+            cadenceRun = (PlayStyleInfo.UsesCamera(profile.Style) || keyRun) && userSettings.CadenceSpeed;
             // Cadence off: stepping in place earns no calories, only jumps, crouches, knee raises and lane changes do.
             Session.Workout.CadenceCounts = userSettings.CadenceSpeed;
             Results.LoadRace(profile.Style, userSettings.RankStripMine);
@@ -377,18 +383,22 @@ namespace Mongscape.Bootstrap
                 // The cadence sets the pace on foot; below the target for 3 s the police close in, a full gauge in the mine is a warning.
                 var course = MapCourse.KindAt(RouteSurface.ActivePlan, RouteSurface.SequenceAt(Session.Runner.Z));
                 // Out of view the pace holds (speed, lag and police stay as they were); on the stairs it rests (QA 2026-11-25 M6, H2).
-                pace.Tick(dt, cadenceRun && !Session.Runner.Riding, Pose.StepsPerMinute,
+                if (keyRun)
+                {
+                    double stepAt = Time.realtimeSinceStartupAsDouble;
+                    if (KeyboardGameInput.StepLeftPressed) keySteps.Press(0, stepAt);
+                    if (KeyboardGameInput.StepRightPressed) keySteps.Press(1, stepAt);
+                }
+                pace.Tick(dt, cadenceRun && !Session.Runner.Riding, StepRate,
                     Settings != null ? Settings.Motion : null, MapCourse.TargetCadence(course, Settings != null ? Settings.Motion : null),
-                    Pose.UsesCamera && Pose.Tracking, OnOrBeforeStairs());
+                    PaceTracked, OnOrBeforeStairs());
                 Session.ApplyPace(pace);
                 TickBigMoves();
                 // Prison hiding (plan 2-3a): the body's held crouch and its depth; the keyboard (S) hides with the runner's crouch.
                 bool hideBody = Pose.UsesCamera && Pose.Tracking;
                 Session.HidePose = hideBody && Pose.Reading.Crouch; Session.HideDepth = hideBody ? Pose.Reading.CrouchDepth : -1f;
-                // The zoo song sets the speed and the lion follows the running beat (plan 1-2b); keyboard: notes only.
-                bool tracking = cadenceRun && Pose.UsesCamera && Pose.Tracking;
-                zoo.SyncOffset = userSettings.ZooSyncSeconds(Pose.UsesCamera);
-                zoo.Tick(dt, tracking ? Pose.StepsPerMinute < MapCourse.TargetCadence(course, Settings != null ? Settings.Motion : null) : (bool?)null);
+                // The zoo: the running pace against the lion's speed sets the gap (without a cadence only missed fences and bars).
+                zoo.Tick(dt, cadenceRun && PaceTracked ? pace.Scale : (float?)null);
                 float previousZ = Session.Runner.Z;
                 Session.Tick(dt); Results.Race.Update(Session.Score.Score); Map.Tick(Session.Runner.Z); Hero.Apply(Session.Runner); Map.Evaluate(previousZ);
                 Map.AnimateGates(Session.Runner.Z);

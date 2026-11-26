@@ -13,8 +13,8 @@ namespace Mongscape.Presentation
         private PlayStyle style = PlayStyle.FullBody;
         private GUIStyle guideStyle, hintStyle, rightStyle;
         // Key and action columns, so the actions line up whatever the key glyphs' widths.
-        private static readonly string[] KeyboardKeys = { "A / ←", "D / →", "Space", "S / ↓", "W / ↑" };
-        private static readonly string[] KeyboardActions = { "왼쪽", "오른쪽", "점프", "숙이기 (누르고 있기)", "무릎 들기 (계단, 연타)" };
+        private static readonly string[] KeyboardKeys = { "F J", "A / ←", "D / →", "Space", "S / ↓", "W / ↑" };
+        private static readonly string[] KeyboardActions = { "번갈아 눌러 달리기", "왼쪽", "오른쪽", "점프", "숙이기 (누르고 있기)", "무릎 들기 (계단, 연타)" };
         public SetupScreen(HudSkin hudSkin) { skin = hudSkin; }
         public void Open(IHudData data)
         {
@@ -98,8 +98,8 @@ GUI.Label(new Rect(195,500,420,30),RunHudModel.KeyboardKcal,skin.Style(17,FontSt
             GUI.color = Palette.Gold; GUI.Label(new Rect(area.x + 36, area.y + 22, area.width - 72, 34), "키보드 조작", skin.Style(22, FontStyle.Bold));
             for (int i = 0; i < KeyboardKeys.Length; i++)
             {
-                float y = area.y + 72 + i * 50;
-                var key = new Rect(area.x + 36, y, 116, 40);
+                float y = area.y + 68 + i * 44;
+                var key = new Rect(area.x + 36, y, 116, 38);
                 skin.Card(key, Palette.A(Palette.Dark, .85f));
                 GUI.color = Palette.Cream; GUI.Label(key, KeyboardKeys[i], skin.Centered(21, FontStyle.Bold));
                 GUI.color = Color.white; GUI.Label(new Rect(area.x + 170, y + 2, area.width - 200, 38), KeyboardActions[i], skin.Style(22, FontStyle.Normal));

@@ -52,7 +52,7 @@ namespace Mongscape.Tests
             Assert.AreEqual(ChaserSound.Roar, ChaserDef.Lion.Sound);
             Assert.AreEqual(ChaserSound.AlarmBell, ChaserDef.Warden.Sound);
             Assert.IsTrue(SectionDef.Mine.UsesDistanceCurve);
-            Assert.IsFalse(SectionDef.Zoo.UsesDistanceCurve); Assert.AreEqual(SpeedRule.SongFixed, SectionDef.Zoo.Speed);
+            Assert.IsFalse(SectionDef.Zoo.UsesDistanceCurve); Assert.AreEqual(SpeedRule.SetFixed, SectionDef.Zoo.Speed);
             Assert.IsFalse(SectionDef.Prison.UsesDistanceCurve); Assert.AreEqual(SpeedRule.SetFixed, SectionDef.Prison.Speed);
             Assert.AreEqual(1.2f, ChaserDef.Police.CatchSeconds, .001f);
         }

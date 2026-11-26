@@ -16,6 +16,9 @@ namespace Mongscape.Infrastructure
         // Esc pauses and resumes a run (plan 6-7a).
         public static bool PausePressed => Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame;
         // Tutorial verse: W held is the hands-up note (keyboard play has no arms to read).
+        // Keyboard running (owner 2026-11-27): F and J pressed in turn are steps (KeyStepCadence).
+        public static bool StepLeftPressed => Keyboard.current != null && Keyboard.current.fKey.wasPressedThisFrame;
+        public static bool StepRightPressed => Keyboard.current != null && Keyboard.current.jKey.wasPressedThisFrame;
         public static bool HandsHeld => Keyboard.current != null && Keyboard.current.wKey.isPressed;
         public static bool SettingsPressed => Keyboard.current != null && Keyboard.current.f1Key.wasPressedThisFrame;
         public static bool OverlayPressed => Keyboard.current != null && Keyboard.current.f3Key.wasPressedThisFrame;
