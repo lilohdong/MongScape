@@ -45,13 +45,13 @@ namespace Mongscape.DevTools
                 else if (step == 2)
                 {
                     hitClock += Time.deltaTime;
-                    if (hitClock >= .7f && hits < 1) { hitClock = 0; game.Session.Hit(true); hits++;Check(game.Session.Flow.State==GameFlowState.Caught,"Single collision did not end run"); }
+                    if (hitClock >= .7f && hits < 2) { hitClock = 0; game.Session.Hit(true); hits++;Check(game.Session.Warnings==hits&&(hits<2||game.Session.SlipPursuit),"Collision is not one warning"); }
                     if (game.Session.Flow.State == GameFlowState.Result) { game.Retry(); step = 3; }
                 }
                 else if (step == 3)
                 {
                     Check(game.Session.Flow.State == GameFlowState.TitleIdle && game.Session.Score.Score == 0 && game.Session.Chase.Pressure == 0, "Retry dirty state");
-                    Debug.Log("MUHANOK_RUNTIME_SMOKE_PASS: loading intro/direct gameplay/floor slip/120 chunks/single fatal hit/result/retry");
+                    Debug.Log("MUHANOK_RUNTIME_SMOKE_PASS: loading intro/direct gameplay/floor slip/120 chunks/two warning hits/pursuit/result/retry");
                     UnityEngine.Application.Quit(0); enabled = false;
                 }
             }

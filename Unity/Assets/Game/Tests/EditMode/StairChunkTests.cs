@@ -234,13 +234,14 @@ namespace Mongscape.Tests
             run.Flow.Transition(GameFlowState.TitleIdle); run.Flow.Transition(GameFlowState.IntroTimeline);
             run.Flow.Transition(GameFlowState.FirstPersonTakeover); run.Flow.Transition(GameFlowState.Running); return run;
         }
-        [Test] public void SessionCountsAMissedStairAsOneKneeMissStrike()
+        [Test] public void AMissedStairOutsideThePrisonOnlySlows()
         {
-            // Authored lap: chunk 4 is the prison stair (z 96..120).
+            // Authored lap (no extended plan = one mine section): chunk 4 is a stair (z 96..120).
             var run = Running(); run.Runner.SetStartZ(95f);
             bool slowed = false;
-            for (int i = 0; i < 200 && run.Runner.Z < 119f; i++) { run.Tick(.05f); slowed |= run.SlipStrikes == 1 && run.Runner.Slowing; }
-            Assert.AreEqual(1, run.SlipStrikes, "One strike, however long the climb lasts");
+            for (int i = 0; i < 200 && run.Runner.Z < 119f; i++) { run.Tick(.05f); slowed |= run.Runner.Slowing; }
+            Assert.AreEqual(0, run.SlipStrikes, "A missed knee step in the mine is no warning (plan 6-8)");
+            Assert.AreEqual(SlipSource.KneeMiss, run.LastSlipSource);
             Assert.IsTrue(slowed, "The miss slows the runner");
         }
         [Test] public void SessionLetsASteppingRunnerClimbCleanly()

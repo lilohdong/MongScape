@@ -161,7 +161,7 @@ namespace Mongscape.DevTools
             var caughtPortrait=new Texture2D(32,32,TextureFormat.RGB24,false);
             for(int y=0;y<32;y++)for(int x=0;x<32;x++)caughtPortrait.SetPixel(x,y,(x/8+y/8)%2==0?new Color(1,.7f,.2f):new Color(.2f,.65f,1));caughtPortrait.Apply();
             game.Hero.GetComponent<FaceAvatarView>().Apply(caughtPortrait);
-            game.Session.Hit(true);game.enabled=true;
+            game.Session.ForceCatch();game.enabled=true;
             yield return new WaitForSecondsRealtime(.55f);yield return Capture("10_Police_Approach");
             yield return new WaitForSecondsRealtime(1.5f);yield return Capture("11_Police_Cartoon_Bonks");
             yield return new WaitForSecondsRealtime(1.9f);

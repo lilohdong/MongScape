@@ -4,8 +4,8 @@ namespace Mongscape.Domain
 {
     // Running speed from the cadence (steps a minute over the last 3 s): walking (up to 100) is 70 % of the base speed,
     // running (100-150) 100 %, sprinting (150 and up) 130 %, blended smoothly around the stage lines.
-    // Below the target cadence for more than LagSeconds the police close in (PacePressure) and the screen edges redden;
-    // that pressure alone never makes a capture.
+    // Below the target cadence for more than LagSeconds the police close in (PacePressure) and the screen edges redden.
+    // In the mine a full gauge is one warning (RunSession.ApplyPace) and the gauge drops to half (plan 6-8).
     public sealed class CadencePace
     {
         public const float Walk = .7f, Run = 1f, Sprint = 1.3f;
@@ -13,8 +13,8 @@ namespace Mongscape.Domain
         public const float WalkBlend = 15f, SprintBlend = 10f;
         // Scale change per second (smooths step noise), lag before the police react, pressure rise and fall per second.
         public const float ScaleRate = .6f, LagSeconds = 3f, PressureRise = .22f, PressureFall = .5f;
-        // The police come this close at most because of the pace (ChaseSystem pressure units; 1 = caught).
-        public const float MaxPressure = .75f;
+        // The pace gauge fills to 1 (the police pounce: one warning in the mine). Outside the mine it shows up to LegacyMaxPressure.
+        public const float MaxPressure = 1f, LegacyMaxPressure = .75f;
         // Target cadence: the bottom of the running stage, a little under RunCadence so a steady jog never lags.
         public const float TargetBelowRun = 10f;
         public float Scale { get; private set; } = 1f;
@@ -49,6 +49,8 @@ namespace Mongscape.Domain
             Pressure = Lagging ? Math.Min(MaxPressure, Pressure + PressureRise * dt) : Math.Max(0, Pressure - PressureFall * dt);
         }
         public void Reset() { Scale = 1f; LagFor = 0; Pressure = 0; }
+        // After the police pounce the gauge drops to half and the lag starts over.
+        public void Halve() { Pressure *= .5f; LagFor = 0; }
         private static float Lerp(float a, float b, float t) { t = t < 0 ? 0 : t > 1 ? 1 : t; t = t * t * (3 - 2 * t); return a + (b - a) * t; }
     }
 }

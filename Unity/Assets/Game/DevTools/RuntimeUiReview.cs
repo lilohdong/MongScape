@@ -100,7 +100,7 @@ namespace Mongscape.DevTools
             while (game.Session.Flow.State != GameFlowState.Result)
             {
                 waited += Time.unscaledDeltaTime;
-                if (waited > 8f && game.Session.Flow.State == GameFlowState.Running) game.Session.Hit(true);
+                if (waited > 8f && game.Session.Flow.State == GameFlowState.Running) game.Session.ForceCatch();
                 if (Time.realtimeSinceStartup - started > 180) { Fail("result did not appear"); yield break; }
                 yield return null;
             }

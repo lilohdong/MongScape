@@ -21,7 +21,7 @@ namespace Mongscape.Presentation
         public string WorkoutHint { get; private set; } = "";
         public bool ShowPoseRecovery { get; private set; }
         public bool ShowSiren { get; private set; }
-        // One slip strike is active: a bar shrinks over the clear window. ShowStrikeCleared flashes "경고 해제" afterwards.
+        // One warning is active (it lasts until the map is left). ShowStrikeCleared flashes "경고 해제" when leaving the map empties it.
         public bool ShowStrike { get; private set; }
         public float StrikeFraction { get; private set; }
         public bool ShowStrikeCleared { get; private set; }
@@ -95,8 +95,9 @@ namespace Mongscape.Presentation
             }
             lastZ = session.Runner.Z; lastTime = now;
             ShowStrike = running && session.SlipStrikes == 1 && !session.SlipPursuit;
-            StrikeFraction = ShowStrike ? Mathf.Clamp01(session.StrikeClearRemaining / Mathf.Max(.01f, session.Config.StrikeClearSeconds)) : 0;
-            if (running && previousStrikes == 1 && session.SlipStrikes == 0) strikeClearedUntil = now + 1.5f;
+            // Warnings no longer time out (plan 6-8): the bar stays full until the map is left.
+            StrikeFraction = ShowStrike ? 1f : 0;
+            if (running && previousStrikes > 0 && session.SlipStrikes == 0) strikeClearedUntil = now + 1.5f;
             previousStrikes = session.SlipStrikes;
             ShowStair = running && session.InStair;
             KneeGauge = ShowStair ? 1f - Mathf.Clamp01(session.KneeUrgency) : 0f;
