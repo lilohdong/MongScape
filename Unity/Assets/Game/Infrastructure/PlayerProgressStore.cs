@@ -12,6 +12,8 @@ namespace Mongscape.Infrastructure
     public sealed class PlayerProgressStore
     {
         [Serializable] private sealed class RecordsFile { public List<RankingEntry> Entries = new List<RankingEntry>(); public PlayerStats Stats = new PlayerStats(); public List<ExerciseDay> Exercise = new List<ExerciseDay>(); }
+        // Records saved before the mode field kept only the play style's label.
+        private static int LegacyMode(string label) => label == "전신" ? 0 : label == "상체" ? 1 : label == "키보드" ? 2 : -1;
         private const string LegacyBestKey = "Muhanok.BestDistance";
         private readonly string folder;
         private readonly string legacyFolder;
@@ -67,6 +69,7 @@ namespace Mongscape.Infrastructure
                     }
                 }
             }
+            if(file?.Entries!=null)foreach(var entry in file.Entries)if(entry!=null&&(entry.Mode<0||entry.Mode>2))entry.Mode=LegacyMode(entry.Style);
             Board.Load(file?.Entries);
             Exercise.Load(file?.Exercise);
             Stats = file?.Stats ?? new PlayerStats();
