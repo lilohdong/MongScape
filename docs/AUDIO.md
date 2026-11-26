@@ -19,6 +19,7 @@
 | `slip` | 바나나, 바닥에 미끄러짐 (계단 무릎 박자 놓침은 소리 없음) | Digital Audio / phaserDown1 | 0.75 |
 | `item` | 아이템 획득 | Digital Audio / powerUp7 | 0.80 |
 | `shield` | 보호막이 막아 줌 | Sci-Fi Sounds / forceField_000 | 0.60 |
+| `lion_step_0~2` | 동물원 사자 발소리. 곡의 박자마다, 사자가 가까울수록 크게 | Impact Sounds / impactSoft_medium_000~002, 6반음 내림, 0.26초 이하 | 0.08(멀리)~1.00(뒤꿈치) |
 | `lion_roar` | 동물원 사자 포효 경고 (`ChaserCue`) | Kenney 아님: OpenGameArt "80 CC0 creature SFX #2" (rubberduck, CC0) / roar_04, 3반음 올림, 약한 포화, 0.81초 | 0.60 (제안) |
 | `alarm_bell` | 감옥 탐조등 경보 (`ChaserCue`) | Kenney에 없어 `make_sfx.py`가 합성: 1.4 / 1.9 kHz 두 음을 4번 번갈아, 약 1초 | 0.45 (제안) |
 
@@ -44,6 +45,7 @@
 게임에서 (사운드 검수 1회차 반영):
 - 경고가 늘면 추격자 소리(`ChaserCue`: 사이렌, `lion_roar`, `alarm_bell`)와 `warning`이 나고, 잡히면 `hit` 뒤 0.35초에 `caught`, 결과 화면이 열리고 0.8초 뒤 신기록이면 `new_record`.
 - `hit`, `warning`, `caught`, `new_record`, `fork_blocked`, `alarm_bell`, `lion_roar`가 날 때 `GameAudio.Duck()`으로 음악을 0.4초 동안 5 dB 낮춥니다.
+- 동물원 곡과 신호음도 같은 덕킹을 따릅니다(`GameAudio.MusicDuck`). 사자 발소리는 반복음이라 덕킹을 걸지 않습니다.
 - 바나나 밟기는 `slip`과 `warning`이 같이 나므로, `slip` 뒤 0.3초 안의 `warning`은 0.15초 늦게 냅니다.
 - 다른 맵 코드가 부르는 훅: `GameAudio.ForkBlocked()` (막힌 갈림길, 최소 0.4초 간격), `GameAudio.GateDown()` (철문), `GameAudio.MonkeyRescued()` (원숭이 합류).
 
@@ -55,7 +57,7 @@
 | --- | --- | --- |
 | 반드시 들림 | +10 LU 이상 | caught, warning, alarm_bell, lion_roar |
 | 분명히 들림 | +6~9 LU | hit, fork_blocked, gate_down, monkey_rescue, new_record, item, shield, count_go, count_beep, cue, slip, 사이렌 |
-| 음악 아래 은은하게 | 0 아래 | jump, land, footstep, lock_click |
+| 음악 아래 은은하게 | 0 아래 | jump, land, footstep, lock_click, 멀리 있는 lion_step |
 
 `lock_open`, `lock_click`은 감옥 숨기 상태(드론만 남음) 기준으로 봅니다.
 

@@ -53,6 +53,12 @@ LIVE_SFX = [
     ("slip",        "digital-audio",    "phaserDown1.ogg",            "Slipping on a banana: cartoon slide down"),
     ("item",        "digital-audio",    "powerUp7.ogg",               "Item pickup"),
     ("shield",      "sci-fi-sounds",    "forceField_000.ogg",         "Shield saves the runner"),
+    ("lion_step_0", "impact-sounds",    "impactSoft_medium_000.ogg",  "Lion paw steps in the zoo, louder as it closes in",
+     {"pitch": -6, "max_sec": .26}),
+    ("lion_step_1", "impact-sounds",    "impactSoft_medium_001.ogg",  "Lion paw steps in the zoo, louder as it closes in",
+     {"pitch": -6, "max_sec": .26}),
+    ("lion_step_2", "impact-sounds",    "impactSoft_medium_002.ogg",  "Lion paw steps in the zoo, louder as it closes in",
+     {"pitch": -6, "max_sec": .26}),
     # Chaser cues (GameAudio.ChaserCue). Not Kenney: owner decision 2026-11-27 allows another CC0 source for the roar.
     ("lion_roar",   "oga-80-cc0-creture-sfx-2", "roar_04.ogg",        "Lion roar warning in the zoo (cartoon voice roar, pitched up 3 semitones)",
      {"pitch": 3, "drive": 2.0}),

@@ -38,6 +38,8 @@ namespace Mongscape.Presentation
         public bool MapMusicPlaying { get; set; }
         public float MusicVolume => musicVolume;
         public float EffectsVolume => effectsVolume;
+        // The current ducking share of the music (1 normal); maps that play their own song follow it.
+        public float MusicDuck => duck;
         // Whether the run that just ended set a new personal best (the bootstrap reads RunResults); new_record on the result.
         public Func<bool> NewBest { get; set; }
         public MusicSong Song => loops != null ? loops.Current : MusicSong.None;
@@ -125,6 +127,15 @@ namespace Mongscape.Presentation
         public void Countdown(bool final) { if (final) Play(go, GoGain); else Play(beep, BeepGain); }
         // A short step for a KneeStep on the stairs (the bootstrap calls it with the camera effect), under the music.
         public void Footstep() => PlayVaried(step, StepGain);
+        // The zoo lion's paws: quiet far away, full at the heels (closeness 0..1). They repeat, so they do not duck the music.
+        public const float LionStepFar = .08f, LionStepNear = 1f;
+        private AudioClip[] lionStep;
+        public static float LionStepGain(float closeness) => Mathf.Lerp(LionStepFar, LionStepNear, Mathf.Clamp01(closeness) * Mathf.Clamp01(closeness));
+        public void LionStep(float closeness)
+        {
+            if (lionStep == null) lionStep = Load(() => Tone(.12f, f => 90 - f * 40, .6f), "lion_step_0", "lion_step_1", "lion_step_2");
+            PlayVaried(lionStep, LionStepGain(closeness));
+        }
         // A short glassy break when the ranking strip passes a row.
         public void Crack() { if (effects != null && crack != null) effects.PlayOneShot(crack, effectsVolume * .55f); }
         // The guard's baton hits in the capture scene.
