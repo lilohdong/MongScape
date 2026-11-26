@@ -658,7 +658,7 @@ namespace Muhanok.Bootstrap
                 Lagging = pace.Lagging, OnStairs = OnOrBeforeStairs(), KneeStep = kneeStep, BigKnee = bigKnee, CrouchStart = crouchStart, CrouchEnd = crouchEnd,
                 CrouchDeep = deep, DeepStart = deepStart, BigJump = bigJump, BigLane = bigLane, Sprinting = Pose.CadenceStage == CadenceStage.Sprint,
             });
-            if (line != CoachLine.None) audioPlayer.Bonk();
+            if (line != CoachLine.None) audioPlayer.Cue();
         }
         // The ranking strip's rows: this week's member board (best per member, without the player's own row) and this PC's guest
         // runs of the week, one row per name (its best), or with "내 기록만" only the member's own runs on this PC. Guests have no

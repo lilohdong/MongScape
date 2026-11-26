@@ -278,6 +278,8 @@ namespace Muhanok.Domain
         // It survives Reset so it stays on across runs until switched off. Tutorial lessons still count mistakes.
         public bool Invincible {get;set;}
         public int SlipStrikes {get;private set;}
+        // What caused the latest slowdown slip (sound feedback tells a banana from a missed knee step).
+        public SlipSource LastSlipSource {get;private set;}
         // Seconds until the single active strike clears (0 when there is none).
         public float StrikeClearRemaining=>SlipStrikes==1&&!SlipPursuit?Math.Max(0f,Config.StrikeClearSeconds-(clock-lastStrike)):0f;
         // Raised once when a strike times out, so the HUD can show the all-clear.
@@ -389,10 +391,10 @@ namespace Muhanok.Domain
             if(Flow.State!=GameFlowState.Running||Paused||Runner.Riding||Invincible&&!tutorial)return false;
             DodgeStreak=0;
             // The tutorial's banana lesson: stepping on a peel is a counted miss that restarts the step, never a strike or pursuit.
-            if(tutorial&&source==SlipSource.Banana){Runner.Slip();lastHit=clock;TutorialMisses++;return true;}
+            if(tutorial&&source==SlipSource.Banana){Runner.Slip();LastSlipSource=source;lastHit=clock;TutorialMisses++;return true;}
             // The shield also absorbs one slip: no slowdown, no banana count, so no pursuit starts.
             if(Items.ConsumeShield()){ShieldSaves++;lastHit=clock;return false;}
-            Runner.Slip();
+            Runner.Slip();LastSlipSource=source;
             if(source!=SlipSource.Floor)
             {
                 SlipStrikes++;lastStrike=clock;

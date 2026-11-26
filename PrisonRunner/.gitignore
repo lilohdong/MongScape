@@ -71,3 +71,7 @@ Services/Identity/*.sqlite3*
 Services/Identity/secrets/
 Services/Identity/*.dump
 Services/*.tar.gz
+
+# Music render tools (FluidSynth, SoundFont) and render output, see Tools/Music/README.md
+Tools/Music/tools/
+Tools/Music/out/

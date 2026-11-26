@@ -1,0 +1,114 @@
+"""Build Mongscape's sound effects from Kenney audio packs (CC0).
+
+Usage:
+    python make_sfx.py <kenney_dir>
+
+<kenney_dir> holds the unzipped packs, one folder per pack, named after the
+kenney.nl asset slug (impact-sounds/, interface-sounds/, digital-audio/,
+rpg-audio/, sci-fi-sounds/, music-jingles/). Each pack is downloaded from
+https://kenney.nl/assets/<slug>.
+
+Every effect is decoded, mixed to mono, trimmed of leading/trailing silence,
+given a 5 ms fade-out, peak-normalised to -1 dBFS and written as OGG Vorbis
+(44.1 kHz mono). In-game loudness is set by the gain table in GameAudio.cs,
+not by the files.
+
+Needs: Python 3, NumPy, ffmpeg on PATH.
+"""
+import hashlib, json, os, subprocess, sys
+import numpy as np
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+UNITY = os.path.normpath(os.path.join(HERE, "..", "..", "Unity", "Assets", "Game", "Content", "Audio"))
+LIVE = os.path.join(UNITY, "Resources", "MuhanokAudio", "Sfx")   # loaded by GameAudio at runtime
+NEXT = os.path.join(UNITY, "SfxV2")                               # picked for v2, not wired yet
+SR = 44100
+PEAK_DB = -1.0
+
+# (output name, pack slug, file inside the pack, what it is for)
+LIVE_SFX = [
+    ("jump",        "rpg-audio",        "cloth1.ogg",                 "Jump: a cloth whoosh"),
+    ("land_0",      "impact-sounds",    "impactSoft_medium_000.ogg",  "Landing after a jump"),
+    ("land_1",      "impact-sounds",    "impactSoft_medium_001.ogg",  "Landing after a jump"),
+    ("land_2",      "impact-sounds",    "impactSoft_medium_002.ogg",  "Landing after a jump"),
+    ("hit",         "impact-sounds",    "impactPunch_heavy_000.ogg",  "Collision / caught"),
+    ("bonk_0",      "impact-sounds",    "impactWood_heavy_000.ogg",   "Guard's baton hits during the capture scene"),
+    ("bonk_1",      "impact-sounds",    "impactWood_heavy_001.ogg",   "Guard's baton hits during the capture scene"),
+    ("bonk_2",      "impact-sounds",    "impactWood_heavy_002.ogg",   "Guard's baton hits during the capture scene"),
+    ("cue",         "interface-sounds", "bong_001.ogg",               "Coach hint"),
+    ("count_beep",  "digital-audio",    "pepSound1.ogg",              "Countdown beep"),
+    ("count_go",    "digital-audio",    "highUp.ogg",                 "Countdown start"),
+    ("footstep_0",  "impact-sounds",    "footstep_concrete_000.ogg",  "Knee step on the prison stairs"),
+    ("footstep_1",  "impact-sounds",    "footstep_concrete_001.ogg",  "Knee step on the prison stairs"),
+    ("footstep_2",  "impact-sounds",    "footstep_concrete_002.ogg",  "Knee step on the prison stairs"),
+    ("footstep_3",  "impact-sounds",    "footstep_concrete_003.ogg",  "Knee step on the prison stairs"),
+    ("footstep_4",  "impact-sounds",    "footstep_concrete_004.ogg",  "Knee step on the prison stairs"),
+    ("slip",        "sci-fi-sounds",    "slime_000.ogg",              "Slipping on a banana"),
+    ("item",        "digital-audio",    "powerUp7.ogg",               "Item pickup"),
+    ("shield",      "sci-fi-sounds",    "forceField_000.ogg",         "Shield saves the runner"),
+]
+NEXT_SFX = [
+    ("lock_click",    "rpg-audio",       "metalClick.ogg",             "Prison lock: click while picking"),
+    ("lock_open",     "rpg-audio",       "metalLatch.ogg",             "Prison lock: opens"),
+    ("monkey_rescue", "music-jingles",   "jingles_PIZZI10.ogg",        "A monkey is rescued (short rising pizzicato)"),
+    ("fork_blocked",  "impact-sounds",   "impactMetal_heavy_001.ogg",  "Leaning into a blocked fork: cart clunk"),
+    ("gate_down",     "rpg-audio",       "doorClose_1.ogg",            "Iron gate comes down"),
+    ("warning",       "music-jingles",   "jingles_PIZZI05.ogg",        "First warning (short falling pizzicato)"),
+    ("caught",        "music-jingles",   "jingles_PIZZI01.ogg",        "Caught (falling pizzicato)"),
+    ("new_record",    "music-jingles",   "jingles_PIZZI02.ogg",        "New record (rising pizzicato)"),
+]
+MISSING = [("siren", "Police siren"), ("lion_roar", "Lion roar"), ("spotlight_alarm", "Searchlight alarm")]
+
+
+def find(pack_dir, name):
+    for root, _, files in os.walk(pack_dir):
+        if name in files:
+            return os.path.join(root, name)
+    raise FileNotFoundError(f"{name} not found in {pack_dir}")
+
+
+def decode(path):
+    r = subprocess.run(["ffmpeg", "-v", "error", "-i", path, "-ac", "1", "-ar", str(SR), "-f", "f32le", "-"],
+                       capture_output=True, check=True)
+    return np.frombuffer(r.stdout, np.float32).copy()
+
+
+def clean(x):
+    gate = np.abs(x).max() * 10 ** (-50 / 20)
+    idx = np.nonzero(np.abs(x) > gate)[0]
+    x = x[max(0, idx[0] - 32): idx[-1] + 1]
+    fade = min(len(x), int(SR * .005))
+    x[-fade:] *= np.linspace(1, 0, fade)
+    return x * (10 ** (PEAK_DB / 20) / np.abs(x).max())
+
+
+def encode(x, out):
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "f32le", "-ar", str(SR), "-ac", "1", "-i", "-",
+                    "-c:a", "libvorbis", "-q:a", "6", out], input=x.astype(np.float32).tobytes(), check=True)
+
+
+def sha(path):
+    return hashlib.sha256(open(path, "rb").read()).hexdigest()
+
+
+def build(kenney, table, folder):
+    rows = []
+    for name, pack, src, use in table:
+        path = find(os.path.join(kenney, pack), src)
+        x = clean(decode(path))
+        out = os.path.join(folder, name + ".ogg")
+        encode(x, out)
+        rows.append({"file": name + ".ogg", "use": use, "pack": pack, "source": f"https://kenney.nl/assets/{pack}",
+                     "original": src, "original_sha256": sha(path), "seconds": round(len(x) / SR, 3), "license": "CC0-1.0"})
+        print(f"{name:14s} <- {pack}/{src}  {len(x) / SR:.2f}s")
+    with open(os.path.join(folder, "SOURCES.json"), "w", encoding="utf-8") as f:
+        json.dump({"license": "CC0-1.0 (Creative Commons Zero), Kenney (www.kenney.nl)", "effects": rows,
+                   "missing_in_kenney": [{"name": n, "use": u} for n, u in MISSING]}, f, indent=2)
+
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        sys.exit(__doc__)
+    build(sys.argv[1], LIVE_SFX, LIVE)
+    build(sys.argv[1], NEXT_SFX, NEXT)

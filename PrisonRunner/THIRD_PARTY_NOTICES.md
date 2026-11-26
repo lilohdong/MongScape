@@ -4,6 +4,21 @@
 
 Factory Kit, Furniture Kit, Modular Cave Kit, Nature Kit, Survival Kit은 CC0 리소스입니다. 키트 출처와 원본 SHA256은 [docs/FREE_ASSETS_IMPORTED.json](docs/FREE_ASSETS_IMPORTED.json)에 기록되어 있습니다. 원본 라이선스 파일을 리소스 폴더와 함께 보존합니다.
 
+## Kenney 효과음
+
+효과음은 Kenney의 오디오 팩에서 골랐습니다. 모두 CC0 1.0(Creative Commons Zero, http://creativecommons.org/publicdomain/zero/1.0/)이며 상업 사용이 가능하고 출처 표기 의무가 없습니다.
+
+| 팩 | 주소 | 받은 ZIP SHA256 |
+| --- | --- | --- |
+| Impact Sounds 1.0 | https://kenney.nl/assets/impact-sounds | `029d734af1582474edf3a694d1b0cebc97c1c152f2f39fa34d4c2bafc5de77f8` |
+| Interface Sounds 1.0 | https://kenney.nl/assets/interface-sounds | `f2193d072726d6758a5f7871b2dcc54dcce0d5c35c6f0a62f92549b327c81232` |
+| Digital Audio | https://kenney.nl/assets/digital-audio | `24e6ce28b76a6d8c89cff4d331e0965ff5c3de8a73c612028e9d363cc64e4f06` |
+| RPG Audio | https://kenney.nl/assets/rpg-audio | `6dbeaf8544da958d8f2adcb4a4a4b76c1ade34a05f8ab9edccd327da7375f38b` |
+| Sci-Fi Sounds 1.0 | https://kenney.nl/assets/sci-fi-sounds | `119340f351a5098ad814f78719438c0da355a9ce8a4c8a3af6a8d48aa3d49e04` |
+| Music Jingles | https://kenney.nl/assets/music-jingles | `b729ba57959bd58793d2c5cafa348aaf2655d354f3da35ec4729e03ec77197b8` |
+
+필요한 파일만 다듬어(모노, 앞뒤 무음 제거, 피크 -1 dBFS) 넣었습니다. 쓰는 효과음은 `Unity/Assets/Game/Content/Audio/Resources/MuhanokAudio/Sfx/`, 2차용으로 골라 둔 효과음은 `Unity/Assets/Game/Content/Audio/SfxV2/`에 있고, 파일별 원본 팩, 원본 파일 이름, 원본 SHA256은 각 폴더의 `SOURCES.json`에 있습니다. Kenney 라이선스 원문은 `Unity/Assets/Game/Content/Audio/Kenney-License.txt`에 보존합니다. 다시 만드는 방법은 `Tools/Audio/make_sfx.py`를 보세요.
+
 ## Adobe Mixamo
 
 게임 빌드는 Running With Intention, Jumping In Place, Low Crouching Idle, Brief Stumble While Jogging 동작을 사용합니다. 출처는 https://www.mixamo.com/ 이며 다운로드 설정과 원본 해시는 [References/MixamoDownloads/Provenance.json](References/MixamoDownloads/Provenance.json)에 있습니다.
@@ -18,7 +33,7 @@ Mixamo 원본 캐릭터·애니메이션 파일은 일반 공개 재배포 대�
 
 Blender 캐릭터·환경·자체 동작의 제작 원본은 `References/Blender/`, 실제 사용 FBX는 `Unity/Assets/External/Staging/Blender/`에 있습니다. 생성 재질 출처는 `References/GeneratedV6/Provenance.md`에 있습니다. 로딩 이미지와 참고 이미지는 해당 프로젝트에서 제공받은 자료입니다.
 
-몸동작 인식은 Unity Inference Engine(com.unity.ai.inference)으로 게임 안에서 실행합니다. 모델은 Google MediaPipe BlazePose를 Unity가 Inference Engine용 ONNX로 변환해 공개한 [unity/inference-engine-blaze-pose](https://huggingface.co/unity/inference-engine-blaze-pose)(Apache-2.0)의 `pose_detection.onnx`, `pose_landmarks_detector_full.onnx`, `pose_landmarks_detector_lite.onnx`, `anchors.csv`이며 `Unity/Assets/Game/Content/Pose/Resources/MuhanokPose/`에 있습니다. 배경 음악과 효과음은 실행 중 코드로 합성하며 외부 음원 파일을 쓰지 않습니다. Unity 패키지의 라이선스는 각 공급자의 조건을 따릅니다. 현재 저장소에 프로젝트 전체를 포괄하는 오픈소스 라이선스를 새로 지정하지 않았습니다.
+몸동작 인식은 Unity Inference Engine(com.unity.ai.inference)으로 게임 안에서 실행합니다. 모델은 Google MediaPipe BlazePose를 Unity가 Inference Engine용 ONNX로 변환해 공개한 [unity/inference-engine-blaze-pose](https://huggingface.co/unity/inference-engine-blaze-pose)(Apache-2.0)의 `pose_detection.onnx`, `pose_landmarks_detector_full.onnx`, `pose_landmarks_detector_lite.onnx`, `anchors.csv`이며 `Unity/Assets/Game/Content/Pose/Resources/MuhanokPose/`에 있습니다. 효과음 출처는 위 Kenney 효과음 항목을 따릅니다. 사이렌과 코인 소리, 효과음 파일이 없을 때의 대체음은 실행 중 코드로 합성합니다. Unity 패키지의 라이선스는 각 공급자의 조건을 따릅니다. 현재 저장소에 프로젝트 전체를 포괄하는 오픈소스 라이선스를 새로 지정하지 않았습니다.
 
 
 ## Local face profiles (2026-10-25)
