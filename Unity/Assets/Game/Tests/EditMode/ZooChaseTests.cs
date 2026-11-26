@@ -10,7 +10,7 @@ namespace Mongscape.Tests
     {
         private static readonly string[] ChartNames = { "easy_a", "easy_b", "normal_a", "normal_b", "hard_a", "hard_b" };
         private static ZooBeatmap Chart(string name) =>
-            ZooBeatmap.Parse(File.ReadAllText(Path.Combine(Application.dataPath, "Game/Content/Audio/Music/Zoo/zoo_chase_v1." + name + ".beatmap.json")));
+            ZooBeatmap.Parse(File.ReadAllText(Path.Combine(UnityEngine.Application.dataPath, "Game/Content/Audio/Music/Zoo/zoo_chase_v1." + name + ".beatmap.json")));
         private static ZooBeatmap Two()
         {
             var map = new ZooBeatmap();

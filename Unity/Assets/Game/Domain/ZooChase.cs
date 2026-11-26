@@ -82,6 +82,8 @@ namespace Mongscape.Domain
         // Lion distance units (0 far away, 1 at the heels). The mirror shows from MirrorAt.
         public const float MirrorAt = .4f, AfterBite = .5f, RoarCancelBelow = .85f;
         public const float HitRelief = .08f, ArmsUpMiss = .2f, JumpMiss = .35f, BehindRise = .07f, FollowFall = .04f;
+        // Catching the beat again during the roar pushes the lion back fast enough to escape the bite (plan 1-2).
+        public const float RoarEscape = .2f;
         // Song speed (m/s): runs the 60 s song over the zoo branch.
         public float SongSpeed = 9f;
         // The player's recognition delay (seconds, positive = the camera reports late), from the sync calibration.
@@ -161,7 +163,7 @@ namespace Mongscape.Domain
                 if (state[nextOpen] == 0) Judge(nextOpen, false);
                 nextOpen++;
             }
-            if (behind.HasValue && !InGrace) Lion = Clamp(Lion + (behind.Value ? BehindRise : -FollowFall) * dt);
+            if (behind.HasValue && !InGrace) Lion = Clamp(Lion + (behind.Value ? BehindRise : -(Roaring ? RoarEscape : FollowFall)) * dt);
             UpdateRoar(dt);
             if (Map.Length > 0f && SongTime >= Map.Length) Stop();
         }
