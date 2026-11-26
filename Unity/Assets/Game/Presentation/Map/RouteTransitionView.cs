@@ -26,7 +26,7 @@ namespace Mongscape.Presentation.Map
             floor=gameObject.AddComponent<MeshFilter>();gameObject.AddComponent<MeshRenderer>().shadowCastingMode=ShadowCastingMode.Off;Surface=gameObject.AddComponent<MeshCollider>();
             var structure=new GameObject("CoveredEntranceAndRailTermination");structure.transform.SetParent(transform,false);
             frame=structure.AddComponent<MeshFilter>();structure.AddComponent<MeshRenderer>();
-            if(timber==null)timber=new Material(Shader.Find("Universal Render Pipeline/Lit")){color=new Color(.34f,.22f,.12f)};
+            if(timber==null)timber=new Material(RuntimeShader.Find(RuntimeShader.Lit)){color=new Color(.34f,.22f,.12f)};
             frame.GetComponent<Renderer>().sharedMaterial=timber;
             lamp=new GameObject("EntranceLamp").AddComponent<Light>();lamp.transform.SetParent(transform,false);lamp.transform.localPosition=new Vector3(0,4.5f,12);
             lamp.type=LightType.Point;lamp.range=16;lamp.intensity=4;lamp.shadows=LightShadows.None;camera=Camera.main;

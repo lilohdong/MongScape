@@ -22,7 +22,7 @@ namespace Mongscape.Presentation.Map
             int type=chunk.RouteType;
             if(!shells.TryGetValue(type,out var mesh)||mesh==null)shells[type]=mesh=Build(type);
             view.GetComponent<MeshFilter>().sharedMesh=mesh;view.Surface.sharedMesh=mesh;
-            if(earth==null)earth=new Material(Shader.Find("Universal Render Pipeline/Lit")){color=new Color(.12f,.18f,.095f)};
+            if(earth==null)earth=new Material(RuntimeShader.Find(RuntimeShader.Lit)){color=new Color(.12f,.18f,.095f)};
             view.GetComponent<MeshRenderer>().sharedMaterial=RouteSurface.IsOutdoor(type)?earth:RouteMaterials.Rock(chunk);
             view.gameObject.SetActive(true);return view;
         }

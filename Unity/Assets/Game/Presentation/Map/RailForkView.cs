@@ -76,7 +76,7 @@ namespace Mongscape.Presentation.Map
         private static void Materials()
         {
             if(deckMaterial!=null)return;
-            var shader=Resources.Load<Shader>("MuhanokUI/ForkSurface")??Shader.Find("Universal Render Pipeline/Lit");
+            var shader=RuntimeShader.Find(Resources.Load<Shader>("MuhanokUI/ForkSurface"),RuntimeShader.Lit);
             deckMaterial=new Material(shader){name="Fork timber",color=new Color(.32f,.20f,.105f)};
             railMaterial=new Material(shader){name="Fork lamp glass",color=new Color(1,.66f,.25f)};
             selectedRailMaterial=new Material(shader){name="Selected fork rail",color=new Color(1,.69f,.18f)};

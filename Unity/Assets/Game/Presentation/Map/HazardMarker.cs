@@ -63,7 +63,7 @@ namespace Mongscape.Presentation.Map
         private static void Materials()
         {
             if (ringMaterial != null) return;
-            var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+            var shader = RuntimeShader.Find(RuntimeShader.Lit, "Standard");
             ringMaterial = new Material(shader) { name = "Danger ring", color = Danger, hideFlags = HideFlags.DontSave };
             ringMaterial.EnableKeyword("_EMISSION"); ringMaterial.SetColor("_EmissionColor", Danger * .5f);
             ringMaterial.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;

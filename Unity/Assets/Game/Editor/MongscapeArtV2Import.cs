@@ -196,7 +196,8 @@ namespace Mongscape.Editor
             go.name = label; go.transform.position = position;
             if (ctrl != null)
             {
-                var animator = go.GetComponent<Animator>() ?? go.AddComponent<Animator>();
+                var animator = go.GetComponent<Animator>();
+                if (animator == null) animator = go.AddComponent<Animator>();
                 animator.runtimeAnimatorController = ctrl;
                 animator.applyRootMotion = false;
             }
