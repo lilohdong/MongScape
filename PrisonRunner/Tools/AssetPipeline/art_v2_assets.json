@@ -105,12 +105,60 @@
    "frames": 121
   },
   {
+   "name": "Models/MD_Zoo_Entrance.fbx",
+   "kind": "prop",
+   "group": "Zoo",
+   "loop": false,
+   "avatar_from": "",
+   "frames": 0
+  },
+  {
+   "name": "Models/MD_Zoo_Exit.fbx",
+   "kind": "prop",
+   "group": "Zoo",
+   "loop": false,
+   "avatar_from": "",
+   "frames": 0
+  },
+  {
+   "name": "Models/MD_Zoo_Fence.fbx",
+   "kind": "prop",
+   "group": "Zoo",
+   "loop": false,
+   "avatar_from": "",
+   "frames": 0
+  },
+  {
+   "name": "Models/MD_Zoo_IronGate.fbx",
+   "kind": "prop_anim",
+   "group": "Zoo",
+   "loop": false,
+   "avatar_from": "",
+   "frames": 180
+  },
+  {
    "name": "Models/MD_Zoo_LionCage.fbx",
    "kind": "prop_anim",
    "group": "Lion",
    "loop": false,
    "avatar_from": "",
    "frames": 60
+  },
+  {
+   "name": "Models/MD_Zoo_Puddle.fbx",
+   "kind": "prop",
+   "group": "Zoo",
+   "loop": false,
+   "avatar_from": "",
+   "frames": 0
+  },
+  {
+   "name": "Models/MD_Zoo_SqueezeBars.fbx",
+   "kind": "prop_anim",
+   "group": "Zoo",
+   "loop": false,
+   "avatar_from": "",
+   "frames": 24
   }
  ]
 }

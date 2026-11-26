@@ -21,7 +21,8 @@
    "alpha": -1,
    "name": "Charcoal",
    "assets": [
-    "PrisonMine"
+    "PrisonMine",
+    "Zoo"
    ]
   },
   {
@@ -34,7 +35,20 @@
    "name": "ForgedIron",
    "assets": [
     "Lion",
-    "PrisonMine"
+    "PrisonMine",
+    "Zoo"
+   ]
+  },
+  {
+   "hex": "#FF0904",
+   "smoothness": 0.45,
+   "metallic": 0.0,
+   "emission": "#FF0904",
+   "emission_strength": 2.5,
+   "alpha": -1,
+   "name": "GateWarningRed",
+   "assets": [
+    "Zoo"
    ]
   },
   {
@@ -251,7 +265,8 @@
    "alpha": -1,
    "name": "SignBoard",
    "assets": [
-    "PrisonMine"
+    "PrisonMine",
+    "Zoo"
    ]
   },
   {
@@ -263,7 +278,8 @@
    "alpha": -1,
    "name": "SignInk",
    "assets": [
-    "PrisonMine"
+    "PrisonMine",
+    "Zoo"
    ]
   },
   {
@@ -287,7 +303,8 @@
    "alpha": -1,
    "name": "ZooCaution",
    "assets": [
-    "Lion"
+    "Lion",
+    "Zoo"
    ]
   },
   {
@@ -299,7 +316,32 @@
    "alpha": -1,
    "name": "ZooEarth",
    "assets": [
-    "Lion"
+    "Lion",
+    "Zoo"
+   ]
+  },
+  {
+   "hex": "#2B6629",
+   "smoothness": 0.2,
+   "metallic": 0.0,
+   "emission": "",
+   "emission_strength": 0.0,
+   "alpha": -1,
+   "name": "ZooFoliage",
+   "assets": [
+    "Zoo"
+   ]
+  },
+  {
+   "hex": "#245226",
+   "smoothness": 0.2,
+   "metallic": 0.0,
+   "emission": "",
+   "emission_strength": 0.0,
+   "alpha": -1,
+   "name": "ZooGrass",
+   "assets": [
+    "Zoo"
    ]
   },
   {
@@ -311,7 +353,20 @@
    "alpha": -1,
    "name": "ZooLogBark",
    "assets": [
-    "Lion"
+    "Lion",
+    "Zoo"
+   ]
+  },
+  {
+   "hex": "#4A3423",
+   "smoothness": 0.1,
+   "metallic": 0.0,
+   "emission": "",
+   "emission_strength": 0.0,
+   "alpha": -1,
+   "name": "ZooMud",
+   "assets": [
+    "Zoo"
    ]
   },
   {
@@ -324,6 +379,30 @@
    "name": "ZooStraw",
    "assets": [
     "Lion"
+   ]
+  },
+  {
+   "hex": "#2F7393",
+   "smoothness": 0.6,
+   "metallic": 0.0,
+   "emission": "#3A8FB8",
+   "emission_strength": 0.35,
+   "alpha": -1,
+   "name": "ZooWater",
+   "assets": [
+    "Zoo"
+   ]
+  },
+  {
+   "hex": "#7FC0D8",
+   "smoothness": 0.8,
+   "metallic": 0.0,
+   "emission": "",
+   "emission_strength": 0.0,
+   "alpha": -1,
+   "name": "ZooWaterRipple",
+   "assets": [
+    "Zoo"
    ]
   },
   {
@@ -371,7 +450,8 @@
    "alpha": -1,
    "name": "blender_Stone_3",
    "assets": [
-    "PrisonMine"
+    "PrisonMine",
+    "Zoo"
    ]
   },
   {

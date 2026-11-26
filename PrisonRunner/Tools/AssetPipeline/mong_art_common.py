@@ -421,3 +421,18 @@ def text_mesh(name, body, pos, size, material, depth=.03, rot=(math.radians(90),
     ob = bpy.context.object
     for p in ob.data.polygons: p.use_smooth = False
     return ob
+
+def render_eye(path, eye, target, lens=18, res=(1280, 720)):
+    """Perspective shot from a player's eye (first-person runner view). lens 18 mm ~ the game's wide FOV."""
+    sc = bpy.context.scene
+    cam = sc.objects.get('Eye camera')
+    if cam is None:
+        cam = bpy.data.objects.new('Eye camera', bpy.data.cameras.new('Eye camera'))
+        sc.collection.objects.link(cam); cam['mong_studio'] = True
+    cam.data.type = 'PERSP'; cam.data.lens = lens; cam.data.clip_end = 300
+    cam.location = Vector(eye); cam.rotation_euler = (Vector(target) - Vector(eye)).to_track_quat('-Z', 'Y').to_euler()
+    sc.camera = cam
+    sc.render.resolution_x, sc.render.resolution_y = res; sc.render.resolution_percentage = 100
+    path = Path(path); path.parent.mkdir(parents=True, exist_ok=True)
+    sc.render.filepath = str(path); bpy.ops.render.render(write_still=True)
+    return path
