@@ -292,7 +292,7 @@ namespace Mongscape.Presentation
             var left = UiTokens.Box(0, 0, 620, 560); var right = UiTokens.Box(680, 0, 600, 560);
             moreBody.Add(left); moreBody.Add(right);
             var workout = session?.Workout;
-            int n = session?.Score.Coins ?? 0;
+            int n = session?.MonkeysEarned ?? 0;
             if (!camera)
             {
                 Section(left, "구한 원숭이"); left.Add(MonkeyRow(n));

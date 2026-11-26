@@ -215,7 +215,7 @@ namespace Mongscape.Presentation
             score.style.color = now < scoreTintUntil ? UiTokens.Accent : UiTokens.Text;
             int m = Mathf.FloorToInt(session.Score.Distance);
             if (m != shownMeters) { shownMeters = m; distance.text = UiTokens.N(m) + " m"; }
-            int mk = session.Score.Coins;
+            int mk = session.Troop.Kept;
             if (mk != shownMonkeys) { shownMonkeys = mk; monkeys.text = UiTokens.N(mk); }
 
             UpdateWarnings(session);
