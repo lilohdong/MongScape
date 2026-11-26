@@ -37,4 +37,4 @@ Unity Hub에서 `Unity/`를 **6000.3.10f1**로 열고 패키지 복원 후 **Mon
 
 기존 스키마 v1 서버는 백업 후 계정 v2 이전이 필요합니다. 이전 도구는 자동 실행하지 않으며 이번 작업에서 개인 DB에 적용하지 않았습니다. 구체적인 설정/백업은 [서버 안내](Services/Identity/README_DOCKER.md)를 확인하세요. 문서의 명령은 운영 방법을 설명하며 이번 작업에서 서버를 기동·배포했다는 뜻이 아닙니다.
 
-[기술 스택](docs/TECH_STACK.md) · [진행 상태와 남은 검수](docs/PROGRESS.md) · [문서 목록](docs/README.md)
+[기술 스택](docs/TECH_STACK.md) · [문서 목록](docs/README.md)
