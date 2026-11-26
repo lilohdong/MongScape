@@ -88,7 +88,7 @@ namespace Mongscape.Presentation
         public void Open() { focusName = true; }
 
         // back: main menu without saving; logout: sign out to the login gate; delete: the next deletion step.
-        public void Draw(ProfileForm form, Action back, Action logout, Action delete)
+        public void Draw(ProfileForm form, Action back, Action logout, Action delete, Action week = null)
         {
             var oldMatrix = GUI.matrix;
             GUI.matrix = Matrix4x4.identity;
@@ -135,6 +135,7 @@ namespace Mongscape.Presentation
             if (skin.Button(new Rect(444, 606, 190, 56), "로그아웃", Palette.A(Palette.Ground, 0.9f), Palette.Wood, Palette.Cream, 22)) logout?.Invoke();
             if (skin.Button(new Rect(646, 606, 190, 56), "회원 탈퇴", Palette.A(Palette.Ground, 0.9f), new Color(.75f, .25f, .18f), new Color(1, .7f, .6f), 22)) delete?.Invoke();
             GUI.enabled = wasEnabled && !form.Busy;
+            if (week != null && skin.Button(new Rect(1050, 606, 190, 56), "이번 주 운동", Palette.A(Palette.Ground, 0.9f), Palette.Wood, Palette.Cream, 22)) week();
             if (skin.Button(new Rect(848, 606, 190, 56), "뒤로", Palette.A(Palette.Ground, 0.9f), Palette.Wood, Palette.Cream, 22) || escape && !asking && GUI.enabled) back?.Invoke();
             GUI.enabled = wasEnabled;
         }

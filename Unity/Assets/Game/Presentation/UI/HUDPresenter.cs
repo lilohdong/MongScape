@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Mongscape.Presentation
 {
-    public enum MenuPage { None, Main, Setup, Profile, Ranking, Identity, Login, SignUp, TutorialOffer, Credits, Help }
+    public enum MenuPage { None, Main, Setup, Profile, Ranking, Identity, Login, SignUp, TutorialOffer, Credits, Help, Week }
 
     // UI root: owns the menu page state and draws exactly one screen for the current game state.
     public sealed class HUDPresenter : MonoBehaviour
@@ -74,6 +74,8 @@ namespace Mongscape.Presentation
         private RunHudView runView;
         private ResultView resultView;
         private HelpView helpView;
+        private WeekView weekView;
+        public WeekView WeekCard => weekView;
         public HelpView Help => helpView;
         // The UI Toolkit result screen (score count-up, today's ranking, this run).
         public ResultView Result => resultView;
@@ -93,6 +95,7 @@ namespace Mongscape.Presentation
             runView = new RunHudView(gameObject);
             pauseView = new PauseView(gameObject) { Resume = () => PauseRun?.Invoke(), Recalibrate = () => { Data?.Recalibrate(); PauseRun?.Invoke(); }, Main = () => ToMenu?.Invoke() };
             helpView = new HelpView(gameObject) { Back = OpenMainMenu };
+            weekView = new WeekView(gameObject) { Back = () => ShowPage(MenuPage.Profile) };
             resultView = new ResultView(gameObject) { Retry = () => retry?.Invoke(), Calibrate = OpenCalibration, Main = () => ToMenu?.Invoke() };
         }
         public void ShowPage(MenuPage page)
@@ -104,6 +107,7 @@ namespace Mongscape.Presentation
             if (page == MenuPage.Setup) setup.Open(Data);
             else if (page == MenuPage.Profile) { Profile.Open(Data, Account); profile.Open(); }
             else if (page == MenuPage.TutorialOffer) tutorialOffer.Open();
+            else if (page == MenuPage.Week) weekView.Show(Data?.WeekMinutes ?? 0, Data?.WeekDays, Data?.WeekMaps, ((int)System.DateTime.UtcNow.AddHours(9).DayOfWeek + 6) % 7, Data?.Player?.Style == PlayStyle.UpperBody);
             else if (page == MenuPage.Ranking) board.OpenBoard(Data, Account);
             else if (page == MenuPage.Login) Account?.CheckServer();
             else if (page == MenuPage.SignUp) { SignUp.Open(Account); signUp.Open(); }
@@ -184,6 +188,8 @@ namespace Mongscape.Presentation
             if (runView == null) return;
             helpView.Root.Visible = !Hidden && Page == MenuPage.Help && session != null && session.Flow.State == GameFlowState.TitleIdle;
             if (helpView.Root.Visible) helpView.Root.Layout();
+            bool menuScreen = !Hidden && session != null && session.Flow.State == GameFlowState.TitleIdle;
+            weekView.Root.Visible = menuScreen && Page == MenuPage.Week; if (weekView.Root.Visible) weekView.Root.Layout();
             bool inRun = session != null && (session.Flow.State == GameFlowState.Running || session.Flow.State == GameFlowState.Caught);
             if (inRun && !wasRunning) runView.ResetRun();
             wasRunning = inRun;
@@ -294,13 +300,14 @@ namespace Mongscape.Presentation
             var e = Event.current;
             if (e.type == EventType.KeyDown && e.keyCode == KeyCode.Escape && (Page == MenuPage.Ranking || Page == MenuPage.Setup || Page == MenuPage.Help))
             { e.Use(); OpenMainMenu(); return; }
+            if (e.type == EventType.KeyDown && e.keyCode == KeyCode.Escape && Page == MenuPage.Week) { e.Use(); ShowPage(MenuPage.Profile); return; }
             switch (Page)
             {
                 case MenuPage.None: title.Draw(TitleLogo, Fade, OpenLogin); break;
                 case MenuPage.Setup: setup.Draw(Data, BeginRun, OpenMainMenu, OpenSettings); break;
                 case MenuPage.Profile:
                     if (Account == null || !Account.SignedIn) OpenMainMenu();
-                    else profile.Draw(Profile, OpenMainMenu, Logout, DeleteAccount);
+                    else profile.Draw(Profile, OpenMainMenu, Logout, DeleteAccount, () => ShowPage(MenuPage.Week));
                     break;
                 case MenuPage.Ranking: board.Draw(Data, session, OpenMainMenu, "뒤로", null, null); break;
                 case MenuPage.Login: ChooseLogin(gate.Draw(Account, TitleLogo)); break;
@@ -312,6 +319,7 @@ namespace Mongscape.Presentation
                 case MenuPage.TutorialOffer: { var choice = tutorialOffer.Draw(offerMode, TutorialMask?.Invoke() ?? 0, Data == null || Data.BodyStylesAllowed, Data?.Player?.Style ?? PlayStyle.Keyboard, out var style, out var chapter); ChooseTutorial(choice, style, chapter); break; }
                 case MenuPage.Credits: if (credits.Draw()) CloseCredits(); break;
                 case MenuPage.Help: helpView.Gestures.Pass(); break;
+                case MenuPage.Week: weekView.Gestures.Pass(); break;
             }
         }
         private void OnDestroy() { skin?.Dispose(); overlaySkin?.Dispose(); }

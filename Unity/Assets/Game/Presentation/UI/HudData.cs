@@ -98,8 +98,6 @@ namespace Mongscape.Presentation
         // The profile's week card (members): goal minutes per day from Monday, and active minutes per map (zoo, prison, mine).
         double[] WeekDays => null;
         double[] WeekMaps => null;
-        // Tutorial chapters finished (0 to 3, plan 6-1b): members on the account, guests on this PC.
-        int TutorialChaptersDone => 0;
     }
 
     // Draws the mirrored webcam image with the detected skeleton; returns the video rect for overlays.

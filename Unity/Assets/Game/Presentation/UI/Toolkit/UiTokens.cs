@@ -14,6 +14,9 @@ namespace Mongscape.Presentation
             MonkeyFur = Hex(0x7A4A2A), MonkeyFace = Hex(0xF2C28E), PrisonerOrange = Hex(0xE83806), HatNavy = Hex(0x1F2B44), HatBrim = Hex(0x5E7A9E);
         public static Color Hex(int rgb) => new Color32((byte)(rgb >> 16), (byte)(rgb >> 8), (byte)rgb, 255);
         public static Color A(Color c, float a) { c.a = a; return c; }
+        // A dark cover that looks as strong as the guide's percentage: the project blends in linear space, where a 72%
+        // dark layer only reads as about 45% darker, so the alpha is raised to 1 - (1 - a)^2.2.
+        public static Color Dim(Color c, float a) { c.a = 1 - Mathf.Pow(1 - Mathf.Clamp01(a), 2.2f); return c; }
         static readonly CultureInfo Num = CultureInfo.InvariantCulture;
         // 12,480 (style guide 1: thousands separator).
         public static string N(int value) => value.ToString("N0", Num);

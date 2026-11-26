@@ -48,7 +48,7 @@ namespace Mongscape.Presentation
             Root = new UiRoot(host, "Help", 8);
             var frame = Root.Frame;
             Gestures = new GestureButtons(frame);
-            var bg = new VisualElement(); UiTokens.Fill(bg); bg.style.backgroundColor = UiTokens.A(UiTokens.Deep, .92f); frame.Add(bg);
+            var bg = new VisualElement(); UiTokens.Fill(bg); bg.style.backgroundColor = UiTokens.Dim(UiTokens.Deep, .85f); frame.Add(bg);
             var title = UiTokens.Label("운동은 이렇게 계산해요", 88, UiTokens.Accent); UiTokens.Absolute(title, 80, 40, 1400, 120); frame.Add(title);
             var back = Gestures.Add(new UiButton("뒤로", false, () => Back?.Invoke())); UiTokens.Absolute(back, 1920 - 80 - 300, 40, 300, 120); frame.Add(back);
             for (int i = 0; i < Lines.Length; i++) { var l = UiTokens.Label(Lines[i], 44, UiTokens.Text); UiTokens.Absolute(l, 80, 180 + i * 58, 1760, 56); frame.Add(l); }

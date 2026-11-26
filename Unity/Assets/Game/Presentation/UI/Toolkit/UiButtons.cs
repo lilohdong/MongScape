@@ -11,6 +11,8 @@ namespace Mongscape.Presentation
     {
         public readonly Label Text;
         public Action Pressed;
+        // A button with its own colours (tutorial chapter cards): called instead of the default look, with the hover state.
+        public Action<bool> Look;
         readonly bool primary;
         bool hover;
         public UiButton(string text, bool primaryButton, Action pressed, int size = 64, Action<Painter2D, Rect> icon = null)
@@ -27,8 +29,9 @@ namespace Mongscape.Presentation
             Paint();
         }
         public void SetLabel(string text) => Text.text = text;
-        void Paint()
+        public void Paint()
         {
+            if (Look != null) { Look(hover); return; }
             bool lit = primary || hover;
             style.backgroundColor = lit ? UiTokens.Accent : UiTokens.A(UiTokens.Panel, .94f);
             UiTokens.Border(this, 5, lit ? UiTokens.WarnHi : UiTokens.PanelEdge);

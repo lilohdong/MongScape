@@ -45,7 +45,7 @@ namespace Mongscape.Presentation
             Root = new UiRoot(host, "Result", 6);
             frame = Root.Frame;
             Gestures = new GestureButtons(frame);
-            dim = new VisualElement { pickingMode = PickingMode.Ignore }; UiTokens.Fill(dim); dim.style.backgroundColor = UiTokens.A(UiTokens.Deep, .72f);
+            dim = new VisualElement { pickingMode = PickingMode.Ignore }; UiTokens.Fill(dim); dim.style.backgroundColor = UiTokens.Dim(UiTokens.Deep, .72f);
             frame.Add(dim);
             // A soft round glow (one radial gradient texture) behind the count-up.
             glow = UiTokens.Box(960 - 520, 540 - 520, 1040, 1040);
@@ -198,7 +198,7 @@ namespace Mongscape.Presentation
         }
         VisualElement Overlay(string title, out VisualElement body, out UiButton close, string closeText, Action onClose)
         {
-            var o = new VisualElement(); UiTokens.Fill(o); o.style.backgroundColor = UiTokens.A(UiTokens.Deep, .9f);
+            var o = new VisualElement(); UiTokens.Fill(o); o.style.backgroundColor = UiTokens.Dim(UiTokens.Deep, .8f);
             var p = Panel(260, 90, 1400, 900); p.style.backgroundColor = UiTokens.Panel; o.Add(p);
             var t = UiTokens.Label(title, 88, UiTokens.Accent); UiTokens.Absolute(t, 60, 30, 1280, 120); p.Add(t);
             body = UiTokens.Box(60, 170, 1280, 560); p.Add(body);

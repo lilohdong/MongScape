@@ -17,7 +17,7 @@ namespace Mongscape.Presentation
             Root = new UiRoot(host, "Pause", 7);
             var frame = Root.Frame;
             Gestures = new GestureButtons(frame);
-            var dim = new VisualElement { pickingMode = PickingMode.Ignore }; UiTokens.Fill(dim); dim.style.backgroundColor = UiTokens.A(UiTokens.Deep, .7f);
+            var dim = new VisualElement { pickingMode = PickingMode.Ignore }; UiTokens.Fill(dim); dim.style.backgroundColor = UiTokens.Dim(UiTokens.Deep, .7f);
             frame.Add(dim);
             frame.Add(UiIcons.Make(960 - 70, 140, 140, UiIcons.PauseBars(UiTokens.Accent)));
             resume = Gestures.Add(new UiButton("계속", true, () => Resume?.Invoke(), 64, Play_Icon));
@@ -26,7 +26,7 @@ namespace Mongscape.Presentation
             Place(true);
             frame.Add(resume); frame.Add(again); frame.Add(main);
             // Not a button: no border, deep 50%.
-            var band = UiTokens.Box(600, 790, 720, 180); band.style.backgroundColor = UiTokens.A(UiTokens.Deep, .75f); UiTokens.Radius(band, 36);
+            var band = UiTokens.Box(600, 790, 720, 180); band.style.backgroundColor = UiTokens.Dim(UiTokens.Deep, .7f); UiTokens.Radius(band, 36);
             band.Add(UiIcons.Make(50, 10, 160, (p, r) =>
             {
                 UiIcons.Person(() => UiTokens.TextDim)(p, r);

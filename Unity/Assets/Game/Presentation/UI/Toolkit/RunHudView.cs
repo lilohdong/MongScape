@@ -122,7 +122,7 @@ namespace Mongscape.Presentation
             frame.Add(poseWindow);
 
             // Middle: tracking lost (style guide 6-4).
-            lost = new VisualElement { pickingMode = PickingMode.Ignore }; UiTokens.Fill(lost); lost.style.backgroundColor = UiTokens.A(UiTokens.Deep, .62f);
+            lost = new VisualElement { pickingMode = PickingMode.Ignore }; UiTokens.Fill(lost); lost.style.backgroundColor = UiTokens.Dim(UiTokens.Deep, .62f);
             lostPulse = new ShapeElement((p, r) =>
             {
                 float t = Mathf.Repeat(now, 1f);
