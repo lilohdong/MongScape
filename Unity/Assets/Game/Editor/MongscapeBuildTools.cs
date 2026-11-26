@@ -18,8 +18,19 @@ namespace Mongscape.Editor
         private const string PreviewKey = "Muhanok.Preview";
         private const string StepKey = "Muhanok.PreviewStep";
         static MongscapeBuildTools() { EditorApplication.update += PreviewTick; EditorApplication.playModeStateChanged += Changed; }
+        public const string BuildPathArgument = "-mongscapeBuildPath";
         [MenuItem("Mongscape/Build Windows Demo")]
-        public static void BuildWindows()
+        public static void BuildWindows() => Build(DemoPath, BuildOptions.Development);
+        // The shipping player (no development tools). -mongscapeBuildPath <exe> picks the output; the server address comes
+        // from -identityUrl, MONGSCAPE_IDENTITY_URL or Unity/identity-server.json as for the demo build.
+        [MenuItem("Mongscape/Build Windows Release")]
+        public static void BuildRelease()
+        {
+            var args = Environment.GetCommandLineArgs(); int at = Array.IndexOf(args, BuildPathArgument);
+            Build(at >= 0 && at + 1 < args.Length ? Path.GetFullPath(args[at + 1]) : DemoPath, BuildOptions.None);
+        }
+        private static string DemoPath => Path.GetFullPath(Path.Combine(UnityEngine.Application.dataPath, "../../Builds/Mongscape/Windows/Mongscape.exe"));
+        private static void Build(string destination, BuildOptions options)
         {
             // A bad face server address stops the build before it starts, not after.
             IdentityServerSetup.Resolve(out _);
@@ -32,14 +43,13 @@ namespace Mongscape.Editor
             PlayerSettings.productName = "Mongscape";
             PlayerSettings.defaultScreenWidth = OutputResolution.Width; PlayerSettings.defaultScreenHeight = OutputResolution.Height;
             PlayerSettings.fullScreenMode = FullScreenMode.Windowed;
-            string destination = Path.GetFullPath(Path.Combine(UnityEngine.Application.dataPath, "../../Builds/Mongscape/Windows/Mongscape.exe"));
             Directory.CreateDirectory(Path.GetDirectoryName(destination));
             string complete=Path.Combine(Path.GetDirectoryName(destination),"Mongscape.complete");
             if(File.Exists(complete))File.Delete(complete);
             var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
             {
                 scenes = new[] { "Assets/Game/Scenes/GameScene.unity" }, locationPathName = destination,
-                target = BuildTarget.StandaloneWindows64, options = BuildOptions.Development
+                target = BuildTarget.StandaloneWindows64, options = options
             });
             if (report.summary.result != BuildResult.Succeeded) throw new Exception("MUHANOK_BUILD_FAIL: " + report.summary.result);
             // The game reads identity-server.json next to the exe; no environment variable is needed on the player PC.
