@@ -11,7 +11,7 @@ namespace Mongscape.Tests
 {
     public sealed class CollisionAndCartTests
     {
-        [UnityTest] public IEnumerator StairChunksCarryNoHazardsAndOnlyKneeHighCoinsThatNeedSteps()
+        [UnityTest] public IEnumerator StairChunksCarryNoHazardsAndNoCoins()
         {
             yield return SceneManager.LoadSceneAsync("GameScene");yield return null;
             var game=Object.FindFirstObjectByType<GameBootstrap>();game.Session.Config.ExtendedRoutes=false;game.BeginRun("");
@@ -22,23 +22,7 @@ namespace Mongscape.Tests
             Assert.IsTrue(stair.Layout.Stair);Assert.AreEqual(0,stair.SlideGates.Length,"The closing door is gone");
             foreach(var hazard in stair.Obstacles)Assert.IsFalse(hazard.gameObject.activeSelf);
             Assert.IsEmpty(stair.ExerciseObstacles);
-            foreach(var coin in stair.Coins)
-            {
-                Assert.IsTrue(coin.RequiresKneeStep);Assert.IsTrue(coin.gameObject.activeSelf);
-                float local=coin.transform.position.z-stair.Entry.position.z;
-                Assert.That(local,Is.InRange(ObstacleLayout.StairCoinFromZ-.01f,ObstacleLayout.StairCoinToZ+.01f));
-                float surface=stair.Entry.position.y+RouteSurface.LocalHeight(7,local);
-                Assert.AreEqual(ObstacleLayout.StairCoinHeight,coin.transform.position.y-surface,.01f,"Coins hang at knee height above the stair");
-            }
-            // Standing still cannot take a stair coin; a fresh step can.
-            var coinA=stair.Coins[0];game.Session.Reset();game.Session.Runner.SetStartZ(coinA.transform.position.z);
-            RouteSurface.Sample(coinA.transform.position.z,out float offsetX,out _);
-            int lane=Mathf.RoundToInt((coinA.transform.position.x-offsetX)/2.2f);
-            if(lane!=0)game.Session.Runner.Command(lane<0?MotionCommand.Left:MotionCommand.Right);
-            game.Session.Runner.Tick(.25f,0);game.Session.Runner.SetStartZ(coinA.transform.position.z);
-            coinA.Evaluate(game.Session,coinA.transform.position.z-1);Assert.AreEqual(0,game.Session.Score.Coins);Assert.IsTrue(coinA.gameObject.activeSelf);
-            game.Session.Runner.Command(MotionCommand.KneeStep);coinA.Evaluate(game.Session,coinA.transform.position.z-1);
-            Assert.AreEqual(1,game.Session.Score.Coins);Assert.IsFalse(coinA.gameObject.activeSelf);
+            Assert.IsNull(stair.transform.Find("Collectibles"),"No coins on the stairs either");
         }
         [UnityTest] public IEnumerator MovingBetweenLanesCannotBypassFullWidthExerciseRow()
         {

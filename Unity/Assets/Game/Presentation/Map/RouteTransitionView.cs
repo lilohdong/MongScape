@@ -46,7 +46,6 @@ namespace Mongscape.Presentation.Map
             foreach(var h in chunk.Obstacles)h.gameObject.SetActive(false);
             foreach(var h in chunk.ExerciseObstacles)h.gameObject.SetActive(false);
             if(chunk.FloorItems!=null)foreach(var item in chunk.FloorItems)item.gameObject.SetActive(false);
-            if(chunk.Coins!=null)foreach(var coin in chunk.Coins){var p=coin.transform.position;p.x=chunk.transform.position.x;coin.transform.position=p;}
             lamp.color=toOutside?new Color(.7f,.83f,1):new Color(1,.7f,.4f);
         }
         private static float Width(float z,bool fromOutside,bool toOutside,bool prison,bool fromFork)

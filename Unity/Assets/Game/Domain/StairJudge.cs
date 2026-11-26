@@ -11,7 +11,7 @@ namespace Mongscape.Domain
         private bool failed, inChunk;
         private float lastZ;
         // Seconds since this stair chunk was entered: entering counts as a fresh step, so the knee gauge starts full and
-        // nobody has to begin stepping before the stairs. The runner's own step clock (animation, coins, lessons) is untouched.
+        // nobody has to begin stepping before the stairs. The runner's own step clock (animation, lessons) is untouched.
         private float sinceEntry = float.MaxValue;
         public StairJudge(RunConfig tuning) { config = tuning; }
         // Shrinks the allowed gap between steps (the prison's stair beat gets a little faster each visit); 1 = KneeStepGap.

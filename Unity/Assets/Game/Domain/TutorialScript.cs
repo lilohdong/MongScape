@@ -8,7 +8,7 @@ namespace Mongscape.Domain
     // What a step waits for: a framed body, a calibrated body, a held pace, the police shaken off, a lesson obstacle
     // (or broken rail, or both bananas) passed cleanly, or a lean at the cart fork.
     public enum TutorialPass { Framed, Calibrated, Paced, PoliceShaken, ObstaclePassed, ForkChosen, None }
-    // The lesson hazards of the course; every random hazard, item and coin is removed.
+    // The lesson hazards of the course; every random hazard and item is removed.
     public enum TutorialHazard { None, LaneBlock, JumpRow, CrouchRow, StairChunk, Bananas, RailGap }
 
     // Lessons for one play style (about 15 s each, under 3 minutes). Steps the style, route or options lack are left out:

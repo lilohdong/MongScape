@@ -103,7 +103,7 @@ namespace Mongscape.Presentation.Map
             {
                 foreach(var item in active)
                 {
-                    item.Chunk.PlaceOnRoute(item.Chunk.Sequence);item.Chunk.UpdateCartRoute();
+                    item.Chunk.PlaceOnRoute(item.Chunk.Sequence);
                     item.Chunk.ForkView?.RefreshSelection(item.Chunk);
                 }
                 if(active.Count>0)nextPosition=active[active.Count-1].Chunk.Exit.position;
@@ -122,8 +122,6 @@ namespace Mongscape.Presentation.Map
                 chunk.Prepare(sequence, session.OddsAt(sequence * RouteSurface.Length), random, Pacer, session.PlannedSpeed(sequence * RouteSurface.Length));
                 chunk.gameObject.SetActive(true); active.Add(new ActiveChunk(type, chunk));
                 Decorator?.Decorate(chunk, sequence, type, random);
-                // After the decorators: they may swap or hide exercise rows (lane blocks, the tutorial's lessons).
-                chunk.PlaceBonusCoins();
                 nextPosition = chunk.Exit.position; sequence++;
             }
             if (budget != null && Time.unscaledTime >= nextBudgetUpdate)
@@ -143,10 +141,6 @@ namespace Mongscape.Presentation.Map
                 if(exercises!=null)foreach(var exercise in exercises)exercise.Evaluate(session,previousZ);
                 foreach(var hazard in active[i].Chunk.DynamicObstacles)hazard.Evaluate(session,previousZ);
                 foreach(var pickup in active[i].Chunk.Pickups)pickup.Evaluate(session,previousZ);
-                var coins=active[i].Chunk.Coins;
-                if(coins!=null) for(int j=0;j<coins.Length;j++) coins[j].Evaluate(session,previousZ);
-                var bonus=active[i].Chunk.BonusCoinViews;
-                for(int j=0;j<bonus.Count;j++) bonus[j].Evaluate(session,previousZ);
                 var items=active[i].Chunk.FloorItems;
                 if(items!=null)foreach(var item in items)item.Evaluate(session,previousZ);
                 foreach(var item in active[i].Chunk.DynamicFloorItems)item.Evaluate(session,previousZ);

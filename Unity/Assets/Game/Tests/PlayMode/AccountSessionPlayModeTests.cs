@@ -51,7 +51,7 @@ namespace Mongscape.Tests
             Assert.AreEqual(0,fake.SavedRuns.Count,"A guest run never reaches the account server");
             Assert.AreEqual(1,game.Store.Board.All.Count);
             Assert.AreEqual(AccountSession.GuestName,game.Store.Board.All[0].Name);Assert.AreEqual("",game.Store.Board.All[0].AccountId);
-            Assert.AreEqual(0,game.Account.Coins);Assert.IsFalse(((IHudData)game).RunSaveFailed);
+            Assert.AreEqual(0,game.Account.Monkeys);Assert.IsFalse(((IHudData)game).RunSaveFailed);
             game.TogglePause();game.ExitToMenu();
         }
 
@@ -69,11 +69,11 @@ namespace Mongscape.Tests
         }
 
         [UnityTest]
-        public IEnumerator MemberRunIsSavedWithModeAndCoinsAndOnlyUnlockedItems()
+        public IEnumerator MemberRunIsSavedWithModeAndMonkeysAndOnlyUnlockedItems()
         {
             yield return Open();
             fake.Balance=100;
-            game.Account.SignInMember(new AccountProfile{id="member-1",name="회원QA",coins=100,unlocked=new[]{(int)ItemKind.Shield}},"token-1");
+            game.Account.SignInMember(new AccountProfile{id="member-1",name="회원QA",coins=100,unlocked=new[]{11}},"token-1");
             Assert.IsTrue(game.SignedIn);Assert.AreEqual("회원QA",((IHudData)game).SavedProfile.DisplayName);
             CollectionAssert.AreEqual(new[]{ItemKind.Shield},game.RunItems());
             yield return RunKeyboard();
@@ -81,11 +81,11 @@ namespace Mongscape.Tests
             game.RecordFinishedRun();
             Assert.AreEqual(1,fake.SavedRuns.Count);
             var run=fake.SavedRuns[0];
-            Assert.AreEqual((int)PlayStyle.Keyboard,run.mode);Assert.AreEqual(game.Session.Score.Coins,run.coins);
+            Assert.AreEqual((int)PlayStyle.Keyboard,run.mode);Assert.AreEqual(game.Session.MonkeysEarned,run.coins);
             Assert.AreEqual(RunScore.Version,run.score_version);Assert.AreEqual(game.Session.Elapsed,run.play_seconds,.001);Assert.Greater(run.play_seconds,0);
             Assert.AreEqual(game.Session.Score.Score,run.score,"The score uses the distance and exercise formula");Assert.AreEqual(5,run.activities.Length);
             Assert.AreEqual("token-1",fake.RunTokens[0]);
-            Assert.AreEqual(100+run.coins,game.Account.Coins,"The balance from the reply reaches the session");
+            Assert.AreEqual(100+run.coins,game.Account.Monkeys,"The balance from the reply reaches the session");
             Assert.AreEqual("member-1",game.Store.Board.All[0].AccountId);Assert.AreEqual("회원QA",game.Store.Board.All[0].Name);
             game.TogglePause();game.ExitToMenu();
         }
@@ -105,7 +105,7 @@ namespace Mongscape.Tests
             game.TogglePause();game.ExitToMenu();
         }
 
-        // A 401 on the menu (here the shop) signs the member out at once and opens the login gate with the notice; no /logout is sent.
+        // A 401 on the menu (here a trait unlock) signs the member out at once and opens the login gate with the notice; no /logout is sent.
         [UnityTest]
         public IEnumerator ExpiredSessionOnTheMenuReturnsToTheLoginGate()
         {
@@ -114,7 +114,7 @@ namespace Mongscape.Tests
             game.Account.SignInMember(new AccountProfile{id="member-4",name="만료",coins=500},"token-4");
             hud.OpenMainMenu();Assert.AreEqual(MenuPage.Main,hud.Page);
             fake.Expired=true;bool? bought=null;
-            ((IHudData)game).Unlock(ItemKind.Magnet,(ok,why)=>bought=ok);
+            ((IHudData)game).UnlockTrait(TraitId.Call,(ok,why)=>bought=ok);
             Assert.AreEqual(false,bought);Assert.IsFalse(game.SignedIn);Assert.AreEqual(0,fake.Logouts,"The token is already gone on the server");
             Assert.AreEqual(MenuPage.Login,hud.Page);Assert.AreEqual(GameBootstrap.ExpiredNotice,((IIdentityData)game).LoginNotice);
             yield return null;Assert.AreEqual(MenuPage.Login,hud.Page);
@@ -168,7 +168,7 @@ namespace Mongscape.Tests
             gateway.FailRuns=false;gateway.Balance=40;
             uploader.Save(new AccountRun{id="c",coins=5});
             CollectionAssert.AreEqual(new[]{"a","a","b","b","c"},gateway.SavedRuns.ConvertAll(r=>r.id));
-            Assert.IsFalse(uploader.LastFailed);Assert.IsFalse(uploader.HasPending);Assert.AreEqual(45,session.Coins);
+            Assert.IsFalse(uploader.LastFailed);Assert.IsFalse(uploader.HasPending);Assert.AreEqual(45,session.Monkeys);
         }
 
         [Test]

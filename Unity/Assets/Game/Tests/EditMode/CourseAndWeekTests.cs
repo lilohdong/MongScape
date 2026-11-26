@@ -74,18 +74,17 @@ namespace Mongscape.Tests
             Assert.AreEqual("주간 중강도 30 / 150분", WorkoutReport.WeekGoal(30.9));
         }
 
-        [Test] public void StreakNeedsTenMinutesADayAndPaysOnceADay()
+        [Test] public void StreakNeedsTenMinutesADay()
         {
             var log = new ExerciseLog(); var day1 = new DateTime(2026, 11, 20, 1, 0, 0, DateTimeKind.Utc);
-            Assert.AreEqual(0, log.Add("m", day1, 700, 0, null), "One day is not a streak yet");
+            log.Add("m", day1, 700, 0, null);
             Assert.AreEqual(1, log.Streak("m", day1));
-            Assert.AreEqual(0, log.Add("m", day1.AddDays(1), 300, 0, null), "Five minutes do not count");
-            Assert.AreEqual(ExerciseLog.StreakCoins, log.Add("m", day1.AddDays(1), 400, 0, null), "Ten minutes on the second day");
-            Assert.AreEqual(0, log.Add("m", day1.AddDays(1), 900, 0, null), "Paid once a day");
+            log.Add("m", day1.AddDays(1), 300, 0, null); Assert.AreEqual(1, log.Streak("m", day1.AddDays(1)), "Five minutes do not count yet");
+            log.Add("m", day1.AddDays(1), 400, 0, null);
             Assert.AreEqual(2, log.Streak("m", day1.AddDays(1)));
             Assert.AreEqual(2, log.Streak("m", day1.AddDays(2)), "Today not done yet: the streak still counts yesterday");
             Assert.AreEqual(0, log.Streak("m", day1.AddDays(3)), "A missed day ends it");
-            Assert.AreEqual("연속 2일 · 코인 +10", WorkoutReport.StreakLine(2, 10)); Assert.AreEqual("", WorkoutReport.StreakLine(0, 0));
+            Assert.AreEqual("연속 2일", WorkoutReport.StreakLine(2)); Assert.AreEqual("", WorkoutReport.StreakLine(0));
         }
 
         [Test] public void TheLeastDoneCourseIsRecommended()

@@ -4,16 +4,16 @@ using UnityEngine;
 
 namespace Mongscape.Presentation
 {
-    public enum MenuAction { None, Play, Ranking, Shop, Profile, Identity, Settings, Quit, Tutorial, Credits }
+    public enum MenuAction { None, Play, Ranking, Traits, Profile, Identity, Settings, Quit, Tutorial, Credits }
 
-    // Main menu over the live title scene: logo on the left, actions on the right, coins and player name on top.
+    // Main menu over the live title scene: logo on the left, actions on the right, rescued monkeys and player name on top.
     internal sealed class MainMenuScreen
     {
         static readonly CultureInfo Num = CultureInfo.InvariantCulture;
         // The login entry reads "로그아웃" for a member and "로그인 / 회원가입" for a guest; 내 정보 is shown to members only.
-        static readonly string[] Labels = { "게임 시작", "튜토리얼", "랭킹", "상점", "내 정보", "로그인 / 회원가입", "설정", "크레딧", "게임 종료" };
+        static readonly string[] Labels = { "게임 시작", "튜토리얼", "랭킹", "특성", "내 정보", "로그인 / 회원가입", "설정", "크레딧", "게임 종료" };
         const string LogoutLabel = "로그아웃";
-        static readonly MenuAction[] Actions = { MenuAction.Play, MenuAction.Tutorial, MenuAction.Ranking, MenuAction.Shop, MenuAction.Profile, MenuAction.Identity, MenuAction.Settings, MenuAction.Credits, MenuAction.Quit };
+        static readonly MenuAction[] Actions = { MenuAction.Play, MenuAction.Tutorial, MenuAction.Ranking, MenuAction.Traits, MenuAction.Profile, MenuAction.Identity, MenuAction.Settings, MenuAction.Credits, MenuAction.Quit };
 
         readonly OverlaySkin skin;
         public MainMenuScreen(OverlaySkin overlaySkin) { skin = overlaySkin; }
@@ -52,10 +52,10 @@ namespace Mongscape.Presentation
         void DrawTopBar(IHudData data)
         {
             if (data == null) return;
-            var coins = new Rect(1030, 28, 170, 44);
-            skin.BorderBox(coins, Palette.A(Palette.Ground, 0.9f), Palette.Wood, 2);
-            skin.Circle(new Rect(coins.x + 10, coins.y + 9, 26, 26), Palette.Gold);
-            skin.Text(new Rect(coins.x + 44, coins.y, coins.width - 54, coins.height), data.Wallet.Coins.ToString("N0", Num), 20, Palette.Cream, TextAnchor.MiddleRight);
+            var monkeys = new Rect(1030, 28, 170, 44);
+            skin.BorderBox(monkeys, Palette.A(Palette.Ground, 0.9f), Palette.Wood, 2);
+            skin.Circle(new Rect(monkeys.x + 10, monkeys.y + 9, 26, 26), Palette.Gold);
+            skin.Text(new Rect(monkeys.x + 44, monkeys.y, monkeys.width - 54, monkeys.height), data.Monkeys.ToString("N0", Num), 20, Palette.Cream, TextAnchor.MiddleRight);
             var player = new Rect(800, 28, 220, 44);
             skin.BorderBox(player, Palette.A(Palette.Ground, 0.9f), Palette.Wood, 2);
             skin.Text(player, PlayerLabel(data), 18, Palette.Cream, TextAnchor.MiddleCenter, false, true);

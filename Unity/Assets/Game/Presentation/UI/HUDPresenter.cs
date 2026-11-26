@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Mongscape.Presentation
 {
-    public enum MenuPage { None, Main, Setup, Profile, Shop, Ranking, Identity, Login, SignUp, TutorialOffer, Credits }
+    public enum MenuPage { None, Main, Setup, Profile, Ranking, Identity, Login, SignUp, TutorialOffer, Credits }
 
     // UI root: owns the menu page state and draws exactly one screen for the current game state.
     public sealed class HUDPresenter : MonoBehaviour
@@ -21,6 +21,8 @@ namespace Mongscape.Presentation
         // Result and pause: back to the main menu.
         public Action ToMenu;
         public Action OpenSettings;
+        // The trait screen (UI Toolkit, TraitsWindow) opened from the main menu.
+        public Action OpenTraits;
         public Action Quit;
         public Func<bool> PoliceAlert;
         // Tutorial: starts it, and decides (and remembers) whether "게임 시작" offers it first.
@@ -64,7 +66,6 @@ namespace Mongscape.Presentation
         private MenuPage creditsReturn = MenuPage.Main;
         private SetupScreen setup;
         private ProfileScreen profile;
-        private ShopScreen shop;
         private LeaderboardScreen board;
         private CalibrationPanel calibration;
         private LoadingScreen loading;
@@ -76,7 +77,7 @@ namespace Mongscape.Presentation
             skin = new HudSkin();
             overlaySkin = new OverlaySkin();
             title = new TitleScreen(skin); setup = new SetupScreen(skin); loading = new LoadingScreen(skin); identity=new IdentityScreen(skin); signUp=new SignUpScreen(skin,identity);
-            menu = new MainMenuScreen(overlaySkin); credits = new CreditsScreen(overlaySkin); tutorialOffer = new TutorialOfferScreen(overlaySkin); gate = new LoginGateScreen(overlaySkin); profile = new ProfileScreen(overlaySkin); shop = new ShopScreen(overlaySkin); board = new LeaderboardScreen(overlaySkin, Ranking);
+            menu = new MainMenuScreen(overlaySkin); credits = new CreditsScreen(overlaySkin); tutorialOffer = new TutorialOfferScreen(overlaySkin); gate = new LoginGateScreen(overlaySkin); profile = new ProfileScreen(overlaySkin); board = new LeaderboardScreen(overlaySkin, Ranking);
             calibration = new CalibrationPanel(overlaySkin, skin);
             runHud = new RunHud(skin, new ProgressHud(overlaySkin)); pause = new PauseScreen(skin);
         }
@@ -88,7 +89,6 @@ namespace Mongscape.Presentation
             Page = page;
             if (page == MenuPage.Setup) setup.Open(Data);
             else if (page == MenuPage.Profile) { Profile.Open(Data, Account); profile.Open(); }
-            else if (page == MenuPage.Shop) shop.Open();
             else if (page == MenuPage.Ranking) board.OpenBoard(Data, Account);
             else if (page == MenuPage.Login) Account?.CheckServer();
             else if (page == MenuPage.SignUp) { SignUp.Open(Account); signUp.Open(); }
@@ -129,7 +129,7 @@ namespace Mongscape.Presentation
             if (action == MenuAction.Play) { if (OfferTutorial?.Invoke() ?? false) ShowTutorialOffer(false); else ShowPage(MenuPage.Setup); }
             else if (action == MenuAction.Tutorial) ShowTutorialChoice();
             else if (action == MenuAction.Ranking) ShowPage(MenuPage.Ranking);
-            else if (action == MenuAction.Shop) ShowPage(MenuPage.Shop);
+            else if (action == MenuAction.Traits) OpenTraits?.Invoke();
             else if (action == MenuAction.Profile) ShowPage(MenuPage.Profile);
             else if (action == MenuAction.Identity) Logout();
             else if (action == MenuAction.Settings) OpenSettings?.Invoke();
@@ -245,7 +245,7 @@ namespace Mongscape.Presentation
         {
             // Esc is "뒤로" on the pages whose back button returns to the main menu (the profile handles its own keys).
             var e = Event.current;
-            if (e.type == EventType.KeyDown && e.keyCode == KeyCode.Escape && (Page == MenuPage.Shop || Page == MenuPage.Ranking || Page == MenuPage.Setup))
+            if (e.type == EventType.KeyDown && e.keyCode == KeyCode.Escape && (Page == MenuPage.Ranking || Page == MenuPage.Setup))
             { e.Use(); OpenMainMenu(); return; }
             switch (Page)
             {
@@ -255,7 +255,6 @@ namespace Mongscape.Presentation
                     if (Account == null || !Account.SignedIn) OpenMainMenu();
                     else profile.Draw(Profile, OpenMainMenu, Logout, DeleteAccount);
                     break;
-                case MenuPage.Shop: shop.Draw(Data, OpenMainMenu); break;
                 case MenuPage.Ranking: board.Draw(Data, session, OpenMainMenu, "뒤로", null, null); break;
                 case MenuPage.Login: ChooseLogin(gate.Draw(Account, TitleLogo)); break;
                 case MenuPage.SignUp: if (Account != null) signUp.Draw(Data, Account, SignUp, EnrollFace, OpenLogin); break;

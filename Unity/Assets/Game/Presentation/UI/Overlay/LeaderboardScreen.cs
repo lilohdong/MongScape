@@ -39,7 +39,7 @@ namespace Mongscape.Presentation
             summary.Clear();
             summary.Add(new KeyValuePair<string, string>("시간", RunHudModel.Clock(session.Elapsed)));
             summary.Add(new KeyValuePair<string, string>("거리", Dist(session.Score.Distance)));
-            summary.Add(new KeyValuePair<string, string>("코인", "+" + session.Score.Coins.ToString(Num)));
+            summary.Add(new KeyValuePair<string, string>("원숭이", "+" + session.MonkeysEarned.ToString(Num)));
             // No combos in the exercise patch: a camera run shows its big movements instead (QA 2026-11-25 L11).
             bool camera = PlayStyleInfo.UsesCamera(data?.Player?.Style ?? PlayStyle.Keyboard);
             if (camera) summary.Add(new KeyValuePair<string, string>(WorkoutReport.BigMovesLabel, WorkoutReport.BigMoves(session)));
@@ -200,7 +200,7 @@ namespace Mongscape.Presentation
             skin.Box(track, Palette.A(Palette.Ground, .9f));
             float share = Mathf.Clamp01((float)(minutes / ExerciseLog.WeeklyGoalMinutes));
             if (share > 0) skin.Box(new Rect(track.x, track.y, Mathf.Max(3, track.width * share), track.height), share >= 1 ? new Color(.4f, 1, .6f) : Palette.Gold);
-            string streak = WorkoutReport.StreakLine(data.Streak, data.LastStreakCoins);
+            string streak = WorkoutReport.StreakLine(data.Streak);
             if (streak.Length > 0) skin.Text(new Rect(panel.x + 14, panel.y + 178, panel.width - 28, 18), streak, 12, Palette.Cream, TextAnchor.MiddleLeft, false, true);
         }
 

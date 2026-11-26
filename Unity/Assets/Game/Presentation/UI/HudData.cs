@@ -44,7 +44,11 @@ namespace Mongscape.Presentation
         // Joint recording (F6, Editor and development builds) is on.
         bool PoseRecording { get; }
         bool BodyActive { get; }
-        PlayerWallet Wallet { get; }
+        // Rescued monkeys the member holds (0 for a guest) and the trait levels owned; TraitsForSale is false for a guest,
+        // who sees the price list but cannot unlock.
+        int Monkeys { get; }
+        TraitLevels Traits { get; }
+        bool TraitsForSale { get; }
         Leaderboard Board { get; }
         PlayerStats Stats { get; }
         // The run that just finished: its entry, rank among all runs and today, whether it beat the best score for its play style, and that best.
@@ -68,8 +72,10 @@ namespace Mongscape.Presentation
         float StartBanner { get; }
         float CaughtFlash { get; }
         void PreviewStyle(PlayStyle style);
-        // done(ok, reason): members buy on the account server; guests cannot buy.
-        void Unlock(ItemKind kind, System.Action<bool, string> done);
+        // done(ok, reason): members unlock the next level on the account server; guests cannot.
+        void UnlockTrait(TraitId trait, System.Action<bool, string> done);
+        // Reads the server's trait prices (the trait screen calls it when it opens).
+        void LoadTraitPrices();
         void SaveProfile(PlayerProfile profile);
         void Recalibrate();
         // "달리기 속도 조절" (setup screen): on by default, remembered on this PC.
@@ -85,8 +91,8 @@ namespace Mongscape.Presentation
         // Weekly goal (moderate minutes, of 150) and the daily streak of the current player.
         double WeekMinutes { get; }
         int Streak { get; }
-        // Streak coins the last run earned (0 when none).
-        int LastStreakCoins { get; }
+        // Monkeys the last run brought home (0 for a guest or none).
+        int LastMonkeys { get; }
         // The tutorial's joint comparison panel is open (bottom middle); the HUD notice moves aside then (QA 2026-11-25 M7).
         bool JointCompareOpen => false;
     }

@@ -11,8 +11,6 @@ namespace Mongscape.Domain
         public string Owner = "", Day = "";
         public double Active, Moderate;
         public double[] Kinds = new double[4];
-        // Streak coin bonus already credited for this day.
-        public bool StreakPaid;
     }
 
     // Weekly goal, daily streak and course balance (exercise plan 8). Every read and write goes through this class (and
@@ -22,8 +20,6 @@ namespace Mongscape.Domain
     {
         // WHO: 150 minutes of moderate activity a week. A day of 10 active minutes keeps the streak.
         public const double WeeklyGoalMinutes = 150, StreakDayMinutes = 10;
-        // Coins for each day that extends a streak of two days or more (members; guests collect no coins).
-        public const int StreakCoins = 10;
         // Keep about two months of days per owner.
         public const int KeepDays = 62;
         private readonly List<ExerciseDay> days = new List<ExerciseDay>();
@@ -53,19 +49,15 @@ namespace Mongscape.Domain
             if (found != null) return found;
             found = new ExerciseDay { Owner = owner ?? "", Day = day }; days.Add(found); return found;
         }
-        // Adds one run's time. Returns the streak bonus coins this run earns: the day reached 10 minutes for the first time
-        // and yesterday was also a streak day (paid once a day).
-        public int Add(string owner, DateTime utcNow, double active, double moderate, double[] kinds)
+        // Adds one run's time (v2: the streak pays no coins any more; rescued monkeys are the only currency).
+        public void Add(string owner, DateTime utcNow, double active, double moderate, double[] kinds)
         {
             var today = Kst(utcNow); var day = Get(owner, DayKey(today));
-            bool before = day.Active / 60 >= StreakDayMinutes;
             day.Active += Math.Max(0, active); day.Moderate += Math.Max(0, moderate);
             // Until the next /stats replaces it, the server figure includes this run too.
             if (HasServerWeek(owner, utcNow)) server[owner] = (server[owner].week, server[owner].seconds + Math.Max(0, moderate));
             if (kinds != null) for (int i = 0; i < 4 && i < kinds.Length; i++) day.Kinds[i] += Math.Max(0, kinds[i]);
             Trim(owner, today);
-            if (before || day.Active / 60 < StreakDayMinutes || day.StreakPaid || Streak(owner, utcNow) < 2) return 0;
-            day.StreakPaid = true; return StreakCoins;
         }
         private void Trim(string owner, DateTime today)
         {

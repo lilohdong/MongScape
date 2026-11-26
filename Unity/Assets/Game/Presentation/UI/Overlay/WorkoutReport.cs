@@ -76,7 +76,7 @@ namespace Mongscape.Presentation
             return n.ToString("N0", Num) + "회";
         }
         public static string WeekGoalValue(double minutes) => ((int)Math.Floor(Math.Max(0, minutes))).ToString(Num) + " / " + ExerciseLog.WeeklyGoalMinutes.ToString("0", Num) + "분";
-        public static string StreakLine(int days, int coins) => days <= 0 ? "" : "연속 " + days.ToString(Num) + "일" + (coins > 0 ? " · 코인 +" + coins.ToString(Num) : "");
+        public static string StreakLine(int days) => days <= 0 ? "" : "연속 " + days.ToString(Num) + "일";
         static string Kcal(double v) => Math.Max(0, v).ToString(v >= 100 ? "N0" : "F1", Num) + "kcal";
         static string Minutes(double seconds) => ((int)Math.Round(Math.Max(0, seconds) / 60)).ToString("N0", Num) + "분";
     }

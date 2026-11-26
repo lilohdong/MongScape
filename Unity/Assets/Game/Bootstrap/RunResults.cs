@@ -15,8 +15,8 @@ namespace Mongscape.Bootstrap
         public int LastTodayRank { get; private set; }
         public bool LastNewBest { get; private set; }
         public int LastBestScore { get; private set; } = -1;
-        // Streak coins the last run earned (0 when none).
-        public int LastStreakCoins { get; private set; }
+        // Monkeys the last run brought home (rescued and kept, plus the sweat trait); a guest's are not kept.
+        public int LastMonkeys { get; private set; }
         // The member's totals read after the last run was saved, or the save failed.
         public StatsReply LastStats { get; private set; }
         public bool LastStatsFailed { get; private set; }
@@ -31,16 +31,16 @@ namespace Mongscape.Bootstrap
 
         public void Clear()
         {
-            LastEntry = null; LastStreakCoins = 0; LastRank = LastTodayRank = 0; LastBestScore = -1; LastNewBest = false; LastStats = null; LastStatsFailed = false;
+            LastEntry = null; LastMonkeys = 0; LastRank = LastTodayRank = 0; LastBestScore = -1; LastNewBest = false; LastStats = null; LastStatsFailed = false;
         }
         // The run that just ended goes on this PC's ranking; a member's run is also saved on the account server,
-        // which credits the coins. Guests collect no coins. kindSeconds: active seconds per course of this run.
+        // which credits the rescued monkeys. Guests keep no monkeys. kindSeconds: active seconds per course of this run.
         public void Record(RunSession session, PlayStyle mode, double[] kindSeconds)
         {
             if (session.IsTutorial) return;
             var Store = store();
             var now = DateTime.Now;
-            LastEntry = new RankingEntry{Name=Account.Nickname,Score=session.Score.Score,Distance=session.Score.Distance,Coins=session.Score.Coins,
+            LastEntry = new RankingEntry{Name=Account.Nickname,Score=session.Score.Score,Distance=session.Score.Distance,Coins=session.MonkeysEarned,
                 Style=PlayStyleInfo.Label(mode),Mode=(int)mode,Kcal=PlayStyleInfo.UsesCamera(mode)?session.Workout.EstimatedKcal:0,
                 Ticks=now.Ticks,AccountId=Account.IsMember?Account.Id:"",ScoreVersion=RunScore.Version};
             LastStats = null; LastStatsFailed = false;
@@ -49,14 +49,14 @@ namespace Mongscape.Bootstrap
             LastNewBest = previousBest >= 0 && LastEntry.Score > previousBest; LastBestScore = previousBest > 0 ? previousBest : -1;
             LastRank = Store.Record(LastEntry, session.Workout.EstimatedKcal);
             // Weekly goal and streak: camera runs only. The streak is this PC's; a member's weekly minutes also go to the
-            // server with the run (moderate_seconds). Members get the streak coins with this run.
-            LastStreakCoins = PlayStyleInfo.UsesCamera(mode) ? Store.RecordExercise(ExerciseOwner, DateTime.UtcNow, session.Workout.ActiveSeconds, session.Workout.GoalSeconds, kindSeconds) : 0;
-            if (!Account.IsMember) LastStreakCoins = 0;
+            // server with the run (moderate_seconds).
+            if (PlayStyleInfo.UsesCamera(mode)) Store.RecordExercise(ExerciseOwner, DateTime.UtcNow, session.Workout.ActiveSeconds, session.Workout.GoalSeconds, kindSeconds);
+            LastMonkeys = session.MonkeysEarned;
             LastTodayRank = Store.Board.RankOf(LastEntry, true, mode);
             if (!Account.IsMember) return;
             // The result screen shows the member's totals once the server has this run.
             string id = Account.Id;
-            var record = AccountRun.Create(session, mode, session.Score.Coins + LastStreakCoins);
+            var record = AccountRun.Create(session, mode, session.MonkeysEarned);
             accounts.Runs.Save(record, saved =>
             {
                 if (!saved) { if (Account.Id == id) LastStatsFailed = true; return; }

@@ -30,7 +30,7 @@ namespace Mongscape.Tests
             yield return SceneManager.LoadSceneAsync("GameScene");yield return null;
             game=Object.FindFirstObjectByType<GameBootstrap>();hud=game.GetComponent<HUDPresenter>();fake=new FakeAccountGateway();
             game.UseAccountServices(fake,new PlayerProgressStore(root));
-            fake.Profile.coins=40;fake.Profile.unlocked=new[]{(int)ItemKind.Magnet,(int)ItemKind.DoubleScore,(int)ItemKind.Shield};
+            fake.Profile.coins=40;fake.Profile.unlocked=new[]{11,41};
             game.Account.SignInMember(fake.Profile,"fake-token");Assert.IsTrue(game.SignedIn);Assert.IsFalse(game.Account.TutorialDone);
             ((IHudData)game).PreviewStyle(PlayStyle.Keyboard);
         }
@@ -42,7 +42,7 @@ namespace Mongscape.Tests
         }
 
         [UnityTest]
-        public IEnumerator TutorialMistakeRetriesAndLeavesRankingCoinsAndItemsAlone()
+        public IEnumerator TutorialMistakeRetriesAndLeavesRankingMonkeysAndItemsAlone()
         {
             yield return OpenAsMember();
             game.OpenMainMenu();hud.SelectMenu(MenuAction.Tutorial);
@@ -66,7 +66,7 @@ namespace Mongscape.Tests
             Assert.AreEqual(GameFlowState.TitleIdle,game.Session.Flow.State);Assert.IsFalse(game.Session.IsTutorial);Assert.AreEqual(MenuPage.Main,hud.Page);
             Assert.AreEqual(0,game.Store.Board.All.Count,"Nothing goes to this PC's ranking");
             Assert.AreEqual(0,fake.SavedRuns.Count,"Nothing goes to the account server");
-            Assert.AreEqual(40,game.Account.Coins);Assert.IsFalse(game.Account.TutorialDone);CollectionAssert.DoesNotContain(fake.Calls,"profile/update");
+            Assert.AreEqual(40,game.Account.Monkeys);Assert.IsFalse(game.Account.TutorialDone);CollectionAssert.DoesNotContain(fake.Calls,"profile/update");
             Assert.IsNotEmpty(game.RunItems(),"Ordinary runs keep the unlocked items");
             game.FaceLogout(false);
         }
@@ -221,7 +221,7 @@ namespace Mongscape.Tests
             Assert.AreEqual(1f,hud.Fade);
             Assert.IsTrue(game.Account.TutorialDone);CollectionAssert.Contains(fake.Calls,"profile/update");
             Assert.IsTrue(fake.Updates[fake.Updates.Count-1].TutorialDone==true);
-            Assert.AreEqual(0,game.Store.Board.All.Count);Assert.AreEqual(0,fake.SavedRuns.Count);Assert.AreEqual(40,game.Account.Coins);
+            Assert.AreEqual(0,game.Store.Board.All.Count);Assert.AreEqual(0,fake.SavedRuns.Count);Assert.AreEqual(40,game.Account.Monkeys);
             hud.SelectMenu(MenuAction.Play);Assert.AreEqual(MenuPage.Setup,hud.Page,"A finished member goes straight to the setup");
             game.FaceLogout(false);
         }

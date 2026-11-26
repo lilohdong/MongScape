@@ -1,7 +1,7 @@
 namespace Mongscape.Application
 {
     // Saves a member's finished runs. A failed save stays in memory and is sent once more before the next run;
-    // the server ignores a resent id, so a retry never credits coins twice.
+    // the server ignores a resent id, so a retry never credits the monkeys twice.
     public sealed class AccountRunUploader
     {
         private sealed class Pending { public string AccountId; public AccountRun Run; }
@@ -30,7 +30,7 @@ namespace Mongscape.Application
         }
         private void Finished(string id, AccountReply reply, AccountRun run)
         {
-            if (reply != null && reply.ok) { if (account.IsMember && account.Id == id) account.SetCoins(reply.coins); return; }
+            if (reply != null && reply.ok) { if (account.IsMember && account.Id == id) account.SetMonkeys(reply.coins); return; }
             if (run != null) Keep(id, run);
         }
         private void Keep(string id, AccountRun run) { pending = new Pending { AccountId = id, Run = run }; LastFailed = true; }

@@ -10,7 +10,7 @@ namespace Mongscape.Tests
         private static AccountProfile Member() => new AccountProfile
         {
             id = "member-1", name = " 민수 ", weight = 72, style = (int)PlayStyle.UpperBody, goal = 120, coins = 90,
-            unlocked = new[] { (int)ItemKind.Magnet, 99 }, tutorial_done = true,
+            unlocked = new[] { 0, 41, 99 }, tutorial_done = true,
         };
 
         [Test]
@@ -20,7 +20,7 @@ namespace Mongscape.Tests
             Assert.AreEqual(AccountKind.Guest, session.Kind); Assert.IsFalse(session.IsMember);
             Assert.AreEqual("", session.Id); Assert.AreEqual(AccountSession.GuestName, session.Nickname);
             Assert.AreEqual(65, session.Settings.Weight); Assert.AreEqual(PlayStyle.FullBody, session.Settings.Style);
-            Assert.AreEqual(0, session.Coins); CollectionAssert.IsEmpty(session.Unlocked); CollectionAssert.IsEmpty(session.RunItems());
+            Assert.AreEqual(0, session.Monkeys); Assert.IsFalse(session.Traits.Has(TraitId.Call)); CollectionAssert.IsEmpty(session.RunItems());
             Assert.IsFalse(session.TutorialDone); Assert.AreEqual("65", session.Profile.Weight);
         }
 
@@ -32,19 +32,20 @@ namespace Mongscape.Tests
             Assert.AreEqual(AccountKind.Member, session.Kind); Assert.AreEqual("member-1", session.Id); Assert.AreEqual("token-1", session.Token);
             Assert.AreEqual("민수", session.Nickname); Assert.AreEqual("민수", session.Profile.Name);
             Assert.AreEqual(72, session.Settings.Weight); Assert.AreEqual(PlayStyle.UpperBody, session.Settings.Style); Assert.AreEqual(120, session.Settings.Goal);
-            Assert.AreEqual(90, session.Coins); Assert.IsTrue(session.TutorialDone);
-            CollectionAssert.AreEqual(new List<ItemKind> { ItemKind.Magnet }, session.RunItems(), "Unknown item ids are ignored");
+            Assert.AreEqual(90, session.Monkeys); Assert.IsTrue(session.TutorialDone);
+            Assert.AreEqual(1, session.Traits.Level(TraitId.Call));
+            CollectionAssert.AreEqual(new List<ItemKind> { ItemKind.Call }, session.RunItems(), "Old shop ids and unknown codes are ignored");
             Assert.AreEqual(1, changes);
 
             session.SignOut();
             Assert.AreEqual(AccountKind.Guest, session.Kind); Assert.AreEqual("", session.Id); Assert.AreEqual("", session.Token);
-            Assert.AreEqual(AccountSession.GuestName, session.Nickname); Assert.AreEqual(0, session.Coins);
-            CollectionAssert.IsEmpty(session.Unlocked); Assert.AreEqual(65, session.Settings.Weight); Assert.IsFalse(session.TutorialDone);
+            Assert.AreEqual(AccountSession.GuestName, session.Nickname); Assert.AreEqual(0, session.Monkeys);
+            Assert.IsFalse(session.Traits.Has(TraitId.Call)); Assert.AreEqual(65, session.Settings.Weight); Assert.IsFalse(session.TutorialDone);
             Assert.AreEqual(2, changes);
         }
 
         [Test]
-        public void GuestSettingsStayInMemoryAndCoinsNeverReachAGuest()
+        public void GuestSettingsStayInMemoryAndMonkeysNeverReachAGuest()
         {
             var session = new AccountSession();
             session.UpdateSettings(new AccountSettings { Weight = 0, Style = PlayStyle.Keyboard, Goal = 200 });
@@ -54,7 +55,7 @@ namespace Mongscape.Tests
             foreach (double kg in new[] { 10.0, 350 }) { session.UpdateSettings(new AccountSettings { Weight = kg }); Assert.IsTrue(new WorkoutEstimate().SetWeight(session.Profile.Weight), kg.ToString()); }
             session.UpdateSettings(new AccountSettings { Weight = 0, Style = PlayStyle.Keyboard, Goal = 200 });
             Assert.AreEqual(PlayStyle.Keyboard, session.Settings.Style); Assert.AreEqual(200, session.Settings.Goal);
-            session.SetCoins(500); Assert.AreEqual(0, session.Coins);
+            session.SetMonkeys(500); Assert.AreEqual(0, session.Monkeys);
             Assert.IsFalse(session.Apply(Member()), "A server profile does not turn a guest into a member");
             Assert.IsFalse(session.IsMember);
             var copy = session.Settings; copy.Goal = 999; Assert.AreEqual(200, session.Settings.Goal, "Settings hands out a copy");
@@ -64,12 +65,14 @@ namespace Mongscape.Tests
         public void MemberRepliesUpdateOnlyTheSameAccount()
         {
             var session = new AccountSession(); session.SignInMember(Member(), "t");
-            session.SetCoins(140); Assert.AreEqual(140, session.Coins); CollectionAssert.AreEqual(new[] { ItemKind.Magnet }, session.Unlocked);
+            session.SetMonkeys(140); Assert.AreEqual(140, session.Monkeys); Assert.AreEqual(1, session.Traits.Level(TraitId.Call));
             var other = Member(); other.id = "someone-else"; other.coins = 5;
-            Assert.IsFalse(session.Apply(other)); Assert.AreEqual(140, session.Coins);
-            var bought = Member(); bought.coins = 40; bought.unlocked = new[] { (int)ItemKind.Magnet, (int)ItemKind.Shield };
-            Assert.IsTrue(session.Apply(bought)); Assert.AreEqual(40, session.Coins);
-            CollectionAssert.AreEqual(new List<ItemKind> { ItemKind.Magnet, ItemKind.Shield }, session.RunItems());
+            Assert.IsFalse(session.Apply(other)); Assert.AreEqual(140, session.Monkeys);
+            var bought = Member(); bought.coins = 40; bought.unlocked = new[] { 41, 11, 12 };
+            Assert.IsTrue(session.Apply(bought)); Assert.AreEqual(40, session.Monkeys);
+            // Shield Lv2 comes twice as often: listed twice.
+            CollectionAssert.AreEqual(new List<ItemKind> { ItemKind.Call, ItemKind.Shield, ItemKind.Shield }, session.RunItems());
+            Assert.AreEqual(2, session.TraitsForRun().Level(TraitId.Shield));
         }
 
         [Test]

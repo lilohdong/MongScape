@@ -52,7 +52,7 @@ namespace Mongscape.Editor
             Directory.CreateDirectory(Path.GetDirectoryName(backup)); if(!File.Exists(backup)) File.Copy(path,backup);
             var root=PrefabUtility.LoadPrefabContents(path); var env=root.transform.Find("EnvironmentRoot"); Clear(env);
             var priorRoute=root.transform.Find("RouteStructure"); if(priorRoute!=null) UnityEngine.Object.DestroyImmediate(priorRoute.gameObject);
-            AddCoins(root);
+            RemoveCoins(root);
             rng=new System.Random(723+index*71);
             if(index==1||index==2) CartCavern(env,index);
             else if(index<3) {Mine(env,0,24,index);CartDock(env,false);}
@@ -177,23 +177,10 @@ namespace Mongscape.Editor
             }
         }
         private static float Next()=> (float)rng.NextDouble();
-        private static void AddCoins(GameObject root)
+        // v2: no coins on the course (plan 4); a chunk built before keeps none either.
+        private static void RemoveCoins(GameObject root)
         {
             var previous=root.transform.Find("Collectibles"); if(previous!=null) UnityEngine.Object.DestroyImmediate(previous.gameObject);
-            var group=Node("Collectibles",root.transform,Vector3.zero); var chunk=root.GetComponent<MongscapeMapChunk>(); chunk.Coins=new CoinController[6];
-            var goldFace=Mat("CoinGoldFace",new Color(1,.68f,.035f),.35f,.5f); Emit(goldFace,new Color(1,.45f,.01f)*.35f);
-            for(int i=0;i<6;i++)
-            {
-                var coin=Node("BananaCoin_"+i,group,new Vector3(0,1.0f,4+i*3.5f));
-                var disc=Shape("Rim",coin,Vector3.zero,Vector3.one*.53f,brass); disc.GetComponent<MeshFilter>().sharedMesh=coinMesh;
-                Shape("Face",coin,new Vector3(0,0,-.055f),new Vector3(.39f,.39f,.014f),goldFace,true);
-                for(int j=0;j<6;j++)
-                {
-                    float a=Mathf.Lerp(-2.5f,.12f,j/6f), b=Mathf.Lerp(-2.5f,.12f,(j+1)/6f);
-                    Beam("BananaMark",coin,new Vector3(Mathf.Cos(a)*.14f,Mathf.Sin(a)*.14f+.04f,-.066f),new Vector3(Mathf.Cos(b)*.14f,Mathf.Sin(b)*.14f+.04f,-.066f),.045f,wood);
-                }
-                chunk.Coins[i]=coin.gameObject.AddComponent<CoinController>();
-            }
         }
         private static void Lantern(Transform env,Vector3 pos,bool cold,bool shadow=false)
         {

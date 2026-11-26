@@ -16,7 +16,7 @@ namespace Mongscape.Editor
     {
         private const string Root = "Assets/Game/Content";
         private const string Art = Root + "/ArtV2";
-        private static Mesh box, sphere, coinMesh;
+        private static Mesh box, sphere;
         private static Material rock, rockLight, wood, iron, brass, glow, fur, face, cream, orange, navy, black, red, pale, blue, tile, concrete;
         private static readonly Dictionary<string,GameObject> models = new Dictionary<string,GameObject>();
         private static readonly Dictionary<Material,Material> kitMaterials = new Dictionary<Material,Material>();
@@ -37,7 +37,6 @@ namespace Mongscape.Editor
         private static void Prepare()
         {
             box = MeshAsset("BevelBox",()=>MongscapeArtGeometry.BevelBox()); sphere = MeshAsset("FacetedSphere",()=>MongscapeArtGeometry.FacetedSphere());
-            coinMesh=MeshAsset("CoinDisc",()=>MongscapeArtGeometry.CoinDisc());
             rock=Mat("Slate",new Color(.36f,.32f,.28f),0,.17f,"stone"); rockLight=Mat("SlateEdge",new Color(.47f,.41f,.34f),0,.12f,"stone");
             wood=Mat("Timber",new Color(.46f,.25f,.095f),0,.25f,"wood"); iron=Mat("ForgedIron",new Color(.20f,.24f,.27f),.48f,.36f);
             brass=Mat("OreGold",new Color(1,.72f,.07f),.35f,.42f); Emit(brass,new Color(1,.55f,.025f)*.75f); glow=Mat("LanternGlass",new Color(1,.61f,.19f),0,.35f); Emit(glow,new Color(1,.39f,.07f)*4.5f);

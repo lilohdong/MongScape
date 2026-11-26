@@ -142,19 +142,27 @@ namespace Mongscape.Bootstrap
             string id = Account.Id; Account.SetTutorialDone(true);
             Gateway.UpdateProfile(Account.Token, new AccountProfileUpdate { TutorialDone = true }, reply => { if (reply != null && reply.HasProfile && reply.profile.id == id && reply.profile.tutorial_done) Account.Apply(reply.profile); });
         }
-        // Members buy on the server and take its balance and unlocked items; guests have no coins.
-        public void Unlock(ItemKind kind, Action<bool, string> done)
+        // Members unlock the next level of a trait on the server, which checks the price and the monkeys and answers with
+        // the profile; guests own no trait.
+        public void UnlockTrait(TraitId trait, Action<bool, string> done)
         {
-            if (!Account.IsMember) { done?.Invoke(false, "회원가입하면 코인을 모아 아이템을 해금할 수 있어요"); return; }
-            string id = Account.Id;
-            Gateway.Buy(Account.Token, kind, reply =>
+            if (!Account.IsMember) { done?.Invoke(false, "회원가입하면 구한 원숭이로 특성을 열 수 있어요"); return; }
+            if (Account.Traits.IsMaxed(trait)) { done?.Invoke(false, "이미 다 열었어요"); return; }
+            string id = Account.Id; int level = Account.Traits.Level(trait) + 1;
+            Gateway.UnlockTrait(Account.Token, trait, level, reply =>
             {
                 if (reply != null && reply.HasProfile && reply.profile.id == id && Account.Apply(reply.profile)) { done?.Invoke(true, ""); return; }
                 NoteServer(reply);
                 string reason = reply == null || !string.IsNullOrEmpty(reply.message) || reply.status == 0 ? ServerReason(reply)
-                    : reply.status == 409 ? "이미 해금한 아이템입니다." : "코인이 부족합니다.";
+                    : reply.status == 409 ? "이미 열었어요" : "원숭이가 모자라요";
                 done?.Invoke(false, reason);
             });
+        }
+        // The trait prices come from the server (the one price list); offline the catalog keeps its copy.
+        public bool TraitPricesLoaded { get; private set; }
+        public void LoadTraitPrices()
+        {
+            Gateway.Traits(reply => { if (reply != null && reply.ApplyCosts()) TraitPricesLoaded = true; });
         }
 
         // Asked each time the login gate opens; until the server answers, face login and sign-up wait. Only the latest answer counts.

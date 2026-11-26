@@ -63,6 +63,8 @@ namespace Mongscape.Domain
         public float LightProgress => Phase == PrisonPhase.Hold ? Clamp01((HoldClock - LeadSeconds) / HideSeconds) : 0f;
         public bool LightOn => Phase == PrisonPhase.Hold && HoldClock >= LeadSeconds;
         public float LockGauge { get; private set; }
+        // Dexterity trait: the lock gauge fills this much faster (.1 = 10%); set from the run's traits.
+        public float LockBonus { get; set; }
         public bool Hidden { get; private set; }
         // Per set of this visit: the cell opened, the alarm went off.
         public readonly bool[] Opened = new bool[Sets], Spotted = new bool[Sets];
@@ -140,7 +142,7 @@ namespace Mongscape.Domain
             HoldClock += Math.Max(0f, dt);
             if (hidden && !Opened[Set] && !Spotted[Set])
             {
-                float rate = depth < 0f ? KeyboardRate : DepthBase + DepthGain * Clamp01(depth);
+                float rate = (depth < 0f ? KeyboardRate : DepthBase + DepthGain * Clamp01(depth)) * (1f + LockBonus);
                 LockGauge = Math.Min(1f, LockGauge + rate * dt / HoldSeconds);
                 if (LockGauge >= 1f) { Opened[Set] = true; Rescued++; CellOpened?.Invoke(Set); }
             }

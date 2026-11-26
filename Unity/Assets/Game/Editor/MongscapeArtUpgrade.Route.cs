@@ -103,7 +103,6 @@ namespace Mongscape.Editor
                 socket.localPosition=new Vector3(contract.Lane*2.2f,0,7+contract.Row*12);
                 MoveOrigin(socket,root.transform,type);
             }
-            foreach(var coin in chunk.Coins) MoveOrigin(coin.transform,root.transform,type);
             if(chunk.FloorItems!=null)foreach(var item in chunk.FloorItems)MoveOrigin(item.transform,root.transform,type);
             if(chunk.RailGaps!=null)foreach(var gap in chunk.RailGaps)MoveOrigin(gap.transform,root.transform,type);
         }

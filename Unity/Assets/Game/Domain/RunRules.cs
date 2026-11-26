@@ -92,8 +92,7 @@ namespace Mongscape.Domain
     public sealed class ScoreSystem
     {
         public float Distance { get; private set; }
-        public int Coins { get; private set; }
-        // Distance plus exercise (RunScore); coins and clean passes do not score.
+        // Distance plus exercise (RunScore); rescued monkeys and clean passes do not score (plan 3-2).
         public int Score => RunScore.From(Distance, workout);
         // Obstacles and rail gaps cleared; kept for the record only.
         public int CleanPasses { get; private set; }
@@ -101,10 +100,7 @@ namespace Mongscape.Domain
         public ScoreSystem(WorkoutEstimate runWorkout = null) { workout = runWorkout; }
         public void Advance(float metres) { Distance += Math.Max(0f, metres); }
         public void CleanPass() { CleanPasses++; }
-        // The double-coin item adds extra coins per pickup.
-        public int CoinMultiplier { get; set; } = 1;
-        public void CollectCoin() { Coins += Math.Max(1, CoinMultiplier); }
-        public void Reset() { Distance = 0f; Coins = 0; CleanPasses = 0; CoinMultiplier = 1; }
+        public void Reset() { Distance = 0f; CleanPasses = 0; }
     }
 
     public sealed class DifficultyDirector
@@ -369,6 +365,12 @@ namespace Mongscape.Domain
         {
             Config = config; Score = new ScoreSystem(Workout); Runner = new RunnerController(config); Stair = new StairJudge(config); smoothSpeed = TargetSpeed; Sections.Exited += LeaveSection;
             Sections.Entered += span => { if (span.Kind == SectionKind.Prison && span.Branch) Prison.Begin(span.Visit); };
+            // A cell door and the roof bonus each free one monkey (plan 2-3a).
+            Prison.CellOpened += _ => Rescue(RescueSource.PrisonLock);
+            Prison.RoofRescue += () => Rescue(RescueSource.PrisonLock);
+            // A mine wall monkey (plan 3-0): reached out to, or in the runner's lane while the call item lasts.
+            MineRescue.CallActive = () => CallActive;
+            MineRescue.RescuedAt += (sequence, side) => Rescue(CallActive ? RescueSource.Call : RescueSource.MineWall);
             // Seen by the searchlight (plan 2-3a): one warning, rung by the warden's alarm bell (ChaserDef.Warden).
             Prison.Alarm += set => Warn(WarningCause.Spotted);
         }
@@ -413,7 +415,7 @@ namespace Mongscape.Domain
             clock += dt;
             float target = TargetSpeed;
             smoothSpeed = smoothSpeed < target ? Math.Min(target, smoothSpeed + Config.SpeedChangeRate * dt) : Math.Max(target, smoothSpeed - Config.SpeedChangeRate * 1.6f * dt);
-            Items.Tick(dt); Score.CoinMultiplier = Items.IsActive(ItemKind.DoubleScore) ? 2 : 1;
+            Items.Tick(dt);
             float z = Runner.Z;
             Runner.Tick(dt, PrisonStep(dt, MoveSpeed * SpeedScale));
             Score.Advance(Runner.Z - z);
@@ -438,8 +440,41 @@ namespace Mongscape.Domain
             }
             else if (SlipStrikes==0&&clock - lastHit > 2f) Chase.Recover(Config.Recovery * dt);
         }
-        // Reads the item state at pickup time, so a coin in the same frame as the item already counts double.
-        public void CollectCoin() { Score.CoinMultiplier = Items.IsActive(ItemKind.DoubleScore) ? 2 : 1; Score.CollectCoin(); }
+        // Rescued monkeys of this run (plan 4): the map rescues call Rescue, the troop view reads Troop.
+        public readonly MonkeyTroop Troop = new MonkeyTroop();
+        // The traits this run plays with (plan 4-1), fixed at its start by ApplyTraits; the tutorial plays without.
+        public RunTraits Traits { get; private set; } = RunTraits.None;
+        // Call after Reset when a run starts: fixes the traits and hands out the starting shield (Shield Lv3).
+        public void ApplyTraits(RunTraits traits)
+        {
+            Traits = traits ?? RunTraits.None; Items.Traits = Traits; Prison.LockBonus = tutorial ? 0f : Traits.LockGaugeBonus; thickFurLeft = Traits.ThickFur; loyaltyLeft = Traits.Loyalty;
+            if (Traits.StartsWithShield && !tutorial) Items.GiveStartingShield();
+        }
+        // A monkey joins the troop (a mine wall rescue, a prison lock, the call item). Ignored outside a running run and in the tutorial.
+        public bool Rescue(RescueSource source, int count = 1)
+        {
+            if (Flow.State != GameFlowState.Running || tutorial || count <= 0) return false;
+            Troop.Rescue(source, count); return true;
+        }
+        // While the call item lasts, a monkey in the runner's lane is rescued without reaching out (plan 3-0).
+        public bool CallActive => Items.IsActive(ItemKind.Call);
+        // Monkeys this run brings home: the kept troop plus the sweat trait's bonus for the run's moderate time.
+        public int MonkeysEarned => Troop.Kept + (tutorial ? 0 : Traits.SweatMonkeys(Workout.GoalSeconds));
+        public enum WarningGuard { None, Shield, Loyalty }
+        public int LoyaltySaves { get; private set; }
+        private bool thickFurLeft, loyaltyLeft;
+        // The warning system asks this before a warning lands: the shield item blocks it, then once per run a following
+        // monkey takes it (Loyalty) and is taken away.
+        public WarningGuard GuardWarning()
+        {
+            if (Items.ConsumeShield()) { ShieldSaves++; return WarningGuard.Shield; }
+            if (loyaltyLeft && Troop.LoseOne()) { loyaltyLeft = false; LoyaltySaves++; return WarningGuard.Loyalty; }
+            return WarningGuard.None;
+        }
+        // The latest warning landed under the thick fur: no slip with it.
+        public bool SoftWarning { get; private set; }
+        // Thick fur: true once per run, for the first warning, which then lands without the slip.
+        private bool TakeThickFur() { if (!thickFurLeft) return false; thickFurLeft = false; return true; }
         // A solid obstacle (plan 6-8): the runner falls and is slowed for a moment, and it is one warning (a shield takes the
         // warning, the fall stays). In the zoo a fence trip is no warning: the lion closes in instead.
         // Returns whether the hit counted (a warning, or a tutorial miss).
@@ -451,17 +486,21 @@ namespace Mongscape.Domain
             Runner.Stumble(); lastHit = clock;
             if (Section.Kind == SectionKind.Zoo) { Runner.Slip(); LastSlipSource = SlipSource.Collision; Approach(.35f); return false; }
             if (!Warn(WarningCause.Collision)) return false;
-            Runner.Slip(); LastSlipSource = SlipSource.Collision;
+            if (!SoftWarning) Runner.Slip();
+            LastSlipSource = SlipSource.Collision;
             return true;
         }
         // One warning from the map's chaser. The second starts the pursuit (BananaCatchSeconds) that ends in the capture.
-        // A shield absorbs the warning. Returns whether it landed (tutorial: a counted miss).
+        // A shield absorbs the warning, then once per run a loyal monkey (GuardWarning). The first one that lands with the
+        // thick fur trait sets SoftWarning: the caller skips the slip. Returns whether it landed (tutorial: a counted miss).
         public bool Warn(WarningCause cause)
         {
             if (Flow.State != GameFlowState.Running || Paused) return false;
             if (tutorial) { lastHit = clock; TutorialMisses++; return true; }
             if (Invincible || SlipPursuit) return false;
-            if (Items.ConsumeShield()) { ShieldSaves++; lastHit = clock; return false; }
+            SoftWarning = false;
+            if (GuardWarning() != WarningGuard.None) { lastHit = clock; return false; }
+            SoftWarning = TakeThickFur();
             SlipStrikes = Math.Min(MaxWarnings, SlipStrikes + 1); lastStrike = clock; lastHit = clock; LastWarning = cause;
             if (SlipStrikes == 1) Chase.Hit(.45f);
             if (SlipStrikes >= MaxWarnings) { pursuer = Chaser; bananaCatchLeft = Math.Max(.1f, Config.BananaCatchSeconds); }
@@ -533,9 +572,12 @@ namespace Mongscape.Domain
             if(tutorial&&source==SlipSource.Banana){Runner.Slip();LastSlipSource=source;lastHit=clock;TutorialMisses++;return true;}
             if(source==SlipSource.Banana)
             {
-                // The shield absorbs the peel: no slowdown and no warning.
-                if(Items.ConsumeShield()){ShieldSaves++;lastHit=clock;return false;}
-                Runner.Slip();LastSlipSource=source;Warn(WarningCause.Banana);return true;
+                // The shield (or a loyal monkey) absorbs the peel: no slowdown and no warning. During a pursuit it only slows.
+                bool pursuit=SlipPursuit;
+                bool landed=Warn(WarningCause.Banana);
+                if(!landed&&!pursuit){lastHit=clock;return false;}
+                if(!(landed&&SoftWarning))Runner.Slip();
+                LastSlipSource=source;return true;
             }
             Runner.Slip();LastSlipSource=source;
             // In the prison a missed knee beat only slows (plan 2-3a), except on the stairs the warden chases after an alarm:
@@ -544,11 +586,8 @@ namespace Mongscape.Domain
             return true;
         }
         public enum BigMove { Jump, Crouch, Knee, Lane }
-        // Big movements seen this run, by kind, and the bonus coins taken (the coin line under the bars, the coins in the air;
-        // BonusCoins places them on the course).
+        // Big movements seen this run, by kind.
         public readonly int[] BigMoves = new int[4];
-        public int BigCoins { get; private set; }
-        public void CollectBonusCoin() { CollectCoin(); BigCoins++; }
         // Applies a big movement's in-game effect. Returns whether the effect applied.
         public bool Big(BigMove move)
         {
@@ -560,6 +599,6 @@ namespace Mongscape.Domain
             BigMoves[(int)move]++;
             return true;
         }
-        public void Reset() { Array.Clear(BigMoves, 0, BigMoves.Length); BigCoins = 0; Runner.Reset(); Stair.Reset(); Chase.Reset(); Score.Reset(); Workout.Reset(); Items.Reset(); Paused=false; SpeedScale=1f; CadenceScale=1f; PacePressure=0f; clock = 0f; lastHit = -100f;SlipStrikes=0;lastStrike=0f;ShieldSaves=0;bananaCatchLeft=0;pursuer=null;ChaserGauge=0f;LastWarning=WarningCause.Collision;CaughtBy=ChaserKind.Police;Reason=CaptureReason.Collision; Sections.Reset(); SectionSpeed = null; Prison.Reset(); MineRescue.Reset(); Stair.GapScale = 1f; HidePose = false; HideDepth = -1f; smoothSpeed = TargetSpeed; }
+        public void Reset() { Array.Clear(BigMoves, 0, BigMoves.Length); Troop.Reset(); LoyaltySaves = 0; thickFurLeft = Traits.ThickFur; loyaltyLeft = Traits.Loyalty; SoftWarning = false; Runner.Reset(); Stair.Reset(); Chase.Reset(); Score.Reset(); Workout.Reset(); Items.Reset(); Paused=false; SpeedScale=1f; CadenceScale=1f; PacePressure=0f; clock = 0f; lastHit = -100f;SlipStrikes=0;lastStrike=0f;ShieldSaves=0;bananaCatchLeft=0;pursuer=null;ChaserGauge=0f;LastWarning=WarningCause.Collision;CaughtBy=ChaserKind.Police;Reason=CaptureReason.Collision; Sections.Reset(); SectionSpeed = null; Prison.Reset(); MineRescue.Reset(); Stair.GapScale = 1f; HidePose = false; HideDepth = -1f; if (Traits.StartsWithShield && !tutorial) Items.GiveStartingShield(); smoothSpeed = TargetSpeed; }
     }
 }

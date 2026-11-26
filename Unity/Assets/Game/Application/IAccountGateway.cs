@@ -18,7 +18,11 @@ namespace Mongscape.Application
         void FetchProfile(string token, Action<AccountReply> done);
         void UpdateProfile(string token, AccountProfileUpdate update, Action<AccountReply> done);
         void SaveRun(string token, AccountRun run, Action<AccountReply> done);
-        void Buy(string token, ItemKind item, Action<AccountReply> done);
+        // POST /traits: the trait price list (the one source of prices). Gateways without it answer not ok, and the
+        // game keeps the offline copy of TraitCatalog.
+        void Traits(Action<TraitsReply> done) => done?.Invoke(new TraitsReply());
+        // POST /traits/unlock: buys the next level of a trait with rescued monkeys; the reply carries the profile.
+        void UnlockTrait(string token, TraitId trait, int level, Action<AccountReply> done);
         void Leaderboard(string token, PlayStyle mode, bool today, Action<LeaderboardReply> done);
         // This week's board (from Monday 00:00 KST) for the running ranking strip; gateways without it give the all-time board.
         void WeekLeaderboard(string token, PlayStyle mode, Action<LeaderboardReply> done) => Leaderboard(token, mode, false, done);
@@ -46,7 +50,8 @@ namespace Mongscape.Application
         public void FetchProfile(string token, Action<AccountReply> done) => inner.FetchProfile(token, Watch(token, done));
         public void UpdateProfile(string token, AccountProfileUpdate update, Action<AccountReply> done) => inner.UpdateProfile(token, update, Watch(token, done));
         public void SaveRun(string token, AccountRun run, Action<AccountReply> done) => inner.SaveRun(token, run, Watch(token, done));
-        public void Buy(string token, ItemKind item, Action<AccountReply> done) => inner.Buy(token, item, Watch(token, done));
+        public void Traits(Action<TraitsReply> done) => inner.Traits(done);
+        public void UnlockTrait(string token, TraitId trait, int level, Action<AccountReply> done) => inner.UnlockTrait(token, trait, level, Watch(token, done));
         public void Leaderboard(string token, PlayStyle mode, bool today, Action<LeaderboardReply> done) => inner.Leaderboard(token, mode, today, Watch(token, done));
         public void WeekLeaderboard(string token, PlayStyle mode, Action<LeaderboardReply> done) => inner.WeekLeaderboard(token, mode, Watch(token, done));
         public void Stats(string token, Action<StatsReply> done) => inner.Stats(token, Watch(token, done));
@@ -63,7 +68,8 @@ namespace Mongscape.Application
         [NonSerialized] public long status;
     }
 
-    // The server profile object.
+    // The server profile object. coins holds the rescued monkeys (the column kept its name); unlocked holds the trait
+    // levels as id*10+level (TraitLevels).
     [Serializable]
     public sealed class AccountProfile
     {
@@ -72,7 +78,21 @@ namespace Mongscape.Application
         public int coins; public int[] unlocked = new int[0]; public bool tutorial_done;
     }
 
-    // /enroll, /login, /profile, /profile/update, /shop/buy, /name-check, /runs, /logout and /delete.
+    [Serializable] public sealed class TraitRow { public int id; public string key = ""; public int[] costs = new int[0]; }
+    [Serializable]
+    public sealed class TraitsReply : AccountResult
+    {
+        public TraitRow[] traits = new TraitRow[0];
+        // Copies the server prices into TraitCatalog; false when the reply has none.
+        public bool ApplyCosts()
+        {
+            if (!ok || traits == null || traits.Length == 0) return false;
+            foreach (var row in traits) if (row != null) TraitCatalog.ApplyServerCosts(row.id, row.costs);
+            return true;
+        }
+    }
+
+    // /enroll, /login, /profile, /profile/update, /traits/unlock, /name-check, /runs, /logout and /delete.
     [Serializable]
     public sealed class AccountReply : AccountResult
     {
@@ -120,6 +140,7 @@ namespace Mongscape.Application
     [Serializable]
     public sealed class AccountRun
     {
+        // The server accepts 0..5000 monkeys per run (the coins field).
         public const int MaxCoins = 5000;
         public string id = ""; public float distance; public int score; public double kcal, goal = AccountSettings.DefaultGoal;
         public double[] activities = new double[5];
@@ -129,14 +150,15 @@ namespace Mongscape.Application
 
         // Score uses the current formula (RunScore.Version); play seconds are the run clock without pauses.
         // Runs with and without "달리기 속도 조절" share one ranking, so the option is not sent.
-        public static AccountRun Create(RunSession run, PlayStyle mode, int coins)
+        // monkeys: the run's rescued monkeys and trait bonus (RunSession.MonkeysEarned), sent as coins.
+        public static AccountRun Create(RunSession run, PlayStyle mode, int monkeys)
         {
             double playSeconds = run.Elapsed, moderate = run.Workout.GoalSeconds;
             var record = new AccountRun
             {
                 id = Guid.NewGuid().ToString(), distance = Math.Max(0f, run.Score.Distance), score = Math.Max(0, run.Score.Score),
                 kcal = Math.Max(0, run.Workout.EstimatedKcal), goal = run.Workout.GoalKcal, mode = (int)mode,
-                coins = Math.Max(0, Math.Min(MaxCoins, coins)), score_version = RunScore.Version,
+                coins = Math.Max(0, Math.Min(MaxCoins, monkeys)), score_version = RunScore.Version,
                 play_seconds = Seconds(playSeconds), moderate_seconds = Seconds(moderate),
             };
             for (int i = 0; i < 5; i++) record.activities[i] = Math.Max(0, run.Workout.KcalFor(i));

@@ -71,10 +71,6 @@ namespace Mongscape.Tests
                 var floor=chunk.transform.Find("ThreeWayRails/TraversableDeck").GetComponent<MeshCollider>();Assert.IsNotNull(floor);
                 Assert.IsTrue(floor.Raycast(new Ray(new Vector3(expected,2,132),Vector3.down),out var hit,4),"Physical deck missing under selected branch");
                 Assert.AreEqual(0,hit.point.y,.001f);
-                foreach(var coin in chunk.Coins)
-                {
-                    RouteSurface.Sample(coin.transform.position.z,out float x,out _);Assert.AreEqual(x,coin.transform.position.x,.001f);
-                }
                 foreach(var gap in chunk.RailGaps)Assert.IsFalse(gap.gameObject.activeSelf);
             }
         }
