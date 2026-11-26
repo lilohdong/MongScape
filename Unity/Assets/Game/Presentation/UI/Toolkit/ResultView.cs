@@ -174,8 +174,8 @@ namespace Mongscape.Presentation
             {
                 UiIcons.RoundRect(p, new Rect(r.x, r.y + r.height * .28f, r.width, r.height * .48f), r.width * .08f, c);
                 for (int row = 0; row < 2; row++) for (int k = 0; k < 5; k++)
-                    UiIcons.RoundRect(p, new Rect(r.x + r.width * (.08f + k * .175f), r.y + r.height * (.35f + row * .14f), r.width * .12f, r.height * .09f), 2, UiTokens.Panel);
-                UiIcons.RoundRect(p, new Rect(r.x + r.width * .25f, r.y + r.height * .63f, r.width * .5f, r.height * .07f), 2, UiTokens.Panel);
+                    UiIcons.RoundRect(p, new Rect(r.x + r.width * (.08f + k * .175f), r.y + r.height * (.35f + row * .14f), r.width * .12f, r.height * .09f), 2, c == UiTokens.Panel ? UiTokens.Accent : UiTokens.Panel);
+                UiIcons.RoundRect(p, new Rect(r.x + r.width * .25f, r.y + r.height * .63f, r.width * .5f, r.height * .07f), 2, c == UiTokens.Panel ? UiTokens.Accent : UiTokens.Panel);
                 return;
             }
             if (style == PlayStyle.UpperBody)

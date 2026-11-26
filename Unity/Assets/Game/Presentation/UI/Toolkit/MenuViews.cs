@@ -83,6 +83,7 @@ namespace Mongscape.Presentation
     {
         public readonly UiRoot Root; public readonly GestureButtons Gestures;
         public Action<MenuAction> Select;
+        readonly VisualElement card;
         readonly Image logo; readonly IconButton account; readonly Label player, monkeys, weekValue, build; readonly VisualElement weekRow, weekFill;
         bool member;
         public MainMenuView(GameObject host)
@@ -105,7 +106,7 @@ namespace Mongscape.Presentation
             var quit = new IconButton("나가기", MenuIcons.Door(UiTokens.Text), () => Select?.Invoke(MenuAction.Quit));
             var icons = new[] { account, help, settings, quit };
             for (int i = 0; i < icons.Length; i++) { UiTokens.Absolute(icons[i], 1000 + i * 232, 60, 160, 160); Gestures.Add(icons[i].Button); frame.Add(icons[i]); }
-            var card = UiTokens.Box(1290, 760, 550, 220); card.style.backgroundColor = UiTokens.A(UiTokens.Panel, .94f); UiTokens.Radius(card, 32); UiTokens.Border(card, 5, UiTokens.PanelEdge); frame.Add(card);
+            card = UiTokens.Box(1290, 760, 550, 220); card.style.backgroundColor = UiTokens.A(UiTokens.Panel, .94f); UiTokens.Radius(card, 32); UiTokens.Border(card, 5, UiTokens.PanelEdge); frame.Add(card);
             card.Add(UiIcons.Make(26, 22, 84, UiIcons.Monkey()));
             monkeys = UiTokens.Label("", 72, UiTokens.Text); UiTokens.Absolute(monkeys, 126, 16, 200, 96); card.Add(monkeys);
             player = UiTokens.Label("", 44, UiTokens.TextDim, TextAnchor.MiddleRight); UiTokens.Absolute(player, 300, 30, 220, 64); card.Add(player);
@@ -125,6 +126,7 @@ namespace Mongscape.Presentation
             player.text = MainMenuScreen.PlayerLabel(data);
             monkeys.text = UiTokens.N(data?.Monkeys ?? 0);
             UiTokens.Show(weekRow, member);
+            card.style.height = member ? 220 : 120; card.style.top = member ? 760 : 860;
             double week = data?.WeekMinutes ?? 0;
             weekFill.style.width = 320 * Mathf.Clamp01((float)(week / ExerciseLog.WeeklyGoalMinutes));
             weekValue.text = WorkoutReport.WeekGoalValue(week);
@@ -214,11 +216,11 @@ namespace Mongscape.Presentation
             var dim = new VisualElement { pickingMode = PickingMode.Ignore }; UiTokens.Fill(dim); dim.style.backgroundColor = UiTokens.Dim(UiTokens.Deep, .8f); frame.Add(dim);
             var title = UiTokens.Label("랭킹", 88, UiTokens.Accent); UiTokens.Absolute(title, 90, 30, 400, 120); frame.Add(title);
             string[] p = { "오늘", "전체" };
-            for (int i = 0; i < 2; i++) { bool today = i == 0; var b = new UiButton(p[i], false, () => Pick?.Invoke(today, shownMode), 56); UiTokens.Absolute(b, 500 + i * 330, 30, 300, 120); periods[i] = Gestures.Add(b); frame.Add(b); }
+            for (int i = 0; i < 2; i++) { bool today = i == 0; var b = new UiButton(p[i], false, () => Pick?.Invoke(today, shownMode), 56); UiTokens.Absolute(b, 380 + i * 290, 30, 260, 120); periods[i] = Gestures.Add(b); frame.Add(b); }
             for (int i = 0; i < 3; i++)
             {
                 var s = (PlayStyle)i; var b = new UiButton(PlayStyleInfo.Label(s), false, () => Pick?.Invoke(shownToday, s), 56);
-                UiTokens.Absolute(b, 1830 - 3 * 300 - 2 * 30 + i * 330, 30, 300, 120); modes[i] = Gestures.Add(b); frame.Add(b);
+                UiTokens.Absolute(b, 1830 - 3 * 260 - 2 * 30 + i * 290, 30, 260, 120); modes[i] = Gestures.Add(b); frame.Add(b);
             }
             var panel = UiTokens.Box(90, 190, 1740, 680); panel.style.backgroundColor = UiTokens.A(UiTokens.Panel, .96f); UiTokens.Radius(panel, 32); UiTokens.Border(panel, 5, UiTokens.PanelEdge); panel.style.overflow = Overflow.Hidden; frame.Add(panel);
             rows = UiTokens.Box(18, 18, 1704, 644); panel.Add(rows);
