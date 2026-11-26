@@ -1,11 +1,12 @@
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
+using Muhanok.Bootstrap;
 using System;
 using System.Collections;
 using System.IO;
 using Muhanok.Domain;
 using UnityEngine;
 
-namespace Muhanok.Bootstrap
+namespace Muhanok.DevTools
 {
     // Only runs with an explicit CLI flag; captures the actual player frame including HUD.
     public sealed class RuntimeVisualReview : MonoBehaviour
@@ -20,7 +21,7 @@ namespace Muhanok.Bootstrap
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Install()
         {
-            if(Array.IndexOf(Environment.GetCommandLineArgs(),"--muhanok-capture")<0) return;
+            if(Array.IndexOf(Environment.GetCommandLineArgs(),"--mongscape-capture")<0) return;
             new GameObject("Player Visual Review").AddComponent<RuntimeVisualReview>();
         }
         private void Start()
@@ -28,8 +29,8 @@ namespace Muhanok.Bootstrap
             UnityEngine.Application.runInBackground=true;
             game=FindFirstObjectByType<GameBootstrap>(); started=Time.realtimeSinceStartup;
             destination=Path.GetFullPath(Path.Combine(UnityEngine.Application.dataPath,"../../../Builds/QA/VisualReview/ArtV10"));
-            maps=Array.IndexOf(Environment.GetCommandLineArgs(),"--muhanok-mapcapture")>=0;
-            if(Array.IndexOf(Environment.GetCommandLineArgs(),"--muhanok-detailcapture")>=0){maps=true;step=35;}
+            maps=Array.IndexOf(Environment.GetCommandLineArgs(),"--mongscape-mapcapture")>=0;
+            if(Array.IndexOf(Environment.GetCommandLineArgs(),"--mongscape-detailcapture")>=0){maps=true;step=35;}
             suffix="_"+Screen.width+"x"+Screen.height;
             Directory.CreateDirectory(destination);
         }

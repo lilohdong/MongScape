@@ -1,4 +1,5 @@
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
+using Muhanok.Bootstrap;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -11,7 +12,7 @@ using Muhanok.Presentation.Map;
 using UnityEngine;
 using Debug=UnityEngine.Debug;
 
-namespace Muhanok.Bootstrap
+namespace Muhanok.DevTools
 {
     // Opt-in video demonstration. Sends ordinary commands; never seeks, shields or edits the run rules.
     [DefaultExecutionOrder(-150)]
@@ -41,11 +42,11 @@ namespace Muhanok.Bootstrap
         {var args=Environment.GetCommandLineArgs();int at=Array.IndexOf(args,key);return at>=0&&at+1<args.Length?args[at+1]:null;}
         private IEnumerator Start()
         {
-            output=Path.GetFullPath(Argument("--record-output")??Path.Combine(UnityEngine.Application.persistentDataPath,"GameplayRecording"));Directory.CreateDirectory(output);
-            var dataPath=Argument("--muhanok-data");
+            output=Path.GetFullPath(Argument("--mongscape-record-output")??Path.Combine(UnityEngine.Application.persistentDataPath,"GameplayRecording"));Directory.CreateDirectory(output);
+            var dataPath=Argument("--mongscape-data");
             if(string.IsNullOrEmpty(dataPath)||!Path.GetFullPath(dataPath).StartsWith(output+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase))
             {Fail("Recording needs an isolated PlayerData directory inside its output folder");yield break;}
-            encoderPath=Argument("--record-encoder");pilot=Array.IndexOf(Environment.GetCommandLineArgs(),"--record-pilot")>=0;
+            encoderPath=Argument("--mongscape-record-encoder");pilot=Array.IndexOf(Environment.GetCommandLineArgs(),"--mongscape-record-pilot")>=0;
             if(string.IsNullOrEmpty(encoderPath)||!File.Exists(encoderPath)){Fail("Video encoder missing");yield break;}
             UnityEngine.Application.runInBackground=true;yield return null;
             game=FindFirstObjectByType<GameBootstrap>();if(game==null){Fail("Bootstrap missing");yield break;}

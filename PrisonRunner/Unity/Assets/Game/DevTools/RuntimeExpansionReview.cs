@@ -1,4 +1,5 @@
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
+using Muhanok.Bootstrap;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -10,7 +11,7 @@ using Muhanok.Presentation.Map;
 using UnityEngine;
 using Unity.Cinemachine;
 using UnityEngine.UIElements;
-namespace Muhanok.Bootstrap
+namespace Muhanok.DevTools
 {
     // Opt-in local review only. Normal play never installs this driver and it never saves player scores/profiles.
     [DefaultExecutionOrder(-100)]
@@ -30,8 +31,8 @@ namespace Muhanok.Bootstrap
         {
             started=Time.realtimeSinceStartup;UnityEngine.Application.runInBackground=true;
             destination=Path.Combine(UnityEngine.Application.persistentDataPath,"ExpansionReview");
-            var args=Environment.GetCommandLineArgs();int at=Array.IndexOf(args,"--review-output");if(at>=0&&at+1<args.Length)destination=Path.GetFullPath(args[at+1]);
-            detailsOnly=Array.IndexOf(args,"--review-details")>=0;
+            var args=Environment.GetCommandLineArgs();int at=Array.IndexOf(args,"--mongscape-review-output");if(at>=0&&at+1<args.Length)destination=Path.GetFullPath(args[at+1]);
+            detailsOnly=Array.IndexOf(args,"--mongscape-review-details")>=0;
             Directory.CreateDirectory(destination);report.device=SystemInfo.deviceModel;report.gpu=SystemInfo.graphicsDeviceName;report.started=DateTime.Now.ToString("O");
             UnityEngine.Application.logMessageReceived+=Log;
         }
@@ -146,7 +147,7 @@ namespace Muhanok.Bootstrap
             game.OutputCamera.transform.LookAt(game.Hero.Head);game.GetComponent<HUDPresenter>().Hidden=true;
             yield return new WaitForSecondsRealtime(.7f);yield return Capture("05_FaceBadge_TestPattern");
             game.Hero.GetComponent<FaceAvatarView>().Apply(null);Destroy(portrait);brain.enabled=true;game.GetComponent<HUDPresenter>().Hidden=false;
-            bool deferCamera=Array.IndexOf(Environment.GetCommandLineArgs(),"--review-no-camera")>=0;
+            bool deferCamera=Array.IndexOf(Environment.GetCommandLineArgs(),"--mongscape-review-no-camera")>=0;
             if(!deferCamera)game.Pose.SetStyle(PlayStyle.UpperBody);double last=0;float probeUntil=Time.realtimeSinceStartup+(deferCamera?0:8);
             while(Time.realtimeSinceStartup<probeUntil)
             {

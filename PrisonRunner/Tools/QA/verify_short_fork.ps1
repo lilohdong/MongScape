@@ -7,9 +7,9 @@ foreach($phase in @('ForkReview','RuntimeSmoke')){
     $output=Join-Path $qa $phase
     New-Item -ItemType Directory -Path $output -Force | Out-Null
     $log=Join-Path $qa ($phase+'.log')
-    $flags=if($phase -eq 'ForkReview'){@('--mongscape-review','--review-details','--review-no-camera','--review-output',('"'+$output+'"'))}else{@('--muhanok-smoke')}
+    $flags=if($phase -eq 'ForkReview'){@('--mongscape-review','--mongscape-review-details','--mongscape-review-no-camera','--mongscape-review-output',('"'+$output+'"'))}else{@('--mongscape-smoke')}
     $marker=if($phase -eq 'ForkReview'){'MONGSCAPE_EXPANSION_REVIEW_PASS'}else{'MUHANOK_RUNTIME_SMOKE_PASS'}
-    $arguments=@('-screen-width','1280','-screen-height','720','-screen-fullscreen','0','--mongscape-tests','--muhanok-data',('"'+(Join-Path $qa ($phase+'PlayerData'))+'"'),'-logFile',('"'+$log+'"'))+$flags
+    $arguments=@('-screen-width','1280','-screen-height','720','-screen-fullscreen','0','--mongscape-tests','--mongscape-data',('"'+(Join-Path $qa ($phase+'PlayerData'))+'"'),'-logFile',('"'+$log+'"'))+$flags
     $process=Start-Process -FilePath $game -ArgumentList $arguments -WorkingDirectory (Split-Path -Parent $game) -WindowStyle Hidden -PassThru -Wait
     $result=[pscustomobject]@{phase=$phase;exitCode=$process.ExitCode;marker=$marker;log=$log}
     $result | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $qa ($phase+'-latest.json')) -Encoding UTF8

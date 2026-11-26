@@ -1,4 +1,5 @@
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
+using Muhanok.Bootstrap;
 using System;
 using System.Collections;
 using System.IO;
@@ -7,7 +8,7 @@ using Muhanok.Presentation;
 using Muhanok.Presentation.Map;
 using Unity.Cinemachine;
 using UnityEngine;
-namespace Muhanok.Bootstrap
+namespace Muhanok.DevTools
 {
     // Explicit visual QA only. No real camera, face requests, saved profiles or leaderboard writes.
     public sealed class RuntimeZooReview : MonoBehaviour
@@ -22,7 +23,7 @@ namespace Muhanok.Bootstrap
         private void Awake()
         {
             began=Time.realtimeSinceStartup;UnityEngine.Application.runInBackground=true;
-            var args=Environment.GetCommandLineArgs();int at=Array.IndexOf(args,"--review-output");
+            var args=Environment.GetCommandLineArgs();int at=Array.IndexOf(args,"--mongscape-review-output");
             output=at>=0&&at+1<args.Length?Path.GetFullPath(args[at+1]):Path.Combine(UnityEngine.Application.persistentDataPath,"ZooReview");
             Directory.CreateDirectory(output);UnityEngine.Application.logMessageReceived+=Log;
         }

@@ -156,7 +156,7 @@ PC JSON은 Unity의 `Application.persistentDataPath/Player` 아래에 있습니�
 자동 검수는 개발 빌드에서 아래 플래그를 명시할 때만 실행됩니다. 실제 프로필과 카메라 대신 별도 폴더/합성 데이터를 사용합니다.
 
 ```text
-Mongscape.exe --muhanok-uicapture --mongscape-tests --muhanok-out <캡처 폴더> --muhanok-data <임시 데이터 폴더>
+Mongscape.exe --mongscape-uicapture --mongscape-tests --mongscape-out <캡처 폴더> --mongscape-data <임시 데이터 폴더>
 ```
 
 현재 검증과 출처는 [통합 보고서](reports/PR20_LOCAL_MERGE_2026_10_29.md)를 확인하세요. 합성 UI 화면과 실물 웹캠 검증은 구분합니다.

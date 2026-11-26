@@ -1,9 +1,10 @@
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
+using Muhanok.Bootstrap;
 using System;
 using Muhanok.Domain;
 using UnityEngine;
 
-namespace Muhanok.Bootstrap
+namespace Muhanok.DevTools
 {
     // Explicit build smoke only; absent from normal play unless this command-line flag is supplied.
     public sealed class RuntimeSmokeCheck : MonoBehaviour
@@ -15,7 +16,7 @@ namespace Muhanok.Bootstrap
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Install()
         {
-            if (Array.IndexOf(Environment.GetCommandLineArgs(), "--muhanok-smoke") < 0) return;
+            if (Array.IndexOf(Environment.GetCommandLineArgs(), "--mongscape-smoke") < 0) return;
             UnityEngine.Application.runInBackground = true;
             new GameObject("Build Smoke").AddComponent<RuntimeSmokeCheck>();
         }
