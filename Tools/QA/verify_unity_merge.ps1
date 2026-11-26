@@ -1,4 +1,4 @@
-param([ValidateSet('EditMode','PlayMode','Build')][string]$Phase='EditMode', [string]$ProjectPath, [string]$ReportDirectory, [string]$TestFilter)
+param([ValidateSet('EditMode','PlayMode','Build')][string]$Phase='EditMode', [string]$ProjectPath, [string]$ReportDirectory, [string]$TestFilter, [switch]$UseCamera)
 $ErrorActionPreference='Stop'
 $projectRoot=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 $reportRoot=if($ReportDirectory){[IO.Path]::GetFullPath($ReportDirectory)}else{Join-Path $projectRoot 'Builds/QA/MuhanokTestMerge'}
@@ -12,6 +12,8 @@ $arguments=@('-batchmode','-projectPath',('"'+$project+'"'),'-logFile',('"'+$log
 if($Phase -eq 'Build'){$arguments+=@('-quit','-executeMethod','Mongscape.Editor.MongscapeBuildTools.BuildWindows')}
 else{$arguments+=@('-runTests','-testPlatform',$Phase,'-testResults',('"'+$xml+'"'))}
 if($Phase -ne 'Build' -and $TestFilter){$arguments+=@('-testFilter',$TestFilter)}
+# Tests never list or open a webcam unless -UseCamera is given (listing cameras can pop up Windows Phone Link's camera).
+if($Phase -ne 'Build' -and -not $UseCamera){$arguments+='--mongscape-no-camera'}
 # Default Hub folder first, then the Hub's custom install folder (Unity Hub > Preferences > Installs).
 $unity='C:/Program Files/Unity/Hub/Editor/6000.3.10f1/Editor/Unity.exe'
 $hubPath=Join-Path $env:APPDATA 'UnityHub/secondaryInstallPath.json'

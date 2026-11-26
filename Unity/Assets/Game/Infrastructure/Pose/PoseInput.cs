@@ -163,6 +163,7 @@ namespace Mongscape.Infrastructure
         private static T Copy<T>(T value) => JsonUtility.FromJson<T>(JsonUtility.ToJson(value));
         public static string[] CameraDevices()
         {
+            if (CameraAccess.Disabled) return new string[0];
             var devices = WebCamTexture.devices; var names = new string[devices.Length];
             for (int i = 0; i < devices.Length; i++) names[i] = devices[i].name;
             return names;
