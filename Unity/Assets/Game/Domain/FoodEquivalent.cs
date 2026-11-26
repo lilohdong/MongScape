@@ -18,7 +18,10 @@ namespace Mongscape.Domain
         {
             public readonly Food Food; public readonly double Count;
             public Portion(Food food, double count) { Food = food; Count = count; }
-            public string CountText => Count.ToString("F2", CultureInfo.InvariantCulture) + Food.Unit;
+            // One decimal place (owner 2026-11-27): "1.0개", "2.2개".
+            public string CountText => Count.ToString("F1", CultureInfo.InvariantCulture) + Food.Unit;
+            // The result screen line: "바나나 1.0개만큼".
+            public string Phrase => Food.Name + " " + CountText + "만큼";
         }
 
         // Lowest kcal first; selection keeps this order.
@@ -39,8 +42,9 @@ namespace Mongscape.Domain
         public const double MinCount = 0.5, MaxCount = 10;
         public const int DefaultMax = 5;
 
-        // Up to max foods whose count falls in [MinCount, MaxCount]. When none does, the single closest
-        // food (smallest for a tiny run, largest for a huge one). Nothing for zero or invalid kcal.
+        // Up to max foods whose count falls in [MinCount, MaxCount], the count closest to one first (the result shows the
+        // first: "바나나 1.0개만큼"). When none does, the single closest food (smallest for a tiny run, largest for a huge one).
+        // Nothing for zero or invalid kcal.
         public static List<Portion> For(double kcal, int max = DefaultMax)
         {
             var result = new List<Portion>();
@@ -49,12 +53,20 @@ namespace Mongscape.Domain
             {
                 double count = kcal / food.Kcal;
                 if (count >= MinCount && count <= MaxCount) result.Add(new Portion(food, count));
-                if (result.Count == max) return result;
             }
-            if (result.Count > 0) return result;
+            if (result.Count > 0)
+            {
+                // Stable: equal distances keep the table order.
+                var ordered = new List<Portion>(result);
+                ordered.Sort((a, b) => { int c = Math.Abs(a.Count - 1).CompareTo(Math.Abs(b.Count - 1)); return c != 0 ? c : Array.IndexOf(Table, a.Food).CompareTo(Array.IndexOf(Table, b.Food)); });
+                if (ordered.Count > max) ordered.RemoveRange(max, ordered.Count - max);
+                return ordered;
+            }
             var nearest = kcal / Table[0].Kcal < MinCount ? Table[0] : Table[Table.Length - 1];
             result.Add(new Portion(nearest, kcal / nearest.Kcal));
             return result;
         }
+        // The one food for the result screen, or null when there is nothing to compare.
+        public static Portion? Closest(double kcal) { var list = For(kcal, 1); return list.Count > 0 ? list[0] : (Portion?)null; }
     }
 }

@@ -27,6 +27,8 @@ namespace Mongscape.Presentation
         public bool AsksGuestName => board.ResultMode && guestName.Open;
         public bool SaveGuestName(IHudData data, string name) => board.ResultMode && guestName.Save(data, name);
 
+        // The UI Toolkit result screen keeps this IMGUI row for a guest's name (text input).
+        public void DrawGuestName(IHudData data, Rect r) { if (board.ResultMode) guestName.Draw(data, r); }
         public void OpenBoard(IHudData data, IIdentityData account)
         {
             guestName.Skip();

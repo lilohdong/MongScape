@@ -95,6 +95,9 @@ namespace Mongscape.Presentation
         int LastMonkeys { get; }
         // The tutorial's joint comparison panel is open (bottom middle); the HUD notice moves aside then (QA 2026-11-25 M7).
         bool JointCompareOpen => false;
+        // The profile's week card (members): goal minutes per day from Monday, and active minutes per map (zoo, prison, mine).
+        double[] WeekDays => null;
+        double[] WeekMaps => null;
     }
 
     // Draws the mirrored webcam image with the detected skeleton; returns the video rect for overlays.

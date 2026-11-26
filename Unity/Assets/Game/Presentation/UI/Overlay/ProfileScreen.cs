@@ -46,7 +46,8 @@ namespace Mongscape.Presentation
             if (problem != null) { Fail(problem); return; }
             var probe = new WorkoutEstimate();
             if (!probe.SetWeight(Weight?.Trim())) { Fail("몸무게는 10~350kg 숫자로 입력해 주세요."); return; }
-            if (!probe.SetGoal(Goal?.Trim())) { Fail("칼로리 목표는 1~5000 kcal 숫자로 입력해 주세요."); return; }
+            // The calorie goal is no longer shown or asked (owner 2026-11-27); the saved value is kept as it is.
+            probe.SetGoal(Goal?.Trim());
             var settings = new AccountSettings { Weight = probe.WeightKg, Style = Style, Goal = probe.GoalKcal };
             int mine = opened; Busy = true; Failed = false; Message = "저장 중…"; Deleting = ProfileDeleteStep.None;
             identity.SaveMemberProfile(Nickname.Trim(), settings, (ok, reason) =>
@@ -87,7 +88,7 @@ namespace Mongscape.Presentation
         public void Open() { focusName = true; }
 
         // back: main menu without saving; logout: sign out to the login gate; delete: the next deletion step.
-        public void Draw(ProfileForm form, Action back, Action logout, Action delete)
+        public void Draw(ProfileForm form, Action back, Action logout, Action delete, Action week = null)
         {
             var oldMatrix = GUI.matrix;
             GUI.matrix = Matrix4x4.identity;
@@ -113,10 +114,6 @@ namespace Mongscape.Presentation
             GUI.SetNextControlName("MongscapeProfileWeight");
             form.Weight = skin.Input(new Rect(x, 264, 150, 52), form.Weight, 6);
             skin.Text(new Rect(x + 158, 264, 50, 52), "kg", 20, Palette.Sand, TextAnchor.MiddleLeft);
-            skin.Text(new Rect(x + 220, 232, 200, 28), "칼로리 목표", 18, Palette.Sand, TextAnchor.MiddleLeft, false, true);
-            GUI.SetNextControlName("MongscapeProfileGoal");
-            form.Goal = skin.Input(new Rect(x + 220, 264, 120, 52), form.Goal, 6);
-            skin.Text(new Rect(x + 348, 264, 70, 52), "kcal", 20, Palette.Sand, TextAnchor.MiddleLeft);
             skin.Text(new Rect(x, 334, 300, 28), "기본 플레이 방식", 18, Palette.Sand, TextAnchor.MiddleLeft, false, true);
             for (int i = 0; i < 3; i++)
             {
@@ -138,6 +135,7 @@ namespace Mongscape.Presentation
             if (skin.Button(new Rect(444, 606, 190, 56), "로그아웃", Palette.A(Palette.Ground, 0.9f), Palette.Wood, Palette.Cream, 22)) logout?.Invoke();
             if (skin.Button(new Rect(646, 606, 190, 56), "회원 탈퇴", Palette.A(Palette.Ground, 0.9f), new Color(.75f, .25f, .18f), new Color(1, .7f, .6f), 22)) delete?.Invoke();
             GUI.enabled = wasEnabled && !form.Busy;
+            if (week != null && skin.Button(new Rect(1050, 606, 190, 56), "이번 주 운동", Palette.A(Palette.Ground, 0.9f), Palette.Wood, Palette.Cream, 22)) week();
             if (skin.Button(new Rect(848, 606, 190, 56), "뒤로", Palette.A(Palette.Ground, 0.9f), Palette.Wood, Palette.Cream, 22) || escape && !asking && GUI.enabled) back?.Invoke();
             GUI.enabled = wasEnabled;
         }

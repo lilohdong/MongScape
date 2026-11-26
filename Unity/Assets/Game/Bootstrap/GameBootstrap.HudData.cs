@@ -84,6 +84,8 @@ namespace Mongscape.Bootstrap
         // instead of the PC's week (QA 2026-11-25 L3).
         ExerciseKind IHudData.Recommended => Account.IsMember ? Store.Exercise.Recommend(ExerciseOwner, System.DateTime.UtcNow) : ExerciseKind.Warmup;
         double IHudData.WeekMinutes => Account.IsMember ? Store.Exercise.WeekModerateMinutes(ExerciseOwner, System.DateTime.UtcNow) : Session.Workout.GoalSeconds / 60;
+        double[] IHudData.WeekDays => Account.IsMember ? Store.Exercise.WeekDayMinutes(ExerciseOwner, System.DateTime.UtcNow) : null;
+        double[] IHudData.WeekMaps => Account.IsMember ? Store.Exercise.WeekMapMinutes(ExerciseOwner, System.DateTime.UtcNow) : null;
         int IHudData.Streak => Account.IsMember ? Store.Exercise.Streak(ExerciseOwner, System.DateTime.UtcNow) : 0;
         int IHudData.LastMonkeys => Results.LastMonkeys;
         bool IHudData.JointCompareOpen => Tutorial != null && Tutorial.ComparingJoints;

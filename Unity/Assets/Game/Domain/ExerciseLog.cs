@@ -74,6 +74,26 @@ namespace Mongscape.Domain
             for (var d = WeekStart(today); d <= today; d = d.AddDays(1)) { var day = Find(owner, DayKey(d)); if (day != null) sum += day.Moderate; }
             return sum / 60;
         }
+        // The profile's week card: goal minutes per day, Monday first (this PC's days).
+        public double[] WeekDayMinutes(string owner, DateTime utcNow)
+        {
+            var result = new double[7]; var start = WeekStart(Kst(utcNow));
+            for (int i = 0; i < 7; i++) { var day = Find(owner, DayKey(start.AddDays(i))); if (day != null) result[i] = day.Moderate / 60; }
+            return result;
+        }
+        // Active minutes this week per map: zoo (cardio), prison (strength), mine (warm-up and the mine after the fork).
+        public double[] WeekMapMinutes(string owner, DateTime utcNow)
+        {
+            var result = new double[3]; var today = Kst(utcNow);
+            for (var d = WeekStart(today); d <= today; d = d.AddDays(1))
+            {
+                var day = Find(owner, DayKey(d)); if (day == null) continue;
+                result[0] += day.Kinds[(int)ExerciseKind.Cardio] / 60;
+                result[1] += day.Kinds[(int)ExerciseKind.Strength] / 60;
+                result[2] += (day.Kinds[(int)ExerciseKind.Warmup] + day.Kinds[(int)ExerciseKind.Balance]) / 60;
+            }
+            return result;
+        }
         public double WeekGoalProgress(string owner, DateTime utcNow) => Math.Min(1, WeekModerateMinutes(owner, utcNow) / WeeklyGoalMinutes);
         // Days in a row with 10 active minutes, ending today (or yesterday when today is not done yet).
         public int Streak(string owner, DateTime utcNow)

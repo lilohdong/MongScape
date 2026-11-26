@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Mongscape.Presentation
 {
-    public enum MenuPage { None, Main, Setup, Profile, Ranking, Identity, Login, SignUp, TutorialOffer, Credits }
+    public enum MenuPage { None, Main, Setup, Profile, Ranking, Identity, Login, SignUp, TutorialOffer, Credits, Help, Week }
 
     // UI root: owns the menu page state and draws exactly one screen for the current game state.
     public sealed class HUDPresenter : MonoBehaviour
@@ -71,8 +71,19 @@ namespace Mongscape.Presentation
         private LeaderboardScreen board;
         private CalibrationPanel calibration;
         private LoadingScreen loading;
-        private RunHud runHud;
-        private PauseScreen pause;
+        private RunHudView runView;
+        private ResultView resultView;
+        private HelpView helpView;
+        private WeekView weekView;
+        public WeekView WeekCard => weekView;
+        public HelpView Help => helpView;
+        // The UI Toolkit result screen (score count-up, today's ranking, this run).
+        public ResultView Result => resultView;
+        private readonly RunHudModel runModel = new RunHudModel();
+        // The UI Toolkit running HUD; the zoo sets the rear-view mirror through it.
+        public RunHudView RunView => runView;
+        private PauseView pauseView;
+        public PauseView Pause => pauseView;
         public void Configure(RunSession run, Action again)
         {
             session = run; retry = again;
@@ -81,7 +92,11 @@ namespace Mongscape.Presentation
             title = new TitleScreen(skin); setup = new SetupScreen(skin); loading = new LoadingScreen(skin); identity=new IdentityScreen(skin); signUp=new SignUpScreen(skin,identity);
             menu = new MainMenuScreen(overlaySkin); credits = new CreditsScreen(overlaySkin); tutorialOffer = new TutorialOfferScreen(overlaySkin); gate = new LoginGateScreen(overlaySkin); profile = new ProfileScreen(overlaySkin); board = new LeaderboardScreen(overlaySkin, Ranking);
             calibration = new CalibrationPanel(overlaySkin, skin);
-            runHud = new RunHud(skin, new ProgressHud(overlaySkin)); pause = new PauseScreen(skin);
+            runView = new RunHudView(gameObject);
+            pauseView = new PauseView(gameObject) { Resume = () => PauseRun?.Invoke(), Recalibrate = () => Recalibrate?.Invoke(), Main = () => ToMenu?.Invoke() };
+            helpView = new HelpView(gameObject) { Back = OpenMainMenu };
+            weekView = new WeekView(gameObject) { Back = () => ShowPage(MenuPage.Profile) };
+            resultView = new ResultView(gameObject) { Retry = () => retry?.Invoke(), Calibrate = OpenCalibration, Main = () => ToMenu?.Invoke() };
         }
         public void ShowPage(MenuPage page)
         {
@@ -92,6 +107,7 @@ namespace Mongscape.Presentation
             if (page == MenuPage.Setup) setup.Open(Data);
             else if (page == MenuPage.Profile) { Profile.Open(Data, Account); profile.Open(); }
             else if (page == MenuPage.TutorialOffer) tutorialOffer.Open();
+            else if (page == MenuPage.Week) weekView.Show(Data?.WeekMinutes ?? 0, Data?.WeekDays, Data?.WeekMaps, ((int)System.DateTime.UtcNow.AddHours(9).DayOfWeek + 6) % 7, Data?.Player?.Style == PlayStyle.UpperBody);
             else if (page == MenuPage.Ranking) board.OpenBoard(Data, Account);
             else if (page == MenuPage.Login) Account?.CheckServer();
             else if (page == MenuPage.SignUp) { SignUp.Open(Account); signUp.Open(); }
@@ -139,6 +155,7 @@ namespace Mongscape.Presentation
             else if (action == MenuAction.Identity) Logout();
             else if (action == MenuAction.Settings) OpenSettings?.Invoke();
             else if (action == MenuAction.Credits) ShowPage(MenuPage.Credits);
+            else if (action == MenuAction.Help) ShowPage(MenuPage.Help);
             else if (action == MenuAction.Quit) Quit?.Invoke();
         }
         // Main menu "로그아웃" and 내 정보: a member is signed out; both go to the login gate.
@@ -153,6 +170,7 @@ namespace Mongscape.Presentation
         {
             if (resultOpen || session == null || session.Flow.State != GameFlowState.Result) return;
             resultOpen = true; board.OpenResult(Data, Account, session); if (board.AsksGuestName) TextInput?.Invoke(true);
+            resultView?.Show(Data, Ranking, session, CalibrationAvailable, Time.unscaledTime);
         }
         // Result screen 웹캠 보정: only after a camera run; the panel blocks the result buttons and hand pointing while open.
         public bool CalibrationAvailable => session != null && session.Flow.State == GameFlowState.Result && Data?.Player != null && PlayStyleInfo.UsesCamera(Data.Player.Style);
@@ -162,18 +180,39 @@ namespace Mongscape.Presentation
         public void CloseSetup() { ShowPage(MenuPage.None); Loading = false; revealRemaining = 0; }
         public void BeginLoading() { ShowPage(MenuPage.None); Loading = true; }
         public void EndLoading() { Loading = false; revealRemaining = .85f; }
-        public RunHudModel RunModel => runHud?.Model;
+        public RunHudModel RunModel => runView != null ? runModel : null;
         private void Update()
         {
             revealRemaining = Mathf.Max(0, revealRemaining - Time.unscaledDeltaTime);
             if (!CalibrationAvailable) calibration?.Close(); else calibration.Tick(Data, Time.realtimeSinceStartup);
-            if (session == null || runHud == null || Hidden || Loading || Revealing) return;
-            if (session.Flow.State == GameFlowState.Running || session.Flow.State == GameFlowState.Caught)
-                runHud.Model.Tick(session, Map, Data?.Player?.Style ?? PlayStyle.Keyboard, Data?.PoseStatus ?? PoseStatus.Off, PoliceAlert?.Invoke() ?? false, Time.unscaledTime);
-            if (session.Flow.State == GameFlowState.Running && !session.Paused && Data != null) runHud.Strip.Tick(Data.Race, Data.HazardNear, Time.unscaledTime);
+            if (runView == null) return;
+            helpView.Root.Visible = !Hidden && Page == MenuPage.Help && session != null && session.Flow.State == GameFlowState.TitleIdle;
+            if (helpView.Root.Visible) helpView.Root.Layout();
+            bool menuScreen = !Hidden && session != null && session.Flow.State == GameFlowState.TitleIdle;
+            weekView.Root.Visible = menuScreen && Page == MenuPage.Week; if (weekView.Root.Visible) weekView.Root.Layout();
+            bool inRun = session != null && (session.Flow.State == GameFlowState.Running || session.Flow.State == GameFlowState.Caught);
+            if (inRun && !wasRunning) runView.ResetRun();
+            wasRunning = inRun;
+            bool showRun = inRun && !Hidden && !Loading && !Revealing && !session.Paused
+                && !(Data != null && Data.RunCalibration != RunCalibrationState.None && session.Flow.State == GameFlowState.Running);
+            runView.Root.Visible = showRun;
+            pauseView.Root.Visible = inRun && session.Paused && !Hidden && !Loading && !Revealing;
+            if (pauseView.Root.Visible) { pauseView.Root.Layout(); pauseView.Place(PlayStyleInfo.UsesCamera(Data?.Player?.Style ?? PlayStyle.Keyboard)); pauseView.SetFlow(Data?.Pause, Time.unscaledTime); }
+            if (session == null || Hidden || Loading || Revealing) return;
+            if (inRun)
+                runModel.Tick(session, Map, Data?.Player?.Style ?? PlayStyle.Keyboard, Data?.PoseStatus ?? PoseStatus.Off, PoliceAlert?.Invoke() ?? false, Time.unscaledTime);
+            if (showRun) runView.Render(session, Data, runModel, Time.unscaledTime);
+            if (resultView != null)
+            {
+                bool result = session.Flow.State == GameFlowState.Result && resultView.Open;
+                if (session.Flow.State != GameFlowState.Result && resultView.Open) resultView.Hide();
+                resultView.Root.Visible = result && !CalibrationOpen;
+                if (result) resultView.Render(Time.unscaledTime);
+            }
         }
+        private bool wasRunning;
         // Played when the ranking strip passes a row.
-        public Action RankCracked { set { if (runHud != null) runHud.Strip.Cracked = value; } }
+        public Action RankCracked { set { if (runView != null) runView.Strip.Cracked = value; } }
         private void OnGUI()
         {
             if (session == null || Hidden) return;
@@ -188,10 +227,10 @@ namespace Mongscape.Presentation
             else if (state == GameFlowState.TitleIdle) DrawMenu();
             else if (state == GameFlowState.Running || state == GameFlowState.Caught)
             {
-                if (session.Paused) pause.Draw(session, Data, PauseRun, Recalibrate, ToMenu);
+                if (session.Paused) { if (pauseView.ShowsButtons) pauseView.Gestures.Pass(); }
                 // Camera runs hold on the calibration screen until the player is measured, then the countdown starts.
                 else if (Data != null && Data.RunCalibration != RunCalibrationState.None && state == GameFlowState.Running) calibration.DrawRun(Data);
-                else { runHud.Draw(session, Fade, Data, PauseRun); pause.DrawGesture(Data?.Pause); }
+                // The running HUD is the UI Toolkit RunHudView (drawn by its own panel).
             }
             else if (state == GameFlowState.Result)
             {
@@ -199,9 +238,18 @@ namespace Mongscape.Presentation
                 bool calibrating = calibration.Open;
                 // The open calibration panel takes the keys first and leaves the result screen underneath inert.
                 calibration.Keys();
-                GUI.enabled = !calibrating;
-                board.Draw(Data, session, retry, "다시 하기", ToMenu, "메인으로", CalibrationAvailable ? OpenCalibration : (Action)null, "웹캠 보정");
-                GUI.enabled = true;
+                if (!calibrating && resultView != null)
+                {
+                    resultView.Gestures.Pass();
+                    var e = Event.current;
+                    if (e.type == EventType.KeyDown && !board.AsksGuestName)
+                    {
+                        if (e.keyCode == KeyCode.Escape) { e.Use(); if (!resultView.CloseWindow()) ToMenu?.Invoke(); }
+                        else if (e.keyCode == KeyCode.Return || e.keyCode == KeyCode.KeypadEnter || e.keyCode == KeyCode.Space) { e.Use(); if (!resultView.CloseWindow()) retry?.Invoke(); }
+                    }
+                    // A guest names the run on this PC's ranking (text input stays IMGUI), over the lower ranking rows.
+                    if (resultView.ShowingRanking && !resultView.MoreOpen && !resultView.InfoOpen) board.DrawGuestName(Data, new Rect(60, 400, 700, 150));
+                }
                 if (calibrating) calibration.Draw(Data);
             }
             // F9 demo invincibility (development builds): a small reminder in the bottom-left corner while it is on, with the F7 key that still ends the run.
@@ -250,15 +298,16 @@ namespace Mongscape.Presentation
         {
             // Esc is "뒤로" on the pages whose back button returns to the main menu (the profile handles its own keys).
             var e = Event.current;
-            if (e.type == EventType.KeyDown && e.keyCode == KeyCode.Escape && (Page == MenuPage.Ranking || Page == MenuPage.Setup))
+            if (e.type == EventType.KeyDown && e.keyCode == KeyCode.Escape && (Page == MenuPage.Ranking || Page == MenuPage.Setup || Page == MenuPage.Help))
             { e.Use(); OpenMainMenu(); return; }
+            if (e.type == EventType.KeyDown && e.keyCode == KeyCode.Escape && Page == MenuPage.Week) { e.Use(); ShowPage(MenuPage.Profile); return; }
             switch (Page)
             {
                 case MenuPage.None: title.Draw(TitleLogo, Fade, OpenLogin); break;
                 case MenuPage.Setup: setup.Draw(Data, BeginRun, OpenMainMenu, OpenSettings); break;
                 case MenuPage.Profile:
                     if (Account == null || !Account.SignedIn) OpenMainMenu();
-                    else profile.Draw(Profile, OpenMainMenu, Logout, DeleteAccount);
+                    else profile.Draw(Profile, OpenMainMenu, Logout, DeleteAccount, () => ShowPage(MenuPage.Week));
                     break;
                 case MenuPage.Ranking: board.Draw(Data, session, OpenMainMenu, "뒤로", null, null); break;
                 case MenuPage.Login: ChooseLogin(gate.Draw(Account, TitleLogo)); break;
@@ -269,6 +318,8 @@ namespace Mongscape.Presentation
                 case MenuPage.Main: SelectMenu(menu.Draw(Data, TitleLogo)); break;
                 case MenuPage.TutorialOffer: { var choice = tutorialOffer.Draw(offerMode, TutorialMask?.Invoke() ?? 0, Data == null || Data.BodyStylesAllowed, Data?.Player?.Style ?? PlayStyle.Keyboard, out var style, out var chapter); ChooseTutorial(choice, style, chapter); break; }
                 case MenuPage.Credits: if (credits.Draw()) CloseCredits(); break;
+                case MenuPage.Help: helpView.Gestures.Pass(); break;
+                case MenuPage.Week: weekView.Gestures.Pass(); break;
             }
         }
         private void OnDestroy() { skin?.Dispose(); overlaySkin?.Dispose(); }
