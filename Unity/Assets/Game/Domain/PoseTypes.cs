@@ -109,6 +109,10 @@ namespace Mongscape.Domain
         // a lean of BigLeanDegrees. The stair exercise is a pull-down: hands over the head, then down below the nose (a step each
         // way); down below the shoulders is big.
         public float UpperStraightArm = .9f, UpperBigLeanDegrees = 20f;
+        // Upper body jump = T pose (plan 5-1): both wrists out to the sides, at least UpperTReach shoulder widths from the
+        // shoulder centre and within UpperTBand widths of the shoulder line. One wrist past UpperReachHold widths (reaching
+        // for a monkey, or on the way into the T) holds the lane: the shoulder tilt of a reaching arm must not change lanes.
+        public float UpperTReach = 1.4f, UpperTBand = .7f, UpperReachHold = 1.1f;
         // Upper body steps: the wrists swing apart by ArmSwingAmplitude shoulder widths and the elbows go along by ArmSwingElbow
         // (a flick of the wrists is not a swing). Raised from .3 after QA 2026-11-25.
         public float ArmPumpAmplitude = .6f, ArmSwingAmplitude = .5f, ArmSwingElbow = .15f;

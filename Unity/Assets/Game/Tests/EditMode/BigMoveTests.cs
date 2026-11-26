@@ -13,7 +13,7 @@ namespace Mongscape.Tests
         private sealed class Body
         {
             public float Dx, ShoulderDx, Rise, Squat, KneeL, KneeR, ShoulderDrop, Roll;
-            public float WristL = .6f, WristR = .6f, ElbowL = .5f, ElbowR = .5f; public bool Legs = true, StraightArms;
+            public float WristL = .6f, WristR = .6f, ElbowL = .5f, ElbowR = .5f, OutL, OutR; public bool Legs = true, StraightArms;
         }
         private static PoseFrame Frame(Body b, double time)
         {
@@ -31,8 +31,8 @@ namespace Mongscape.Tests
             Set(27, .46f + b.Dx, .93f + lift * (b.Rise > 0 ? 1 : 0), legs); Set(28, .54f + b.Dx, .93f + lift * (b.Rise > 0 ? 1 : 0), legs);
             // Arms: elbows halfway between shoulder and wrist (straight) or bent out to the side.
             float bend = b.StraightArms ? 0 : .06f;
-            Set(13, .42f + sx - bend, (sy + b.WristL) * .5f); Set(14, .58f + sx + bend, (sy + b.WristR) * .5f);
-            Set(15, .42f + sx, b.WristL); Set(16, .58f + sx, b.WristR);
+            Set(13, .42f + sx - bend - b.OutL * .5f, (sy + b.WristL) * .5f + (b.OutL > 0 ? bend * 2 : 0)); Set(14, .58f + sx + bend + b.OutR * .5f, (sy + b.WristR) * .5f + (b.OutR > 0 ? bend * 2 : 0));
+            Set(15, .42f + sx - b.OutL, b.WristL); Set(16, .58f + sx + b.OutR, b.WristR);
             return f;
         }
         private sealed class Run { public MotionClassifier C; public List<string> Events = new List<string>(); }
@@ -99,13 +99,15 @@ namespace Mongscape.Tests
             CollectionAssert.DoesNotContain(full, "jump", "Hands up on the stairs are not a jump");
             var half = Play(PlayStyle.UpperBody, pulls(.3f), 2.1, true).Events;
             Assert.AreEqual(4, half.FindAll(e => e == "knee").Count); CollectionAssert.DoesNotContain(half, "bigknee");
-            CollectionAssert.DoesNotContain(Play(PlayStyle.UpperBody, pulls(.6f), 2.1, false).Events, "knee", "Off the stairs hands up is the jump");
+            CollectionAssert.DoesNotContain(Play(PlayStyle.UpperBody, pulls(.6f), 2.1, false).Events, "knee", "Off the stairs hands up is no stair step");
         }
 
         [Test] public void UpperBodyBigJumpDuckAndLean()
         {
-            CollectionAssert.Contains(Play(PlayStyle.UpperBody, t => new Body { WristL = In(t, .2, .6) ? .02f : .6f, WristR = In(t, .2, .6) ? .02f : .6f, StraightArms = true }, 1).Events, "bigjump");
-            CollectionAssert.DoesNotContain(Play(PlayStyle.UpperBody, t => new Body { WristL = In(t, .2, .6) ? .08f : .6f, WristR = In(t, .2, .6) ? .08f : .6f }, 1).Events, "bigjump", "Bent arms pass but are not big");
+            // T pose jump: straight arms out are big, bent arms still jump.
+            CollectionAssert.Contains(Play(PlayStyle.UpperBody, t => In(t, .2, .6) ? new Body { WristL = .35f, WristR = .35f, ElbowL = .35f, ElbowR = .35f, OutL = .2f, OutR = .2f, StraightArms = true } : new Body(), 1).Events, "bigjump");
+            var bent = Play(PlayStyle.UpperBody, t => In(t, .2, .6) ? new Body { WristL = .35f, WristR = .35f, OutL = .2f, OutR = .2f } : new Body(), 1).Events;
+            CollectionAssert.Contains(bent, "jump"); CollectionAssert.DoesNotContain(bent, "bigjump", "Bent arms pass but are not big");
             CollectionAssert.Contains(Play(PlayStyle.UpperBody, t => new Body { ShoulderDrop = In(t, .2, 1) ? .12f : 0 }, 1.3).Events, "deep");
             CollectionAssert.DoesNotContain(Play(PlayStyle.UpperBody, t => new Body { ShoulderDrop = In(t, .2, 1) ? .06f : 0 }, 1.3).Events, "deep");
         }

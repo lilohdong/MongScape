@@ -97,7 +97,7 @@ namespace Mongscape.Domain
                     : upper ? "팔을 번갈아 빠르게 흔들어 보세요. 빠를수록 빨리 달려요!" : "제자리 달리기를 해 보세요. 빠를수록 빨리 달려요!";
                 case TutorialStep.Police: return "잠깐 멈춰 보세요. 느려지면 경찰이 다가와요!";
                 case TutorialStep.Lane: return keys ? "A·D(←·→) 키로 옆 줄로 피하세요." : upper ? "상체를 옆으로 기울여 피하세요." : "옆으로 크게 한 걸음! 상체만 기울이면 안 돼요.";
-                case TutorialStep.Jump: return keys ? "스페이스 키로 점프!" : upper ? "두 손을 머리 위로 들어 점프!" : "제자리에서 점프! 높이 뛰면 더 높이 떠요.";
+                case TutorialStep.Jump: return keys ? "스페이스 키로 점프!" : upper ? "두 팔을 옆으로 쫙 벌려 점프!" : "제자리에서 점프! 높이 뛰면 더 높이 떠요.";
                 case TutorialStep.Crouch: return keys ? "S(↓) 키를 누르고 있으면 숙입니다." : upper ? "몸을 낮춰 숙이세요!" : "무릎을 굽혀 숙이세요! 깊게 앉으면 더 길게 미끄러져요.";
                 case TutorialStep.HighKnee: return keys ? "W(↑) 키를 번갈아 연타해 계단을 오르세요!" : upper ? "두 팔을 머리 위로 뻗었다가 어깨 아래까지 당겨 내려 계단을 오르세요!" : "뛰지 말고 제자리에서 걷듯이, 무릎을 번갈아 높이 드세요!";
                 case TutorialStep.Banana: return keys ? "빨갛게 빛나는 바나나를 A·D 키로 피하세요! 두 번 밟으면 잡혀요." : "빨갛게 빛나는 바나나를 옆으로 피하세요! 두 번 밟으면 잡혀요.";
