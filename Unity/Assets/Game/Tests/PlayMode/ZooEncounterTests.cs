@@ -74,8 +74,11 @@ namespace Mongscape.Tests
             tree.Preview(at-14);Assert.AreEqual(1,tree.Progress);Assert.Less(Mathf.Abs(tree.Pivot.up.y),.001f);
             game.Session.Reset();game.Session.Runner.SetStartZ(at);game.Session.Runner.Command(MotionCommand.Jump);game.Session.Runner.Tick(.2f,0);
             foreach(var h in tree.Hazards){h.ResetPass();h.Evaluate(game.Session,at-1);}Assert.AreEqual(GameFlowState.Running,game.Session.Flow.State);
-            game.Session.Reset();game.Session.Runner.SetStartZ(at);
-            foreach(var h in tree.Hazards){h.ResetPass();h.Evaluate(game.Session,at-1);}Assert.AreEqual(GameFlowState.Caught,game.Session.Flow.State);
+            game.Session.Reset();game.Session.Runner.SetStartZ(at);game.Session.Sections.Update(RouteSurface.ActivePlan,at);
+            foreach(var h in tree.Hazards){h.ResetPass();h.Evaluate(game.Session,at-1);}
+            // Plan 6-8, zoo: a hit trips the runner and brings the lion closer (the gauge), it is no warning and no capture.
+            Assert.AreEqual(GameFlowState.Running,game.Session.Flow.State,"Standing hits the tree");Assert.AreEqual(0,game.Session.Warnings);
+            Assert.Greater(game.Session.ChaserGauge,0f);Assert.IsTrue(game.Session.Runner.Slowing);
             game.Map.Reset();foreach(var pooled in game.GetComponentsInChildren<FallenTreeHazard>(true))Assert.AreEqual(0,pooled.Progress);
         }
     }
