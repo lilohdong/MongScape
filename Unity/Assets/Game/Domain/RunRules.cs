@@ -185,7 +185,7 @@ namespace Mongscape.Domain
                 if(command==MotionCommand.Center)next=0;
             }
             else if(Riding&&command==MotionCommand.Center)next=0;
-            next = SkipBlockedRail(next);
+            next = SkipBlockedRail(next, command == MotionCommand.Center);
             if (next != Lane) { laneFrom = X; laneTime = 0f; Lane = next; }
             if (command == MotionCommand.Jump && !Riding)
             {
@@ -203,14 +203,14 @@ namespace Mongscape.Domain
         public int BlockedLeans { get; private set; }
         // At the fork the previous lap's rail is closed: a lean into it stays put, a lean across a closed middle rail goes on
         // to the far one.
-        private int SkipBlockedRail(int next)
+        private int SkipBlockedRail(int next, bool centre)
         {
             var plan = RouteSurface.ActivePlan;
             if (next == Lane || !Riding || plan == null || !plan.ForkWindow(Z)) return next;
             int sequence = RouteSurface.SequenceAt(Z);
             if (!plan.IsBlocked(sequence, next)) return next;
             int beyond = LaneRules.Move(next, Math.Sign(next - Lane));
-            if (beyond != next && !plan.IsBlocked(sequence, beyond)) return beyond;
+            if (!centre && beyond != next && !plan.IsBlocked(sequence, beyond)) return beyond;
             BlockedLeans++;
             return Lane;
         }
