@@ -8,7 +8,7 @@ namespace Mongscape.Presentation.Map
     {
         public AudioClip Music, SignalJump, SignalArmsUp;
         // Lead of each signal sound before its note (Content/Audio/Music/Zoo/zoo_signals.json).
-        public float JumpLead = 0f, ArmsUpLead = .094f;
+        public float JumpLead = 0f, ArmsUpLead = .0938f;
         public TextAsset[] Charts = new TextAsset[0];
         public GameObject Lion, Fence, Puddle, SqueezeBars, IronGate, LionCage, Exit;
         public Shader Mirror;

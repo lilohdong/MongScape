@@ -28,11 +28,12 @@ namespace Mongscape.Tests
             game.Session.Runner.SetStartZ(start); game.Map.Reset(); game.Map.Tick(start);
             var zoo = game.GetComponent<ZooMapView>();
             Assert.IsNotNull(zoo);
+            Assert.IsNotNull(ZooContent.Load().Music, "The zoo song is referenced");
             yield return new WaitUntil(() => zoo.Chase.Active || game.Session.Flow.State != GameFlowState.Running);
             Assert.IsTrue(zoo.Chase.Active, "The zoo chase starts at the zoo entrance");
             Assert.Greater(zoo.Chase.Map.Notes.Count, 0, "A chart was loaded from ZooContent");
             Assert.AreEqual(ZooTier.Easy, zoo.Chase.Map.Tier, "First visit is easy");
-            Assert.IsNotNull(GameObject.Find("Zoo_" + "Lion") ?? GameObject.Find("Zoo_Note"), "The lion is placed");
+            Assert.IsTrue(GameObject.Find("Zoo_Lion") != null || GameObject.Find("Zoo_Note") != null, "The lion is placed");
             yield return new WaitUntil(() => zoo.Chase.Phase == ZooPhase.Song || !zoo.Chase.Active);
             Assert.AreEqual(ZooPhase.Song, zoo.Chase.Phase);
             float expected = zoo.Chase.EntryZ + zoo.Chase.DistanceAt(zoo.Chase.SongTime);

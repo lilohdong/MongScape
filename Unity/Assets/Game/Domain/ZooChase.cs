@@ -88,6 +88,8 @@ namespace Mongscape.Domain
         public float SongSpeed = 9f;
         // The player's recognition delay (seconds, positive = the camera reports late), from the sync calibration.
         public float SyncOffset;
+        // The roar before a bite: RoarSeconds plus the sharp ears trait (RunSession.Traits.WarningLeadSeconds).
+        public float RoarLead = RoarSeconds;
 
         public ZooBeatmap Map { get; private set; }
         public ZooPhase Phase { get; private set; } = ZooPhase.Idle;
@@ -177,7 +179,7 @@ namespace Mongscape.Domain
                 RoarLeft = 0f; Lion = AfterBite; Bites++; Bit?.Invoke();
                 return;
             }
-            if (Lion >= 1f) { RoarLeft = RoarSeconds; RoarStarted?.Invoke(); }
+            if (Lion >= 1f) { RoarLeft = Math.Max(RoarSeconds, RoarLead); RoarStarted?.Invoke(); }
         }
         // A jump or an arms-up from the player at the current song time. Returns the note it hit, or -1.
         public int Input(ZooNoteKind kind)

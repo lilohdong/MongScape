@@ -23,10 +23,8 @@ namespace Mongscape.Presentation.Map
         private readonly List<ZooBeatmap> charts = new List<ZooBeatmap>();
         private readonly System.Random random = new System.Random();
         private AudioSource song, signals;
-        private AudioClip countClick;
         private int lastJumps, lastArms, nextSignal;
-        private bool counting, wasPaused, ownsMusic;
-        private float countLeft; private int countBeats;
+        private bool wasPaused, ownsMusic, gateSounded;
         private readonly List<GameObject> props = new List<GameObject>();
         private readonly List<Transform> noteViews = new List<Transform>();
         private GameObject lion, cage, gate;
@@ -36,14 +34,20 @@ namespace Mongscape.Presentation.Map
         private Material mirrorMaterial;
         private GUIStyle shoutStyle;
 
-        public void Configure(RunSession session, GameAudio audio)
+        public void Configure(RunSession session, GameAudio audio, PauseFlow pause)
         {
             run = session; audioPlayer = audio; content = ZooContent.Load();
+            if (pause != null)
+            {
+                // Resume in the zoo (plan 6-7a): four beats of count-in while the song plays its last four beats again,
+                // so the song is exactly where the runner is when play goes on.
+                pause.ResumeHook = () => Chase.Active ? new ResumePlan(Chase.CountInSeconds, 4) : (ResumePlan?)null;
+                pause.Count += n => { if (n == 4 && Chase.Active) LeadIn(); };
+            }
             if (content != null && content.Charts != null)
                 foreach (var chart in content.Charts) if (chart != null) charts.Add(ZooBeatmap.Parse(chart.text));
             song = gameObject.AddComponent<AudioSource>(); song.playOnAwake = false; song.loop = false; song.spatialBlend = 0f;
             signals = gameObject.AddComponent<AudioSource>(); signals.playOnAwake = false; signals.spatialBlend = 0f;
-            countClick = Click();
             run.Sections.Entered += Entered;
             run.Sections.Exited += Exited;
             Chase.Bit += () => run.Warn(WarningCause.Gauge);
@@ -58,7 +62,8 @@ namespace Mongscape.Presentation.Map
             Chase.SongSpeed = SongSpeed; Chase.SyncOffset = SyncOffset;
             Chase.Start(chart, run.Runner.Z, Mathf.Max(SongSpeed * .6f, run.CurrentSpeed));
             run.Runner.CenterLane();
-            lastJumps = run.Runner.JumpCommands; lastArms = run.Runner.ArmsUpCommands; nextSignal = 0; counting = false;
+            lastJumps = run.Runner.JumpCommands; lastArms = run.Runner.ArmsUpCommands; nextSignal = 0; gateSounded = false;
+            Chase.RoarLead = ZooChase.RoarSeconds + run.Traits.WarningLeadSeconds;
             if (content != null && content.Music != null) { song.clip = content.Music; song.time = 0f; song.volume = Volume; song.Play(); }
             if (audioPlayer != null) { audioPlayer.MapMusicPlaying = true; ownsMusic = true; }
             BuildProps();
@@ -66,11 +71,11 @@ namespace Mongscape.Presentation.Map
         private void Exited(SectionSpan span) { if (span.Kind == SectionKind.Zoo) StopZoo(); }
         private void StopZoo()
         {
-            Chase.Stop(); Chase.Reset(); counting = false;
+            Chase.Stop(); Chase.Reset();
             if (song != null) song.Stop();
             if (ownsMusic && audioPlayer != null) audioPlayer.MapMusicPlaying = false;
             ownsMusic = false;
-            if (run != null) { var hints = run.Workout.Hints; hints.MissingBeats = false; run.Workout.Hints = hints; if (run.SpeedScale == 0f && !run.IsTutorial) run.SpeedScale = 1f; }
+            if (run != null) { var hints = run.Workout.Hints; hints.MissingBeats = false; run.Workout.Hints = hints }
             foreach (var prop in props) if (prop != null) Destroy(prop);
             props.Clear(); noteViews.Clear(); lion = cage = gate = null;
             if (rear != null) rear.enabled = false;
@@ -88,17 +93,6 @@ namespace Mongscape.Presentation.Map
                 return;
             }
             if (run.Section.Kind != SectionKind.Zoo) { StopZoo(); return; }
-            if (counting)
-            {
-                // Resuming after a pause: four beats of count-in on the song tempo, then the song and the runner go on together.
-                run.SpeedScale = 0f;
-                float beat = Chase.Map.BeatSeconds; countLeft -= dt;
-                int due = 4 - Mathf.CeilToInt(Mathf.Max(0f, countLeft) / beat - .001f);
-                while (countBeats < Mathf.Min(4, due + 1)) { countBeats++; signals.PlayOneShot(countClick, Volume * .8f); }
-                if (countLeft > 0f) return;
-                counting = false; run.SpeedScale = 1f;
-                if (song.clip != null) { song.time = Mathf.Min(Chase.SongTime, song.clip.length - .01f); song.UnPause(); if (!song.isPlaying) song.Play(); }
-            }
             int jumps = run.Runner.JumpCommands, arms = run.Runner.ArmsUpCommands;
             if (jumps > lastJumps) Chase.Input(ZooNoteKind.Jump);
             if (arms > lastArms) Chase.Input(ZooNoteKind.ArmsUp);
@@ -134,9 +128,15 @@ namespace Mongscape.Presentation.Map
                 nextSignal++;
             }
         }
+        private void LeadIn()
+        {
+            if (song.clip == null) return;
+            song.time = Mathf.Clamp(Chase.SongTime - Chase.CountInSeconds, 0f, song.clip.length - .01f);
+            if (Chase.SongTime >= Chase.CountInSeconds) { song.UnPause(); if (!song.isPlaying) song.Play(); }
+        }
         private void SyncSong()
         {
-            if (song.clip == null || counting) return;
+            if (song.clip == null || run.Paused) return;
             if (Chase.SongTime >= song.clip.length) return;
             if (!song.isPlaying) { song.time = Chase.SongTime; song.Play(); return; }
             if (Mathf.Abs(song.time - Chase.SongTime) > .08f) song.time = Chase.SongTime;
@@ -148,7 +148,7 @@ namespace Mongscape.Presentation.Map
             if (run == null) return;
             if (Chase.Active && run.Flow.State != GameFlowState.Running) { StopZoo(); return; }
             // Pause stops the song; the next running frame starts the four-beat count-in (plan 6-7a).
-            if (run.Paused && !wasPaused && Chase.Active) { song.Pause(); counting = true; countLeft = Chase.CountInSeconds; countBeats = 0; }
+            if (run.Paused && !wasPaused && Chase.Active) song.Pause();
             wasPaused = run.Paused;
         }
 
@@ -171,19 +171,20 @@ namespace Mongscape.Presentation.Map
             {
                 bool jump = notes[i].Kind == ZooNoteKind.Jump;
                 // Every third jump is a puddle, the others fences (plan 1-2c).
-                GameObject prefab = jump ? (jumps++ % 3 == 2 ? content?.Puddle : content?.Fence) : content?.SqueezeBars;
+                bool hasContent = content != null;
+                GameObject prefab = !hasContent ? null : jump ? (jumps++ % 3 == 2 ? content.Puddle : content.Fence) : content.SqueezeBars;
                 var view = Spawn(prefab, jump ? new Vector3(3f, .9f, .25f) : new Vector3(.3f, 2.6f, .3f), jump ? new Color(.55f, .38f, .2f) : new Color(.35f, .36f, .4f), Chase.NoteZ(i), 0f);
                 noteViews.Add(view != null ? view.transform : null);
             }
             if (Chase.Map.Length > 0f)
             {
-                gate = Spawn(content?.IronGate, new Vector3(4f, 3.5f, .3f), new Color(.3f, .3f, .33f), Chase.EntryZ + Chase.DistanceAt(Chase.Map.BreakEnd), 0f);
-                Spawn(content?.Exit, new Vector3(5f, 4f, .5f), new Color(.4f, .6f, .3f), Chase.EntryZ + Chase.DistanceAt(Chase.Map.Length - .5f), 0f);
+                gate = Spawn(content != null ? content.IronGate : null, new Vector3(4f, 3.5f, .3f), new Color(.3f, .3f, .33f), Chase.EntryZ + Chase.DistanceAt(Chase.Map.BreakEnd), 0f);
+                Spawn(content != null ? content.Exit : null, new Vector3(5f, 4f, .5f), new Color(.4f, .6f, .3f), Chase.EntryZ + Chase.DistanceAt(Chase.Map.Length - .5f), 0f);
             }
             float cageZ = Chase.EntryZ + Chase.DistanceAt(.9f);
-            cage = Spawn(content?.LionCage, new Vector3(3f, 2.5f, 3f), new Color(.45f, .4f, .3f), cageZ, 4.2f);
+            cage = Spawn(content != null ? content.LionCage : null, new Vector3(3f, 2.5f, 3f), new Color(.45f, .4f, .3f), cageZ, 4.2f);
             cagePosition = cage != null ? cage.transform.position : Vector3.zero;
-            lion = Spawn(content?.Lion, new Vector3(.9f, 1.1f, 2f), new Color(.85f, .6f, .25f), cageZ, 4.2f);
+            lion = Spawn(content != null ? content.Lion : null, new Vector3(.9f, 1.1f, 2f), new Color(.85f, .6f, .25f), cageZ, 4.2f);
         }
         private GameObject Spawn(GameObject prefab, Vector3 fallbackSize, Color fallbackColor, float z, float side)
         {
@@ -206,6 +207,7 @@ namespace Mongscape.Presentation.Map
         private void AnimateGate()
         {
             if (gate == null) return;
+            if (!gateSounded && Chase.SongTime >= Chase.Map.BreakStart) { gateSounded = true; if (audioPlayer != null) audioPlayer.GateDown(); }
             // The iron gate comes down through the break and closes just after the runner is through.
             float t = Mathf.InverseLerp(Chase.Map.BreakStart, Chase.Map.BreakEnd + .4f, Chase.SongTime);
             RouteSurface.Sample(gate.transform.position.z, out float x, out float y);
@@ -230,7 +232,7 @@ namespace Mongscape.Presentation.Map
             if (lion == null) return;
             float runnerZ = run.Runner.Z, t = Chase.SongTime;
             float gap = Mathf.Lerp(22f, 2.5f, Chase.Lion);
-            if (Chase.Roaring) gap = Mathf.Lerp(gap, 1.6f, 1f - Chase.RoarLeft / ZooChase.RoarSeconds);
+            if (Chase.Roaring) gap = Mathf.Lerp(gap, 1.6f, 1f - Chase.RoarLeft / Mathf.Max(ZooChase.RoarSeconds, Chase.RoarLead));
             float z = runnerZ - gap;
             RouteSurface.Sample(z, out float x, out float y);
             var onPath = new Vector3(x, y, z);
@@ -305,12 +307,6 @@ namespace Mongscape.Presentation.Map
             }
         }
 
-        private static AudioClip Click()
-        {
-            int rate = 44100, n = rate / 20; var data = new float[n];
-            for (int i = 0; i < n; i++) data[i] = Mathf.Sin(2f * Mathf.PI * 1500f * i / rate) * Mathf.Exp(-i / (rate * .01f)) * .6f;
-            var clip = AudioClip.Create("ZooCountClick", n, 1, rate, false); clip.SetData(data, 0); return clip;
-        }
         private void OnDestroy()
         {
             if (mirrorTexture != null) mirrorTexture.Release();

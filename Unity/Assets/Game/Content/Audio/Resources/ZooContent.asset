@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9fc6830c9d4d4f469f17e1899159608a, type: 3}
   m_Name: ZooContent
   m_EditorClassIdentifier: 
-  Music: {fileID: 0}
-  SignalJump: {fileID: 0}
-  SignalArmsUp: {fileID: 0}
+  Music: {fileID: 8300000, guid: bb431d8a4a3e02e4ca081d67fc357c0b, type: 3}
+  SignalJump: {fileID: 8300000, guid: 2eb009815bf74990ae258c3dc89cf7c8, type: 3}
+  SignalArmsUp: {fileID: 8300000, guid: 142003458fd1429f97f42856451e7f9b, type: 3}
   JumpLead: 0
-  ArmsUpLead: 0.094
+  ArmsUpLead: 0.0938
   Charts:
   - {fileID: 4900000, guid: b1a9ab1f8a30c384e9fecfb0523e48d1, type: 3}
   - {fileID: 4900000, guid: ddafafe872848d04fad233eb4d4c732c, type: 3}
