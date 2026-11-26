@@ -26,7 +26,7 @@ namespace Mongscape.Presentation
             Place(true);
             frame.Add(resume); frame.Add(again); frame.Add(main);
             // Not a button: no border, deep 50%.
-            var band = UiTokens.Box(600, 790, 720, 180); band.style.backgroundColor = UiTokens.A(UiTokens.Deep, .5f); UiTokens.Radius(band, 36);
+            var band = UiTokens.Box(600, 790, 720, 180); band.style.backgroundColor = UiTokens.A(UiTokens.Deep, .75f); UiTokens.Radius(band, 36);
             band.Add(UiIcons.Make(50, 10, 160, (p, r) =>
             {
                 UiIcons.Person(() => UiTokens.TextDim)(p, r);

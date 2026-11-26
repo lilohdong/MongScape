@@ -46,7 +46,8 @@ namespace Mongscape.Presentation
             if (problem != null) { Fail(problem); return; }
             var probe = new WorkoutEstimate();
             if (!probe.SetWeight(Weight?.Trim())) { Fail("몸무게는 10~350kg 숫자로 입력해 주세요."); return; }
-            if (!probe.SetGoal(Goal?.Trim())) { Fail("칼로리 목표는 1~5000 kcal 숫자로 입력해 주세요."); return; }
+            // The calorie goal is no longer shown or asked (owner 2026-11-27); the saved value is kept as it is.
+            probe.SetGoal(Goal?.Trim());
             var settings = new AccountSettings { Weight = probe.WeightKg, Style = Style, Goal = probe.GoalKcal };
             int mine = opened; Busy = true; Failed = false; Message = "저장 중…"; Deleting = ProfileDeleteStep.None;
             identity.SaveMemberProfile(Nickname.Trim(), settings, (ok, reason) =>
@@ -113,10 +114,6 @@ namespace Mongscape.Presentation
             GUI.SetNextControlName("MongscapeProfileWeight");
             form.Weight = skin.Input(new Rect(x, 264, 150, 52), form.Weight, 6);
             skin.Text(new Rect(x + 158, 264, 50, 52), "kg", 20, Palette.Sand, TextAnchor.MiddleLeft);
-            skin.Text(new Rect(x + 220, 232, 200, 28), "칼로리 목표", 18, Palette.Sand, TextAnchor.MiddleLeft, false, true);
-            GUI.SetNextControlName("MongscapeProfileGoal");
-            form.Goal = skin.Input(new Rect(x + 220, 264, 120, 52), form.Goal, 6);
-            skin.Text(new Rect(x + 348, 264, 70, 52), "kcal", 20, Palette.Sand, TextAnchor.MiddleLeft);
             skin.Text(new Rect(x, 334, 300, 28), "기본 플레이 방식", 18, Palette.Sand, TextAnchor.MiddleLeft, false, true);
             for (int i = 0; i < 3; i++)
             {

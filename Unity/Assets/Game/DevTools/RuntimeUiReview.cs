@@ -42,7 +42,7 @@ namespace Mongscape.DevTools
             var hud = game.Hud; var data = (IHudData)game;
             // --mongscape-uicapture-quick: only the run, pause and result (no settings window or face login, which list or open cameras).
             bool quick = Array.IndexOf(Environment.GetCommandLineArgs(), "--mongscape-uicapture-quick") >= 0;
-            if (quick) { game.UseAccountServices(new ReviewAccountGateway()); Seed(data, false); goto run; }
+            if (quick) { game.UseAccountServices(new ReviewAccountGateway()); Seed(data, false); game.OpenMainMenu(); hud.ShowPage(MenuPage.Help); yield return Shot("07h_Help"); hud.ShowPage(MenuPage.Setup); yield return Shot("08_Setup"); goto run; }
             // One look at the login gate with the configured face server (connected or not), read-only: nothing is sent but /health.
             game.OpenLogin();
             float checkStarted = Time.realtimeSinceStartup;

@@ -132,9 +132,11 @@ namespace Mongscape.Presentation
             lostDrawing = new ShapeElement((p, r) =>
             {
                 UiIcons.DashedEllipse(p, new Vector2(960, 560), 250, 330, 10, UiTokens.Accent);
-                UiIcons.Person(() => UiTokens.A(UiTokens.Text, .92f))(p, new Rect(960 - 200, 560 - 280, 400, 560));
             });
             UiTokens.Fill(lostDrawing);
+            // The person is drawn opaque and the whole shape faded to 92%, so overlapping limbs leave no brighter seams.
+            var person = new ShapeElement((p, r) => UiIcons.Person(() => UiTokens.Text)(p, new Rect(960 - 200, 560 - 280, 400, 560)));
+            UiTokens.Fill(person); person.style.opacity = .92f; lostDrawing.Add(person);
             lost.Add(lostPulse); lost.Add(lostDrawing); lost.style.display = DisplayStyle.None;
             frame.Add(lost);
 

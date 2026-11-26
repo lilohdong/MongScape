@@ -4,16 +4,16 @@ using UnityEngine;
 
 namespace Mongscape.Presentation
 {
-    public enum MenuAction { None, Play, Ranking, Traits, Profile, Identity, Settings, Quit, Tutorial, Credits }
+    public enum MenuAction { None, Play, Ranking, Traits, Profile, Identity, Settings, Quit, Tutorial, Credits, Help }
 
     // Main menu over the live title scene: logo on the left, actions on the right, rescued monkeys and player name on top.
     internal sealed class MainMenuScreen
     {
         static readonly CultureInfo Num = CultureInfo.InvariantCulture;
         // The login entry reads "로그아웃" for a member and "로그인 / 회원가입" for a guest; 내 정보 is shown to members only.
-        static readonly string[] Labels = { "게임 시작", "튜토리얼", "랭킹", "특성", "내 정보", "로그인 / 회원가입", "설정", "크레딧", "게임 종료" };
+        static readonly string[] Labels = { "게임 시작", "튜토리얼", "랭킹", "특성", "내 정보", "로그인 / 회원가입", "설정", "도움말", "크레딧", "게임 종료" };
         const string LogoutLabel = "로그아웃";
-        static readonly MenuAction[] Actions = { MenuAction.Play, MenuAction.Tutorial, MenuAction.Ranking, MenuAction.Traits, MenuAction.Profile, MenuAction.Identity, MenuAction.Settings, MenuAction.Credits, MenuAction.Quit };
+        static readonly MenuAction[] Actions = { MenuAction.Play, MenuAction.Tutorial, MenuAction.Ranking, MenuAction.Traits, MenuAction.Profile, MenuAction.Identity, MenuAction.Settings, MenuAction.Help, MenuAction.Credits, MenuAction.Quit };
 
         readonly OverlaySkin skin;
         public MainMenuScreen(OverlaySkin overlaySkin) { skin = overlaySkin; }
@@ -35,8 +35,8 @@ namespace Mongscape.Presentation
             for (int i = 0, row = 0; i < Labels.Length; i++)
             {
                 if (Actions[i] == MenuAction.Profile && !member) continue;
-                // Up to 9 rows (member) fit between the top bar and the bottom edge.
-                var r = new Rect(860, 104 + row++ * 62, 340, 54);
+                // Up to 10 rows (member) fit between the top bar and the build line.
+                var r = new Rect(860, 104 + row++ * 56, 340, 50);
                 bool primary = i == 0;
                 string label = Actions[i] == MenuAction.Identity && member ? LogoutLabel : Labels[i];
                 bool pressed = primary

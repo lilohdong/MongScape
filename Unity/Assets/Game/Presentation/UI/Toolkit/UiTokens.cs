@@ -51,7 +51,8 @@ namespace Mongscape.Presentation
             e.style.borderLeftWidth = e.style.borderRightWidth = e.style.borderTopWidth = e.style.borderBottomWidth = width;
             e.style.borderLeftColor = e.style.borderRightColor = e.style.borderTopColor = e.style.borderBottomColor = color;
         }
-        public static void Fill(VisualElement e) { e.style.position = Position.Absolute; e.style.left = 0; e.style.top = 0; e.style.right = 0; e.style.bottom = 0; }
+        // Covers the parent: explicit 100% size (left/right insets alone left some layers at zero size).
+        public static void Fill(VisualElement e) { e.style.position = Position.Absolute; e.style.left = 0; e.style.top = 0; e.style.width = Length.Percent(100); e.style.height = Length.Percent(100); }
         public static void Show(VisualElement e, bool on) { var d = on ? DisplayStyle.Flex : DisplayStyle.None; if (e.style.display != d) e.style.display = d; }
         public static float Ease(float t) { t = Mathf.Clamp01(t); return t * t * (3 - 2 * t); }
         public static float EaseOut(float t) { t = Mathf.Clamp01(t); return 1 - (1 - t) * (1 - t) * (1 - t); }

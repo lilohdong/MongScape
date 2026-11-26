@@ -28,6 +28,7 @@ namespace Mongscape.Presentation
         readonly List<VisualElement> ghosts = new List<VisualElement>();
         readonly VisualElement moreBody;
         RankingBoard board; IHudData data; RunSession session;
+        ShapeElement modeIcon; PlayStyle modeStyle; Label keyboardNote; UiButton kcalButtonRef;
         float openedAt, now; int finalScore; bool member, camera;
         int shownRowsVersion = -1, rowsCount = -1; RankingStatus shownStatus;
         public Action Retry, Calibrate, Main;
@@ -46,8 +47,10 @@ namespace Mongscape.Presentation
             Gestures = new GestureButtons(frame);
             dim = new VisualElement { pickingMode = PickingMode.Ignore }; UiTokens.Fill(dim); dim.style.backgroundColor = UiTokens.A(UiTokens.Deep, .72f);
             frame.Add(dim);
-            glow = new ShapeElement((p, r) => { for (int i = 0; i < 8; i++) UiIcons.Circle(p, new Vector2(960, 540), 420 - i * 40, UiTokens.A(UiTokens.Focus, .045f)); });
-            UiTokens.Fill(glow); frame.Add(glow);
+            // A soft round glow (one radial gradient texture) behind the count-up.
+            glow = UiTokens.Box(960 - 520, 540 - 520, 1040, 1040);
+            glow.style.backgroundImage = RadialTexture(); glow.style.unityBackgroundImageTintColor = UiTokens.A(UiTokens.Focus, .45f);
+            frame.Add(glow);
 
             // Head: rank (accent) and score (text), placed apart.
             head = UiTokens.Box(0, 36, 1920, 150);
@@ -65,7 +68,8 @@ namespace Mongscape.Presentation
             // Left: today's ranking.
             table = UiTokens.Box(0, 0, 1920, 1080);
             tableTitle = UiTokens.Label("오늘 랭킹", 52, UiTokens.TextDim); UiTokens.Absolute(tableTitle, LeftX + 20, 196, 300, 70);
-            var person = UiIcons.Make(LeftX + 300, 200, 64, UiIcons.Person(() => UiTokens.TextDim));
+            modeIcon = UiIcons.Make(LeftX + 300, 200, 64, (p, r) => ModeIcon(p, r, modeStyle));
+            var person = modeIcon;
             modeName = UiTokens.Label("", 52, UiTokens.TextDim); UiTokens.Absolute(modeName, LeftX + 372, 196, 300, 70);
             table.Add(tableTitle); table.Add(person); table.Add(modeName);
             var leftPanel = Panel(LeftX, PanelTop, LeftW, PanelBottom - PanelTop);
@@ -103,7 +107,9 @@ namespace Mongscape.Presentation
             });
             food = new FoodLine(); UiTokens.Absolute(food, 150, 112, RightW - 44 - 170, 84); food.style.justifyContent = Justify.FlexEnd;
             kcalBox.Add(kcalLabel); kcalBox.Add(kcalNote); kcalBox.Add(kcalValue); kcalBox.Add(kcalInfo); kcalBox.Add(food);
-            var kcalButton = new UiButton("", false, () => ShowInfo(true)); UiTokens.Absolute(kcalButton, 22, 116, RightW - 44, 210);
+            keyboardNote = UiTokens.Label("키보드 판은 운동 기록이 없어요", 44, UiTokens.TextDim); UiTokens.Absolute(keyboardNote, 36, 130, RightW - 72, 70);
+            rightPanel.Add(keyboardNote);
+            var kcalButton = new UiButton("", false, () => ShowInfo(true)); kcalButtonRef = kcalButton; UiTokens.Absolute(kcalButton, 22, 116, RightW - 44, 210);
             kcalButton.style.backgroundColor = Color.clear; UiTokens.Border(kcalButton, 0, Color.clear); kcalButton.style.opacity = .01f; kcalButton.name = "button-kcal";
             rightPanel.Add(kcalBox); rightPanel.Add(kcalButton);
             Gestures.Add(kcalButton);
@@ -136,7 +142,7 @@ namespace Mongscape.Presentation
             string[] lines =
             {
                 "몸동작을 매초 읽어 운동 강도(MET)를 정해요",
-                "칼로리 = MET x 3.5 x 몸무게(kg) ÷ 200 x 분",
+                "칼로리 = MET × 3.5 × 몸무게(kg) ÷ 200 × 분",
                 "3 MET 이상 움직인 시간이 주간 목표에 쌓여요",
                 "웹캠으로 추정한 값이라 실제와 다를 수 있어요",
                 "자세한 건 도움말에",
@@ -147,9 +153,47 @@ namespace Mongscape.Presentation
             Root.Visible = false;
         }
 
+        static Texture2D radial;
+        static Texture2D RadialTexture()
+        {
+            if (radial != null) return radial;
+            const int n = 128; radial = new Texture2D(n, n, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, hideFlags = HideFlags.HideAndDontSave };
+            for (int y = 0; y < n; y++) for (int x = 0; x < n; x++)
+            {
+                float d = Vector2.Distance(new Vector2(x + .5f, y + .5f), new Vector2(n / 2f, n / 2f)) / (n / 2f);
+                float a = Mathf.Clamp01(1 - d); a = a * a * (3 - 2 * a);
+                radial.SetPixel(x, y, new Color(1, 1, 1, a));
+            }
+            radial.Apply(); return radial;
+        }
+        // Play style icons (style guide 5): full body = standing person, upper body = seated with raised arms, keyboard.
+        public static void ModeIcon(Painter2D p, Rect r, PlayStyle style)
+        {
+            var c = UiTokens.TextDim;
+            if (style == PlayStyle.Keyboard)
+            {
+                UiIcons.RoundRect(p, new Rect(r.x, r.y + r.height * .28f, r.width, r.height * .48f), r.width * .08f, c);
+                for (int row = 0; row < 2; row++) for (int k = 0; k < 5; k++)
+                    UiIcons.RoundRect(p, new Rect(r.x + r.width * (.08f + k * .175f), r.y + r.height * (.35f + row * .14f), r.width * .12f, r.height * .09f), 2, UiTokens.Panel);
+                UiIcons.RoundRect(p, new Rect(r.x + r.width * .25f, r.y + r.height * .63f, r.width * .5f, r.height * .07f), 2, UiTokens.Panel);
+                return;
+            }
+            if (style == PlayStyle.UpperBody)
+            {
+                UiIcons.Circle(p, new Vector2(r.center.x, r.y + r.height * .2f), r.height * .11f, c);
+                UiIcons.RoundRect(p, new Rect(r.center.x - r.width * .13f, r.y + r.height * .34f, r.width * .26f, r.height * .34f), 4, c);
+                UiIcons.Line(p, new Vector2(r.center.x - r.width * .13f, r.y + r.height * .38f), new Vector2(r.x + r.width * .12f, r.y + r.height * .1f), r.width * .08f, c);
+                UiIcons.Line(p, new Vector2(r.center.x + r.width * .13f, r.y + r.height * .38f), new Vector2(r.xMax - r.width * .12f, r.y + r.height * .1f), r.width * .08f, c);
+                UiIcons.RoundRect(p, new Rect(r.x + r.width * .2f, r.y + r.height * .7f, r.width * .6f, r.height * .08f), 2, c);
+                UiIcons.Line(p, new Vector2(r.x + r.width * .26f, r.y + r.height * .76f), new Vector2(r.x + r.width * .26f, r.yMax), r.width * .06f, c);
+                UiIcons.Line(p, new Vector2(r.xMax - r.width * .26f, r.y + r.height * .76f), new Vector2(r.xMax - r.width * .26f, r.yMax), r.width * .06f, c);
+                return;
+            }
+            UiIcons.Person(() => c)(p, r);
+        }
         static VisualElement Panel(float x, float y, float w, float h)
         {
-            var p = UiTokens.Box(x, y, w, h); p.style.backgroundColor = UiTokens.A(UiTokens.Panel, .9f); UiTokens.Radius(p, 32); UiTokens.Border(p, 5, UiTokens.PanelEdge);
+            var p = UiTokens.Box(x, y, w, h); p.style.backgroundColor = UiTokens.A(UiTokens.Panel, .96f); UiTokens.Radius(p, 32); UiTokens.Border(p, 5, UiTokens.PanelEdge);
             return p;
         }
         VisualElement Overlay(string title, out VisualElement body, out UiButton close, string closeText, Action onClose)
@@ -205,9 +249,10 @@ namespace Mongscape.Presentation
             mineScore.text = UiTokens.N(finalScore);
             mineDistance.text = UiTokens.N(Mathf.FloorToInt(run?.Score.Distance ?? 0)) + " m";
             double kcal = camera && run != null ? run.Workout.EstimatedKcal : 0;
-            kcalValue.text = camera ? UiTokens.N((int)Math.Round(kcal)) + " kcal" : "키보드 제외";
-            kcalValue.style.fontSize = camera ? 72 : 52;
-            UiTokens.Show(kcalNote, camera);
+            kcalValue.text = UiTokens.N((int)Math.Round(kcal)) + " kcal";
+            // A keyboard run has no exercise: one plain line instead of the calorie box and its (i).
+            UiTokens.Show(kcalBox, camera); UiTokens.Show(kcalButtonRef, camera); UiTokens.Show(keyboardNote, !camera);
+            modeStyle = style; modeIcon.MarkDirtyRepaint();
             if (camera) food.Set(kcal); else UiTokens.Show(food, false);
             UiTokens.Show(calibrate, calibrationAvailable);
             LayoutButtons(calibrationAvailable);
@@ -247,23 +292,23 @@ namespace Mongscape.Presentation
             var left = UiTokens.Box(0, 0, 620, 560); var right = UiTokens.Box(680, 0, 600, 560);
             moreBody.Add(left); moreBody.Add(right);
             var workout = session?.Workout;
+            int n = session?.Score.Coins ?? 0;
+            if (!camera)
+            {
+                Section(left, "구한 원숭이"); left.Add(MonkeyRow(n));
+                var note = UiTokens.Label("키보드 판은 운동 기록이 없어요", 44, UiTokens.TextDim); note.style.marginTop = 24; left.Add(note);
+                return;
+            }
             Section(left, "강도별 시간");
-            if (camera && workout != null)
+            if (workout != null)
             {
                 Pair(left, "저강도", WorkoutReport.Clock(workout.SecondsAt(Intensity.Light)));
                 Pair(left, "중강도", WorkoutReport.Clock(workout.SecondsAt(Intensity.Moderate)));
                 Pair(left, "고강도", WorkoutReport.Clock(workout.SecondsAt(Intensity.Vigorous)));
             }
-            else Pair(left, "키보드", "운동 제외");
             Section(right, "동작 횟수");
-            if (camera) foreach (var row in WorkoutReport.Moves(workout)) Pair(right, row.Key, row.Value);
-            else Pair(right, "키보드", "운동 제외");
-            Section(left, "구한 원숭이");
-            var monkeys = new VisualElement(); monkeys.style.flexDirection = FlexDirection.Row; monkeys.style.alignItems = Align.Center; monkeys.style.height = 80;
-            int n = session?.Score.Coins ?? 0;
-            for (int i = 0; i < Mathf.Min(n, 5); i++) { var m = new ShapeElement(UiIcons.Monkey()); m.style.width = 64; m.style.height = 64; m.style.marginRight = 8; monkeys.Add(m); }
-            monkeys.Add(UiTokens.Label(n > 5 ? "+" + (n - 5) : n == 0 ? "0" : "", 48, UiTokens.Text));
-            left.Add(monkeys);
+            foreach (var row in WorkoutReport.Moves(workout)) Pair(right, row.Key, row.Value);
+            Section(left, "구한 원숭이"); left.Add(MonkeyRow(n));
             if (member && data?.LastStats != null)
             {
                 Section(right, "지난주 같은 요일까지");
@@ -271,6 +316,13 @@ namespace Mongscape.Presentation
                 if (change.Length > 0) right.Add(UiTokens.Label(change.Replace(" · ", "  "), 44, UiTokens.Text));
             }
             var who = UiTokens.Label("WHO 권장 주 150분", 36, UiTokens.TextDim); who.style.marginTop = 24; right.Add(who);
+        }
+        static VisualElement MonkeyRow(int n)
+        {
+            var monkeys = new VisualElement(); monkeys.style.flexDirection = FlexDirection.Row; monkeys.style.alignItems = Align.Center; monkeys.style.height = 80;
+            for (int i = 0; i < Mathf.Min(n, 5); i++) { var m = new ShapeElement(UiIcons.Monkey()); m.style.width = 64; m.style.height = 64; m.style.marginRight = 8; monkeys.Add(m); }
+            monkeys.Add(UiTokens.Label(n > 5 ? "+" + (n - 5) : n == 0 ? "0" : "", 48, UiTokens.Text));
+            return monkeys;
         }
         static void Section(VisualElement parent, string title) { var t = UiTokens.Label(title, 52, UiTokens.Accent); t.style.marginTop = 10; t.style.marginBottom = 6; parent.Add(t); }
         static void Pair(VisualElement parent, string label, string value)
@@ -320,7 +372,8 @@ namespace Mongscape.Presentation
             if (count != rowsCount || status != shownStatus) { rowsCount = count; shownStatus = status; BuildRows(); }
             // My place: the row in the list, or pinned below "…".
             int index = MineIndex();
-            int rank = board?.Mine?.Rank ?? data?.LastTodayRank ?? 0;
+            int virtualAt = VirtualIndex();
+            int rank = board?.Mine?.Rank ?? (virtualAt >= 0 ? virtualAt + 1 : data?.LastTodayRank ?? 0);
             headRank.text = rank > 0 ? rank + "위" : "";
             mineRank.text = rank > 0 ? rank.ToString() : "-";
             float viewH = PanelBottom - PanelTop - 36;
@@ -350,9 +403,18 @@ namespace Mongscape.Presentation
             }
         }
 
+        // The run is not on the board yet (still saving, or this PC's list did not mark it): it is placed by its score,
+        // after every row at or above it, and the rows below show one rank lower.
+        int VirtualIndex()
+        {
+            if (board == null || board.Mine != null || board.Status != RankingStatus.Ready) return -1;
+            int at = 0; while (at < board.Rows.Count && board.Rows[at].Score >= finalScore) at++;
+            return at;
+        }
         int MineIndex()
         {
-            if (board == null || board.Mine == null) return -1;
+            if (board == null) return -1;
+            if (board.Mine == null) return VirtualIndex();
             int i = board.Rows.IndexOf(board.Mine);
             if (i >= 0) return i;
             for (int r = 0; r < board.Rows.Count; r++) if (board.Rows[r].Rank == board.Mine.Rank && board.Rows[r].Score == board.Mine.Score) return r;
@@ -369,11 +431,13 @@ namespace Mongscape.Presentation
             int pinned = mine < 0 && board.Mine != null ? 1 : 0;
             float viewH = PanelBottom - PanelTop - 36;
             int fit = Mathf.FloorToInt((viewH - MineH) / RowPitch);
-            int rows = pinned == 1 ? Mathf.Min(board.Rows.Count, fit) : board.Rows.Count;
+            int virtualAt = VirtualIndex();
+            int rows = pinned == 1 ? Mathf.Min(board.Rows.Count, fit) : board.Rows.Count + (virtualAt >= 0 ? 1 : 0);
             for (int i = 0; i < rows; i++)
             {
-                var r = board.Rows[i];
                 bool me = i == mine;
+                int source = virtualAt >= 0 && i > virtualAt ? i - 1 : i;
+                var r = me && virtualAt >= 0 ? null : board.Rows[source];
                 float y = i * RowPitch + (me ? 0 : (mine >= 0 && i > mine ? MineH - RowH : 0));
                 var row = UiTokens.Box(0, y, LeftW - 36, RowH);
                 row.style.backgroundColor = i % 2 == 0 ? UiTokens.A(UiTokens.Deep, .55f) : UiTokens.A(UiTokens.Panel, .4f); UiTokens.Radius(row, 18);
@@ -381,7 +445,7 @@ namespace Mongscape.Presentation
                 if (me) { row.style.height = MineH; row.style.backgroundColor = Color.clear; }
                 else
                 {
-                    var rank = UiTokens.Label(r.Rank.ToString(), 52, UiTokens.TextDim); var name = UiTokens.Label(r.Name, 48, UiTokens.Text);
+                    var rank = UiTokens.Label((r.Rank + (virtualAt >= 0 && i > virtualAt ? 1 : 0)).ToString(), 52, UiTokens.TextDim); var name = UiTokens.Label(r.Name, 48, UiTokens.Text);
                     var score = UiTokens.Label(UiTokens.N(r.Score), 52, UiTokens.Text, TextAnchor.MiddleRight); var dist = UiTokens.Label(UiTokens.N(Mathf.FloorToInt(r.Distance)) + " m", 44, UiTokens.TextDim, TextAnchor.MiddleRight);
                     RowLayout(row, rank, name, score, dist, RowH);
                 }

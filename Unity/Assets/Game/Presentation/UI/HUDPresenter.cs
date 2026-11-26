@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Mongscape.Presentation
 {
-    public enum MenuPage { None, Main, Setup, Profile, Ranking, Identity, Login, SignUp, TutorialOffer, Credits }
+    public enum MenuPage { None, Main, Setup, Profile, Ranking, Identity, Login, SignUp, TutorialOffer, Credits, Help }
 
     // UI root: owns the menu page state and draws exactly one screen for the current game state.
     public sealed class HUDPresenter : MonoBehaviour
@@ -73,6 +73,8 @@ namespace Mongscape.Presentation
         private LoadingScreen loading;
         private RunHudView runView;
         private ResultView resultView;
+        private HelpView helpView;
+        public HelpView Help => helpView;
         // The UI Toolkit result screen (score count-up, today's ranking, this run).
         public ResultView Result => resultView;
         private readonly RunHudModel runModel = new RunHudModel();
@@ -90,6 +92,7 @@ namespace Mongscape.Presentation
             calibration = new CalibrationPanel(overlaySkin, skin);
             runView = new RunHudView(gameObject);
             pauseView = new PauseView(gameObject) { Resume = () => PauseRun?.Invoke(), Recalibrate = () => { Data?.Recalibrate(); PauseRun?.Invoke(); }, Main = () => ToMenu?.Invoke() };
+            helpView = new HelpView(gameObject) { Back = OpenMainMenu };
             resultView = new ResultView(gameObject) { Retry = () => retry?.Invoke(), Calibrate = OpenCalibration, Main = () => ToMenu?.Invoke() };
         }
         public void ShowPage(MenuPage page)
@@ -148,6 +151,7 @@ namespace Mongscape.Presentation
             else if (action == MenuAction.Identity) Logout();
             else if (action == MenuAction.Settings) OpenSettings?.Invoke();
             else if (action == MenuAction.Credits) ShowPage(MenuPage.Credits);
+            else if (action == MenuAction.Help) ShowPage(MenuPage.Help);
             else if (action == MenuAction.Quit) Quit?.Invoke();
         }
         // Main menu "로그아웃" and 내 정보: a member is signed out; both go to the login gate.
@@ -178,6 +182,8 @@ namespace Mongscape.Presentation
             revealRemaining = Mathf.Max(0, revealRemaining - Time.unscaledDeltaTime);
             if (!CalibrationAvailable) calibration?.Close(); else calibration.Tick(Data, Time.realtimeSinceStartup);
             if (runView == null) return;
+            helpView.Root.Visible = !Hidden && Page == MenuPage.Help && session != null && session.Flow.State == GameFlowState.TitleIdle;
+            if (helpView.Root.Visible) helpView.Root.Layout();
             bool inRun = session != null && (session.Flow.State == GameFlowState.Running || session.Flow.State == GameFlowState.Caught);
             if (inRun && !wasRunning) runView.ResetRun();
             wasRunning = inRun;
@@ -286,7 +292,7 @@ namespace Mongscape.Presentation
         {
             // Esc is "뒤로" on the pages whose back button returns to the main menu (the profile handles its own keys).
             var e = Event.current;
-            if (e.type == EventType.KeyDown && e.keyCode == KeyCode.Escape && (Page == MenuPage.Ranking || Page == MenuPage.Setup))
+            if (e.type == EventType.KeyDown && e.keyCode == KeyCode.Escape && (Page == MenuPage.Ranking || Page == MenuPage.Setup || Page == MenuPage.Help))
             { e.Use(); OpenMainMenu(); return; }
             switch (Page)
             {
@@ -305,6 +311,7 @@ namespace Mongscape.Presentation
                 case MenuPage.Main: SelectMenu(menu.Draw(Data, TitleLogo)); break;
                 case MenuPage.TutorialOffer: { var choice = tutorialOffer.Draw(offerMode, TutorialMask?.Invoke() ?? 0, Data == null || Data.BodyStylesAllowed, Data?.Player?.Style ?? PlayStyle.Keyboard, out var style, out var chapter); ChooseTutorial(choice, style, chapter); break; }
                 case MenuPage.Credits: if (credits.Draw()) CloseCredits(); break;
+                case MenuPage.Help: helpView.Gestures.Pass(); break;
             }
         }
         private void OnDestroy() { skin?.Dispose(); overlaySkin?.Dispose(); }

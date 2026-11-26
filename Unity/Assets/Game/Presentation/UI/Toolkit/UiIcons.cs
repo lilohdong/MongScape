@@ -63,40 +63,38 @@ namespace Mongscape.Presentation
         // The rings stay one ring diameter apart so the icon never reads as glasses or an infinity sign at 3 m.
         public static Action<Painter2D, Rect> Handcuffs(Func<Color> color) => (p, r) =>
         {
-            float s = Mathf.Min(r.width, r.height); var o = new Vector2(r.center.x - s / 2, r.center.y - s / 2);
-            Color c = color(); float w = s / 8f, ringR = s * .13f;
-            var left = o + new Vector2(s * .21f, s * .64f); var right = o + new Vector2(s * .79f, s * .64f);
-            Ring(p, left, ringR, w, c); Ring(p, right, ringR, w, c);
-            float bw = s * .2f, bh = s * .15f;
-            RoundRect(p, new Rect(left.x - bw / 2, left.y - ringR - bh - w * .2f, bw, bh), s * .03f, c);
-            RoundRect(p, new Rect(right.x - bw / 2, right.y - ringR - bh - w * .2f, bw, bh), s * .03f, c);
-            float cy = left.y - ringR - bh * .6f;
-            p.strokeColor = c; p.lineWidth = w * .8f;
-            p.BeginPath(); p.Arc(o + new Vector2(s * .41f, cy), s * .075f, D(0), D(360)); p.Stroke();
-            p.BeginPath(); p.Arc(o + new Vector2(s * .59f, cy), s * .075f, D(0), D(360)); p.Stroke();
+            // Same proportions as the approved mockup (ui-review/tools/ui.py ic_cuff).
+            float s = Mathf.Min(r.width, r.height); var c = r.center; Color col = color();
+            float rr = s * .2f, w = Mathf.Max(6, s * .09f), cy = c.y + s * .14f;
+            foreach (float cx in new[] { c.x - s * .29f, c.x + s * .29f })
+            {
+                Ring(p, new Vector2(cx, cy), rr - w / 2, w, col);
+                RoundRect(p, Rect.MinMaxRect(cx - s * .11f, cy - rr - s * .1f, cx + s * .11f, cy - rr + s * .05f), s * .03f, col);
+            }
+            float ly = cy - rr - s * .03f, lw = Mathf.Max(4, s * .05f);
+            foreach (float lx in new[] { c.x - s * .075f, c.x + s * .075f })
+            {
+                p.strokeColor = col; p.lineWidth = lw; p.BeginPath();
+                for (int i = 0; i <= 24; i++) { float t = i / 24f * Mathf.PI * 2; var v = new Vector2(lx + Mathf.Cos(t) * (s * .085f - lw / 2), ly + Mathf.Sin(t) * (s * .06f - lw / 2)); if (i == 0) p.MoveTo(v); else p.LineTo(v); }
+                p.ClosePath(); p.Stroke();
+            }
         };
 
-        // The monkey everywhere (rescued monkeys, me, costs): brown head, apricot face plate, an orange prisoner belt.
+        // The monkey everywhere (rescued monkeys, me, costs), as in the mockups (ui.py ic_monkey): face plate ears,
+        // brown head, apricot face, dark eyes, an orange prisoner belt line under the chin.
         public static Action<Painter2D, Rect> Monkey(Func<Color> tint = null) => (p, r) =>
         {
-            float s = Mathf.Min(r.width, r.height); var o = new Vector2(r.center.x - s / 2, r.center.y - s / 2);
-            Color fur = tint?.Invoke() ?? UiTokens.MonkeyFur;
-            bool flat = tint != null;
-            // body with the belt
-            RoundRect(p, new Rect(o.x + s * .28f, o.y + s * .62f, s * .44f, s * .36f), s * .14f, fur);
-            if (!flat) RoundRect(p, new Rect(o.x + s * .28f, o.y + s * .78f, s * .44f, s * .08f), s * .02f, UiTokens.PrisonerOrange);
-            // ears, head, face
-            Circle(p, o + new Vector2(s * .17f, s * .36f), s * .12f, fur);
-            Circle(p, o + new Vector2(s * .83f, s * .36f), s * .12f, fur);
-            Circle(p, o + new Vector2(s * .5f, s * .36f), s * .3f, fur);
+            float s = Mathf.Min(r.width, r.height); var c = r.center + new Vector2(0, -s * .06f); float rr = s * .42f * .82f;
+            Color fur = tint?.Invoke() ?? UiTokens.MonkeyFur; bool flat = tint != null;
+            Color face = flat ? fur : UiTokens.MonkeyFace;
+            Ellipse(p, c + new Vector2(-rr * 1.1f, -rr * .1f), rr * .35f, rr * .35f, face);
+            Ellipse(p, c + new Vector2(rr * 1.1f, -rr * .1f), rr * .35f, rr * .35f, face);
+            Circle(p, c, rr, fur);
             if (flat) return;
-            Circle(p, o + new Vector2(s * .17f, s * .36f), s * .06f, UiTokens.MonkeyFace);
-            Circle(p, o + new Vector2(s * .83f, s * .36f), s * .06f, UiTokens.MonkeyFace);
-            Ellipse(p, o + new Vector2(s * .5f, s * .43f), s * .2f, s * .16f, UiTokens.MonkeyFace);
-            Ellipse(p, o + new Vector2(s * .41f, s * .29f), s * .09f, s * .08f, UiTokens.MonkeyFace);
-            Ellipse(p, o + new Vector2(s * .59f, s * .29f), s * .09f, s * .08f, UiTokens.MonkeyFace);
-            Circle(p, o + new Vector2(s * .42f, s * .3f), s * .035f, UiTokens.Panel);
-            Circle(p, o + new Vector2(s * .58f, s * .3f), s * .035f, UiTokens.Panel);
+            Ellipse(p, c + new Vector2(0, rr * .25f), rr * .72f, rr * .6f, face);
+            Ellipse(p, c + new Vector2(-rr * .3f, 0), rr * .14f, rr * .15f, new Color(.03f, .02f, .01f));
+            Ellipse(p, c + new Vector2(rr * .3f, 0), rr * .14f, rr * .15f, new Color(.03f, .02f, .01f));
+            RoundRect(p, Rect.MinMaxRect(c.x - rr * .8f, c.y + rr * .95f, c.x + rr * .8f, c.y + rr * 1.12f), 0, UiTokens.PrisonerOrange);
         };
 
         // Police cap for the chase bar: navy crown with a light outline and a light-blue brim so it shows on the dark bar.

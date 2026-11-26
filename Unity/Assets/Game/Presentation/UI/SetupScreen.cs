@@ -11,7 +11,6 @@ namespace Mongscape.Presentation
         private readonly WorkoutEstimate probe = new WorkoutEstimate();
         private string name = "", weightText = "", validation = "";
         private PlayStyle style = PlayStyle.FullBody;
-        private string goalText="50";
         private GUIStyle guideStyle, hintStyle, rightStyle;
         // Key and action columns, so the actions line up whatever the key glyphs' widths.
         private static readonly string[] KeyboardKeys = { "A / ←", "D / →", "Space", "S / ↓", "W / ↑" };
@@ -21,7 +20,7 @@ namespace Mongscape.Presentation
         {
             validation = "";
             var player = data?.Player;
-            if (player != null) { name = player.Name; weightText = player.Weight; style = player.Style; goalText=player.CalorieGoal.ToString("0.##",System.Globalization.CultureInfo.InvariantCulture); }
+            if (player != null) { name = player.Name; weightText = player.Weight; style = player.Style; }
             data?.PreviewStyle(style);
         }
         public void Draw(IHudData data, Action<PlayerProfile> beginRun, Action back, Action openSettings = null)
@@ -52,18 +51,9 @@ namespace Mongscape.Presentation
             guideStyle??=new GUIStyle(skin.Style(16,FontStyle.Normal)){wordWrap=true};
             GUI.Label(new Rect(195,434,420,60),bodyOk?Guide(style):NoCameraGuide,guideStyle);
             bool exercise = PlayStyleInfo.UsesCamera(style);
-            // Keyboard runs count no calories, so the goal field is only shown for camera styles.
-            if (exercise)
-            {
-                GUI.Label(new Rect(195,494,400,30),"칼로리 목표",skin.Small);
-                // The same input box as the other fields, so it reads as one (QA 2026-11-25 L17).
-                skin.Panel(new Rect(195,532,300,44),1f);
-                GUI.SetNextControlName("MongscapeCalorieGoal");
-                goalText=GUI.TextField(new Rect(195,532,300,44),goalText,7,skin.Input);
-                GUI.Label(new Rect(510,536,90,36),"kcal",skin.Label);
-                GUI.Label(new Rect(195,588,420,48),"목표를 넘겨도 계속 달릴 수 있어요. 칼로리는 몸동작으로 추정한 값입니다.",guideStyle);
-            }
-            else GUI.Label(new Rect(195,500,420,30),RunHudModel.KeyboardKcal,skin.Style(17,FontStyle.Normal));
+            // No calorie goal any more (owner 2026-11-27): the one goal is the weekly 150 minutes. Keyboard runs count no calories.
+            if (!exercise)
+GUI.Label(new Rect(195,500,420,30),RunHudModel.KeyboardKcal,skin.Style(17,FontStyle.Normal));
             // Between the camera buttons and 시작하기: a problem with the fields, otherwise the cadence-off note (QA 2026-11-25 M1).
             bool cadenceOff = data != null && PlayStyleInfo.UsesCamera(style) && !data.CadenceSpeed;
             if (validation.Length > 0) { GUI.color = Palette.Error; GUI.Label(new Rect(640, 544, 450, 32), validation, skin.Small); }
@@ -74,8 +64,7 @@ namespace Mongscape.Presentation
             if (skin.PrimaryButton(new Rect(640, 584, 450, 56), "시작하기"))
             {
                 if (!probe.SetWeight(weightText)) { validation = "몸무게는 10~350kg 숫자로 입력해 주세요."; return; }
-                if(!probe.SetGoal(goalText)&&exercise){validation="목표는 1~5000 kcal 숫자로 입력해 주세요.";return;}
-                beginRun?.Invoke(new PlayerProfile { Name = name.Trim(), Weight = weightText.Trim(), Style = style,CalorieGoal=probe.GoalKcal });
+                beginRun?.Invoke(new PlayerProfile { Name = name.Trim(), Weight = weightText.Trim(), Style = style });
             }
             if (data != null && PlayStyleInfo.UsesCamera(style))
             {
