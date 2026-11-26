@@ -160,13 +160,6 @@ namespace Mongscape.Tests
             }
         }
 
-        [Test] public void StairCoinsSitAtKneeHeightAlongTheClimbAndNeedKneeSteps()
-        {
-            Assert.AreEqual(4f, ObstacleLayout.StairCoinZ(0, 6), .001f); Assert.AreEqual(20f, ObstacleLayout.StairCoinZ(5, 6), .001f);
-            Assert.AreEqual(.6f, ObstacleLayout.StairCoinHeight, .001f);
-            Assert.IsFalse(ObstacleLayout.CoinReachable(true, false)); Assert.IsTrue(ObstacleLayout.CoinReachable(true, true));
-            Assert.IsTrue(ObstacleLayout.CoinReachable(false, false));
-        }
 
         // The runner stands on a walking chunk (never riding) while the judge is told where in the stair it is.
         private static RunnerController Standing() => new RunnerController(new RunConfig());

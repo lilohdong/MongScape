@@ -19,7 +19,7 @@ namespace Mongscape.Tests
         public bool Offline, FailEnroll;
         public string TakenName = "";
         public readonly List<AccountEnrollment> Enrollments = new List<AccountEnrollment>();
-        // /profile/update applies the sent fields (TakenName answers 409), /shop/buy checks coins like the server, /stats answers StatsResult.
+        // /profile/update applies the sent fields (TakenName answers 409), /traits/unlock checks levels and monkeys like the server, /stats answers StatsResult.
         public readonly List<AccountProfileUpdate> Updates = new List<AccountProfileUpdate>();
         public StatsReply StatsResult = new StatsReply { ok = true };
         public int Deletes;
@@ -75,13 +75,14 @@ namespace Mongscape.Tests
             if (FailRuns) { done?.Invoke(new AccountReply { ok = false, message = "offline" }); return; }
             Balance += run.coins; done?.Invoke(new AccountReply { ok = true, coins = Balance });
         }
-        public void Buy(string token, ItemKind item, Action<AccountReply> done)
+        public void UnlockTrait(string token, TraitId trait, int level, Action<AccountReply> done)
         {
-            Calls.Add("shop/buy"); if (Refused(done)) return;
-            var owned = new List<int>(Profile.unlocked ?? new int[0]);
-            if (owned.Contains((int)item)) { done?.Invoke(new AccountReply { ok = false, status = 409, message = "이미 해금한 아이템입니다." }); return; }
-            if (Profile.coins < ItemCatalog.Get(item).UnlockCost) { done?.Invoke(new AccountReply { ok = false, status = 400, message = "코인이 부족합니다." }); return; }
-            Profile.coins -= ItemCatalog.Get(item).UnlockCost; owned.Add((int)item); Profile.unlocked = owned.ToArray();
+            Calls.Add("traits/unlock"); if (Refused(done)) return;
+            var owned = new List<int>(Profile.unlocked ?? new int[0]); int code = TraitCatalog.Code(trait, level), cost = TraitCatalog.Get(trait).Cost(level);
+            if (owned.Contains(code)) { done?.Invoke(new AccountReply { ok = false, status = 409, message = "이미 해금한 특성입니다." }); return; }
+            if (cost < 0 || level > 1 && !owned.Contains(code - 1)) { done?.Invoke(new AccountReply { ok = false, status = 400, message = "앞 단계를 먼저 해금하세요." }); return; }
+            if (Profile.coins < cost) { done?.Invoke(new AccountReply { ok = false, status = 400, message = "원숭이가 부족합니다." }); return; }
+            Profile.coins -= cost; owned.Add(code); Profile.unlocked = owned.ToArray();
             done?.Invoke(new AccountReply { ok = true, profile = Profile });
         }
         public void Leaderboard(string token, PlayStyle mode, bool today, Action<LeaderboardReply> done)

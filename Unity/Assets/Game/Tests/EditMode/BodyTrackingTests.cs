@@ -382,20 +382,18 @@ namespace Mongscape.Tests
             for (int i = 0; i < 2; i++) runner.Tick(.05f, 0);
             Assert.Greater(runner.Y, .3f, "The jump pressed just before landing must start on landing");
         }
-        [Test] public void ItemsDoubleCoinsShieldOneHitAndExpire()
+        [Test] public void CallLastsItsTraitSecondsAndTheShieldIsHeldUntilUsed()
         {
             var run = new RunSession(new RunConfig());
             run.Flow.Transition(GameFlowState.TitleIdle); run.Flow.Transition(GameFlowState.LoadingIntro); run.Flow.Transition(GameFlowState.Running);
-            Assert.AreEqual("코인 2배", ItemCatalog.Get(ItemKind.DoubleScore).Name);
-            run.CollectCoin(); Assert.AreEqual(1, run.Score.Coins);
-            // Picked up in the same frame as the item, before the next tick, already doubles.
-            run.Items.Activate(ItemKind.DoubleScore); run.CollectCoin(); Assert.AreEqual(3, run.Score.Coins);
-            run.Tick(.01f); run.Score.CollectCoin(); Assert.AreEqual(5, run.Score.Coins);
-            run.Tick(ItemCatalog.Get(ItemKind.DoubleScore).Seconds); run.CollectCoin(); Assert.AreEqual(6, run.Score.Coins);
-            run.Items.Activate(ItemKind.Shield);
+            Assert.AreEqual("부르는 소리", ItemCatalog.Get(ItemKind.Call).Name);
+            run.Items.Activate(ItemKind.Call); Assert.IsTrue(run.CallActive); Assert.AreEqual(6f, run.Items.Remaining(ItemKind.Call), 1e-4);
+            run.Tick(6.01f); Assert.IsFalse(run.CallActive);
+            var levels = new TraitLevels(); levels.Set(TraitId.Call, 2); run.ApplyTraits(levels.ForRun());
+            run.Items.Activate(ItemKind.Call); Assert.AreEqual(10f, run.Items.Remaining(ItemKind.Call), 1e-4, "Call Lv2 lasts longer");
+            run.Items.Activate(ItemKind.Shield); run.Tick(100f); Assert.IsTrue(run.Items.IsActive(ItemKind.Shield), "The shield has no timer");
             Assert.IsFalse(run.Hit(true)); Assert.AreEqual(GameFlowState.Running, run.Flow.State); Assert.AreEqual(1, run.ShieldSaves);
             Assert.IsTrue(run.Hit(true)); Assert.AreEqual(GameFlowState.Running, run.Flow.State); Assert.AreEqual(1, run.Warnings);
-            var items = new PowerUpState(); items.Activate(ItemKind.Magnet); items.Tick(100); Assert.IsFalse(items.IsActive(ItemKind.Magnet));
         }
         [Test] public void ShieldBlocksOneSlipButNotABrokenRail()
         {
@@ -413,12 +411,6 @@ namespace Mongscape.Tests
             run.Items.Activate(ItemKind.Shield);
             Assert.IsTrue(run.Fail(CaptureReason.BrokenRail)); Assert.AreEqual(GameFlowState.Caught, run.Flow.State); Assert.AreEqual(CaptureReason.BrokenRail, run.Reason);
             Assert.IsTrue(run.Items.IsActive(ItemKind.Shield), "A broken rail ignores the shield and leaves it unused.");
-        }
-        [Test] public void WalletUnlocksItems()
-        {
-            var wallet = new PlayerWallet(); Assert.IsEmpty(wallet.Available());
-            wallet.Deposit(40); Assert.IsTrue(wallet.TryUnlock(ItemKind.Magnet)); Assert.AreEqual(10, wallet.Coins);
-            Assert.IsFalse(wallet.TryUnlock(ItemKind.Shield)); CollectionAssert.AreEqual(new[] { ItemKind.Magnet }, wallet.Available());
         }
         [Test] public void LeaderboardRanksByScoreOverallAndPerDay()
         {

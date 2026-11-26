@@ -267,11 +267,11 @@ namespace Mongscape.Tests
         }
         [TestCase(7, false)] [TestCase(3, true)] [TestCase(0, true)] [TestCase(5, true)]
         public void PatternLeavesAnEmptyLane(int mask, bool expected) { Assert.AreEqual(expected, SafePatternValidator.IsSafe(mask)); }
-        [Test] public void CollectedCoinsCountAndResetIndependentlyOfDistance()
+        [Test] public void ScoreIsDistanceOnlyAndResets()
         {
-            var score=new ScoreSystem(); score.Advance(12); score.CollectCoin(); score.CollectCoin();
-            Assert.AreEqual(2,score.Coins); Assert.AreEqual(12,score.Score,"Coins do not score"); Assert.AreEqual(12,score.Distance);
-            score.Reset(); Assert.AreEqual(0,score.Coins); Assert.AreEqual(0,score.Score);
+            var score=new ScoreSystem(); score.Advance(12);
+            Assert.AreEqual(12,score.Score); Assert.AreEqual(12,score.Distance);
+            score.Reset(); Assert.AreEqual(0,score.Score);
         }
         [Test] public void EachActionMatchesItsHazard()
         {

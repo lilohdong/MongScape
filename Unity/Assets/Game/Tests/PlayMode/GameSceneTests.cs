@@ -101,66 +101,6 @@ namespace Mongscape.Tests
             game.StartIntro(); for (int i = 0; i < 82; i++) game.Intro.Tick(.1f);
             Assert.AreEqual(GameFlowState.Running, game.Session.Flow.State);
         }
-        [UnityTest] public IEnumerator CoinsUseSweptCrossingAndResetWhenPooled()
-        {
-            yield return SceneManager.LoadSceneAsync("GameScene"); yield return null;
-            var game=Object.FindFirstObjectByType<GameBootstrap>();
-            var node=new GameObject("Coin crossing regression"); var coin=node.AddComponent<CoinController>();
-            try
-            {
-                node.transform.position=new Vector3(0,1,2.1f);
-                coin.Evaluate(game.Session,0); Assert.AreEqual(0,game.Session.Score.Coins);
-                game.StartIntro(); for(int i=0;i<82;i++) game.Intro.Tick(.1f);
-                float before=game.Session.Runner.Z; node.transform.position=new Vector3(0,1,before+.1f);
-                game.Session.Tick(.4f); int score=game.Session.Score.Score;
-                coin.Evaluate(game.Session,before);
-                Assert.AreEqual(1,game.Session.Score.Coins); Assert.AreEqual(score,game.Session.Score.Score,"Coins do not score");
-                coin.Evaluate(game.Session,before); Assert.AreEqual(1,game.Session.Score.Coins);
-                coin.ResetCoin(); node.SetActive(true);
-                node.transform.position=new Vector3(4.4f,1,game.Session.Runner.Z+.1f);
-                before=game.Session.Runner.Z; game.Session.Tick(.4f); coin.Evaluate(game.Session,before);
-                Assert.AreEqual(1,game.Session.Score.Coins,"Wrong lane must not collect");
-                coin.ResetCoin(); node.SetActive(true);
-                before=game.Session.Runner.Z; node.transform.position=new Vector3(0,1,before+.1f);
-                game.Session.Tick(.4f); coin.Evaluate(game.Session,before);
-                Assert.AreEqual(2,game.Session.Score.Coins,"Reused coin must award again");
-                game.Session.Flow.Transition(GameFlowState.Caught);
-                game.Session.Flow.Transition(GameFlowState.Result);
-                game.Retry(); Assert.AreEqual(0,game.Session.Score.Coins);
-            }
-            finally { Object.Destroy(node); }
-        }
-        [UnityTest] public IEnumerator MagnetPullsFarLaneCoinsOnlyWhileActive()
-        {
-            yield return SceneManager.LoadSceneAsync("GameScene"); yield return null;
-            var game=Object.FindFirstObjectByType<GameBootstrap>();
-            game.StartIntro(); for(int i=0;i<82;i++) game.Intro.Tick(.1f);
-            Assert.AreEqual(GameFlowState.Running,game.Session.Flow.State);
-            game.enabled=false;
-            var run=game.Session; var node=new GameObject("Magnet coin"); var coin=node.AddComponent<CoinController>();
-            try
-            {
-                run.Runner.SetStartZ(4); run.Runner.Command(MotionCommand.Left); run.Tick(.25f); Assert.AreEqual(-1,run.Runner.Lane);
-                for(int pass=0;pass<2;pass++)
-                {
-                    bool magnet=pass==1;
-                    if(magnet) run.Items.Activate(ItemKind.Magnet);
-                    // The coin waits on the opposite outer lane, 4.4m to the side of the runner.
-                    run.Runner.SetStartZ(4); coin.ResetCoin(); node.SetActive(true);
-                    RouteSurface.Sample(10,out float x,out float y); node.transform.position=new Vector3(x+2.2f,y+1,10);
-                    float deadline=Time.realtimeSinceStartup+6;
-                    while(run.Score.Coins==0&&run.Runner.Z<14&&Time.realtimeSinceStartup<deadline)
-                    {
-                        yield return null;
-                        float prior=run.Runner.Z; run.Tick(Mathf.Min(Time.deltaTime,.05f)); coin.Evaluate(run,prior);
-                    }
-                    Assert.AreEqual(GameFlowState.Running,run.Flow.State);
-                    if(magnet) { Assert.AreEqual(1,run.Score.Coins,"The magnet pulls a coin from the far lane"); Assert.IsFalse(node.activeSelf); }
-                    else { Assert.AreEqual(0,run.Score.Coins,"Without the magnet a far-lane coin stays"); Assert.IsFalse(coin.Pulled); }
-                }
-            }
-            finally { Object.Destroy(node); }
-        }
         [UnityTest] public IEnumerator ItemAurasShowWhileActiveAndShieldBreaksOnHit()
         {
             yield return SceneManager.LoadSceneAsync("GameScene"); yield return null;
@@ -168,35 +108,21 @@ namespace Mongscape.Tests
             game.StartIntro(); for(int i=0;i<82;i++) game.Intro.Tick(.1f);
             game.enabled=false;
             var aura=game.GetComponent<Mongscape.Presentation.PowerUpAuraView>(); Assert.IsNotNull(aura);
-            yield return null; Assert.IsFalse(aura.ShieldVisible||aura.MagnetVisible);
-            game.Session.Items.Activate(ItemKind.Shield); game.Session.Items.Activate(ItemKind.Magnet); yield return null;
-            Assert.IsTrue(aura.ShieldVisible,"Shield bubble"); Assert.IsTrue(aura.MagnetVisible,"Magnet sparks");
+            yield return null; Assert.IsFalse(aura.ShieldVisible||aura.CallVisible);
+            game.Session.Items.Activate(ItemKind.Shield); game.Session.Items.Activate(ItemKind.Call); yield return null;
+            Assert.IsTrue(aura.ShieldVisible,"Shield bubble"); Assert.IsTrue(aura.CallVisible,"Call sparks");
             Assert.IsFalse(game.Session.Hit(true)); Assert.IsFalse(game.Session.Items.IsActive(ItemKind.Shield)); yield return null;
             Assert.IsTrue(aura.ShieldVisible,"The used shield bursts visibly before disappearing");
             yield return new WaitForSecondsRealtime(Mongscape.Presentation.PowerUpAuraView.BurstSeconds+.3f);
-            Assert.IsFalse(aura.ShieldVisible); Assert.IsTrue(aura.MagnetVisible);
+            Assert.IsFalse(aura.ShieldVisible); Assert.IsTrue(aura.CallVisible);
         }
-        [UnityTest] public IEnumerator MagnetPulledChunkCoinReturnsToItsSpotWhenPooled()
+        [UnityTest] public IEnumerator ChunksCarryNoCoins()
         {
             yield return SceneManager.LoadSceneAsync("GameScene"); yield return null;
             var game=Object.FindFirstObjectByType<GameBootstrap>();
             game.StartIntro(); for(int i=0;i<82;i++) game.Intro.Tick(.1f);
             game.enabled=false;
-            CoinController coin=null; MongscapeMapChunk owner=null;
-            foreach(var active in game.Map.Active)
-            {
-                if(coin!=null||active.Chunk.Sequence==0||active.Chunk.Coins==null||active.Type==1||active.Type==2) continue;
-                foreach(var candidate in active.Chunk.Coins) if(candidate.gameObject.activeSelf) { coin=candidate; owner=active.Chunk; break; }
-            }
-            Assert.IsNotNull(coin,"A walking chunk with coins is spawned ahead");
-            var run=game.Session; var spot=coin.transform.localPosition;
-            run.Items.Activate(ItemKind.Magnet); run.Runner.SetStartZ(coin.transform.position.z-5);
-            for(int i=0;i<3&&coin.gameObject.activeSelf;i++) { yield return null; coin.Evaluate(run,run.Runner.Z); }
-            Assert.IsTrue(coin.Pulled); Assert.AreNotEqual(spot.z,coin.transform.localPosition.z,"The magnet moved the coin");
-            // Reusing the chunk from the pool prepares it again: the pulled height and depth must not leak.
-            owner.Prepare(owner.Sequence,new HazardOdds(0,.72f,.85f,.82f),new System.Random(5));
-            Assert.AreEqual(spot.y,coin.transform.localPosition.y,.0001f); Assert.AreEqual(spot.z,coin.transform.localPosition.z,.0001f);
-            Assert.IsFalse(coin.Pulled); Assert.IsTrue(coin.gameObject.activeSelf);
+            foreach(var active in game.Map.Active) Assert.IsNull(active.Chunk.transform.Find("Collectibles"),"Plan 4: no coins on the course");
         }
         [UnityTest] public IEnumerator OnlyUnlockedItemsSpawnAwayFromBananaRows()
         {
@@ -209,7 +135,7 @@ namespace Mongscape.Tests
                 foreach(var allowed in new[]{new ItemKind[0],new[]{ItemKind.Shield}})
                 {
                     // Items come from the member's unlocks: a synthetic member in memory, no server calls.
-                    var ids=new int[allowed.Length]; for(int i=0;i<ids.Length;i++) ids[i]=(int)allowed[i];
+                    var ids=allowed.Length==0?new int[0]:new[]{11};
                     game.Account.SignInMember(new Mongscape.Application.AccountProfile{id="items-qa",name="아이템",unlocked=ids},"");
                     game.Map.Reset(); int found=0;
                     for(int n=0;n<80;n++)
@@ -228,7 +154,7 @@ namespace Mongscape.Tests
             }
             finally { game.Account.SignOut(); }
         }
-        [UnityTest] public IEnumerator AuthoredCoinsAndRunnerFollowCurvesAndStairElevation()
+        [UnityTest] public IEnumerator RunnerFollowsCurvesAndStairElevation()
         {
             yield return SceneManager.LoadSceneAsync("GameScene"); yield return null;
             var game=Object.FindFirstObjectByType<GameBootstrap>(); game.StartIntro();
@@ -240,20 +166,12 @@ namespace Mongscape.Tests
                 for(float z=game.Map.Active[0].Chunk.Entry.position.z;z<=sequence*24;z+=12) game.Map.Tick(z+2);
                 MongscapeMapChunk chunk=null;
                 foreach(var active in game.Map.Active) if(active.Type==type) { chunk=active.Chunk; break; }
-                Assert.IsNotNull(chunk); var coin=chunk.Coins[2]; Vector3 position=coin.transform.position;
-                RouteSurface.Sample(position.z,out float offsetX,out float offsetY);
-                int lane=Mathf.RoundToInt((position.x-offsetX)/2.2f);
-                while(game.Session.Runner.Lane<lane) game.Session.Runner.Command(MotionCommand.Right);
-                while(game.Session.Runner.Lane>lane) game.Session.Runner.Command(MotionCommand.Left);
+                Assert.IsNotNull(chunk); Vector3 position=new Vector3(0,0,chunk.Entry.position.z+11f);
+                RouteSurface.Sample(position.z,out float offsetX,out float offsetY); position.x=offsetX;
                 game.Session.Runner.Tick(.3f,0); game.Session.Runner.SetStartZ(position.z);
                 game.Hero.Apply(game.Session.Runner);
                 Assert.AreEqual(offsetY+(game.Session.Runner.Riding?.25f:0),game.Hero.transform.position.y,.001f);
-                Assert.AreEqual(position.x,game.Hero.transform.position.x,.001f);
-                // Stair coins hang at knee height and only count while the runner is stepping.
-                if(RouteSurface.IsStair(type))game.Session.Runner.Command(MotionCommand.KneeStep);
-                int before=game.Session.Score.Coins; coin.Evaluate(game.Session,position.z-1);
-                Assert.AreEqual(before+1,game.Session.Score.Coins,"Authored coin on curved or elevated route must collect");
-                coin.Evaluate(game.Session,position.z-1); Assert.AreEqual(before+1,game.Session.Score.Coins);
+                Assert.AreEqual(position.x+game.Session.Runner.WorldLaneOffset,game.Hero.transform.position.x,.001f);
             }
         }
         [UnityTest] public IEnumerator MissingCharacterAssetsUseFallback()

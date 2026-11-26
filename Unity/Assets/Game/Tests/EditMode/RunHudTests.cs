@@ -79,12 +79,13 @@ namespace Mongscape.Tests
             model.Tick(run, null, style, pose, false, 1); model.Tick(run, null, style, pose, false, 2);
             Assert.AreEqual(camera, model.ShowCamera); Assert.AreEqual(recovery, model.ShowPoseRecovery);
         }
-        [Test] public void DoubleCoinItemMarksTheCoinCounter()
+        [Test] public void MonkeyCounterShowsTheKeptTroop()
         {
             var run = Running(); var model = new RunHudModel();
-            model.Tick(run, null, PlayStyle.Keyboard, PoseStatus.Off, false, 1); Assert.IsFalse(model.CoinBoost);
-            run.Items.Activate(ItemKind.DoubleScore); model.Tick(run, null, PlayStyle.Keyboard, PoseStatus.Off, false, 2); Assert.IsTrue(model.CoinBoost);
-            StringAssert.StartsWith("코인 2배", model.ItemLabels[(int)ItemKind.DoubleScore]);
+            model.Tick(run, null, PlayStyle.Keyboard, PoseStatus.Off, false, 1); Assert.AreEqual("0", model.Monkeys);
+            run.Rescue(RescueSource.MineWall, 2); model.Tick(run, null, PlayStyle.Keyboard, PoseStatus.Off, false, 2); Assert.AreEqual("2", model.Monkeys);
+            run.Items.Activate(ItemKind.Call); model.Tick(run, null, PlayStyle.Keyboard, PoseStatus.Off, false, 3);
+            StringAssert.StartsWith("부르는 소리", model.ItemLabels[(int)ItemKind.Call]);
         }
         [Test] public void InGameCameraHidesOutsideRunning()
         {

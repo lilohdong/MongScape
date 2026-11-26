@@ -80,36 +80,43 @@ namespace Mongscape.Tests
         }
 
         [UnityTest]
-        public IEnumerator GuestHasNoProfilePageAndCannotBuy()
+        public IEnumerator GuestHasNoProfilePageAndCannotUnlockTraits()
         {
             yield return Open();
             Assert.IsFalse(game.SignedIn);
             hud.ShowPage(MenuPage.Profile);Assert.AreEqual(MenuPage.Main,hud.Page,"내 정보 is for members only");
             hud.SelectMenu(MenuAction.Profile);Assert.AreEqual(MenuPage.Main,hud.Page);
             bool? bought=null;string reason="";
-            Data.Unlock(ItemKind.Magnet,(ok,why)=>{bought=ok;reason=why;});
+            Data.UnlockTrait(TraitId.Call,(ok,why)=>{bought=ok;reason=why;});
             Assert.AreEqual(false,bought);StringAssert.Contains("회원가입",reason);
-            CollectionAssert.DoesNotContain(fake.Calls,"shop/buy");CollectionAssert.IsEmpty(game.RunItems());
-            hud.ShowPage(MenuPage.Shop);
+            CollectionAssert.DoesNotContain(fake.Calls,"traits/unlock");CollectionAssert.IsEmpty(game.RunItems());
+            hud.SelectMenu(MenuAction.Traits);
             for(int i=0;i<3;i++)yield return null;
-            Assert.AreEqual(MenuPage.Shop,hud.Page);LogAssert.NoUnexpectedReceived();
+            Assert.IsTrue(hud.Hidden,"The trait window covers the menu");game.CloseTraits();Assert.IsFalse(hud.Hidden);LogAssert.NoUnexpectedReceived();
         }
 
         [UnityTest]
-        public IEnumerator MemberPurchaseUpdatesCoinsAndUnlockedItems()
+        public IEnumerator MemberUnlockUpdatesMonkeysAndTraitLevels()
         {
             yield return Open();
             SignIn(100);
-            hud.ShowPage(MenuPage.Shop);yield return null;
+            hud.SelectMenu(MenuAction.Traits);yield return null;
             bool? bought=null;string reason="";
-            Data.Unlock(ItemKind.Magnet,(ok,why)=>{bought=ok;reason=why;});
-            Assert.AreEqual(true,bought,reason);CollectionAssert.Contains(fake.Calls,"shop/buy");
-            Assert.AreEqual(70,game.Account.Coins);Assert.AreEqual(70,Data.Wallet.Coins);
-            CollectionAssert.Contains(game.Account.Unlocked,ItemKind.Magnet);CollectionAssert.AreEqual(new[]{ItemKind.Magnet},game.RunItems());
-            Data.Unlock(ItemKind.Magnet,(ok,why)=>{bought=ok;reason=why;});
-            Assert.AreEqual(false,bought);StringAssert.Contains("이미",reason);
-            Data.Unlock(ItemKind.Shield,(ok,why)=>{bought=ok;reason=why;});
-            Assert.AreEqual(false,bought);StringAssert.Contains("부족",reason);Assert.AreEqual(70,game.Account.Coins);
+            Data.UnlockTrait(TraitId.Loyalty,(ok,why)=>{bought=ok;reason=why;});
+            Assert.AreEqual(true,bought,reason);CollectionAssert.Contains(fake.Calls,"traits/unlock");
+            Assert.AreEqual(75,game.Account.Monkeys);Assert.AreEqual(75,Data.Monkeys);
+            Assert.AreEqual(1,Data.Traits.Level(TraitId.Loyalty));
+            Data.UnlockTrait(TraitId.Loyalty,(ok,why)=>{bought=ok;reason=why;});
+            Assert.AreEqual(false,bought,"Loyalty has one level");
+            Data.UnlockTrait(TraitId.Shield,(ok,why)=>{bought=ok;reason=why;});Assert.AreEqual(true,bought,reason);
+            Data.UnlockTrait(TraitId.Shield,(ok,why)=>{bought=ok;reason=why;});Assert.AreEqual(true,bought,reason);
+            Assert.AreEqual(55,game.Account.Monkeys);CollectionAssert.AreEqual(new[]{ItemKind.Shield,ItemKind.Shield},game.RunItems());
+            Data.UnlockTrait(TraitId.Shield,(ok,why)=>{bought=ok;reason=why;});Assert.AreEqual(true,bought,reason);
+            Data.UnlockTrait(TraitId.Dexterity,(ok,why)=>{bought=ok;reason=why;});
+            Assert.AreEqual(true,bought,reason);
+            Data.UnlockTrait(TraitId.ThickFur,(ok,why)=>{bought=ok;reason=why;});
+            Assert.AreEqual(false,bought);StringAssert.Contains("부족",reason);Assert.AreEqual(15,game.Account.Monkeys);
+            game.CloseTraits();
             yield return null;LogAssert.NoUnexpectedReceived();
             game.FaceLogout(false);
         }

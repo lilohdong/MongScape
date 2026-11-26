@@ -661,6 +661,6 @@ namespace Mongscape.Bootstrap
             if (store != null) Store = store;
         }
         // Items placed on the map: what the run's traits unlock (none for guests and in the tutorial).
-        public System.Collections.Generic.List<ItemKind> RunItems() => ItemCatalog.Available(Session != null ? Session.Traits : RunTraits.None);
+        public System.Collections.Generic.List<ItemKind> RunItems() => Session != null && Session.IsTutorial ? new System.Collections.Generic.List<ItemKind>() : Account.RunItems();
     }
 }
