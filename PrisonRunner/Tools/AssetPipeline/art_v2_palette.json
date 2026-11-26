@@ -1,0 +1,196 @@
+{
+ "items": [
+  {
+   "hex": "#333D45",
+   "smoothness": 0.36,
+   "metallic": 0.48,
+   "emission": "",
+   "emission_strength": 0.0,
+   "alpha": -1,
+   "name": "ForgedIron",
+   "assets": [
+    "Lion"
+   ]
+  },
+  {
+   "hex": "#F5EBC7",
+   "smoothness": 0.45,
+   "metallic": 0.0,
+   "emission": "",
+   "emission_strength": 0.0,
+   "alpha": -1,
+   "name": "LionClaw",
+   "assets": [
+    "Lion"
+   ]
+  },
+  {
+   "hex": "#C9822F",
+   "smoothness": 0.22,
+   "metallic": 0.0,
+   "emission": "",
+   "emission_strength": 0.0,
+   "alpha": -1,
+   "name": "LionCoat",
+   "assets": [
+    "Lion"
+   ]
+  },
+  {
+   "hex": "#FAF5DE",
+   "smoothness": 0.5,
+   "metallic": 0.0,
+   "emission": "",
+   "emission_strength": 0.0,
+   "alpha": -1,
+   "name": "LionEyeWhite",
+   "assets": [
+    "Lion"
+   ]
+  },
+  {
+   "hex": "#E0A21C",
+   "smoothness": 0.55,
+   "metallic": 0.0,
+   "emission": "",
+   "emission_strength": 0.0,
+   "alpha": -1,
+   "name": "LionIris",
+   "assets": [
+    "Lion"
+   ]
+  },
+  {
+   "hex": "#7A3313",
+   "smoothness": 0.15,
+   "metallic": 0.0,
+   "emission": "",
+   "emission_strength": 0.0,
+   "alpha": -1,
+   "name": "LionMane",
+   "assets": [
+    "Lion"
+   ]
+  },
+  {
+   "hex": "#1F0302",
+   "smoothness": 0.2,
+   "metallic": 0.0,
+   "emission": "",
+   "emission_strength": 0.0,
+   "alpha": -1,
+   "name": "LionMouth",
+   "assets": [
+    "Lion"
+   ]
+  },
+  {
+   "hex": "#F2D49E",
+   "smoothness": 0.22,
+   "metallic": 0.0,
+   "emission": "",
+   "emission_strength": 0.0,
+   "alpha": -1,
+   "name": "LionMuzzle",
+   "assets": [
+    "Lion"
+   ]
+  },
+  {
+   "hex": "#3B1A14",
+   "smoothness": 0.4,
+   "metallic": 0.0,
+   "emission": "",
+   "emission_strength": 0.0,
+   "alpha": -1,
+   "name": "LionNose",
+   "assets": [
+    "Lion"
+   ]
+  },
+  {
+   "hex": "#080502",
+   "smoothness": 0.6,
+   "metallic": 0.0,
+   "emission": "",
+   "emission_strength": 0.0,
+   "alpha": -1,
+   "name": "LionPupil",
+   "assets": [
+    "Lion"
+   ]
+  },
+  {
+   "hex": "#BA1F21",
+   "smoothness": 0.4,
+   "metallic": 0.0,
+   "emission": "",
+   "emission_strength": 0.0,
+   "alpha": -1,
+   "name": "LionTongue",
+   "assets": [
+    "Lion"
+   ]
+  },
+  {
+   "hex": "#F0940F",
+   "smoothness": 0.55,
+   "metallic": 0.4,
+   "emission": "",
+   "emission_strength": 0.0,
+   "alpha": -1,
+   "name": "LockBrass",
+   "assets": [
+    "Lion"
+   ]
+  },
+  {
+   "hex": "#8FA6AB",
+   "smoothness": 0.34,
+   "metallic": 0.35,
+   "emission": "",
+   "emission_strength": 0.0,
+   "alpha": -1,
+   "name": "PaintedSteel",
+   "assets": [
+    "Lion"
+   ]
+  },
+  {
+   "hex": "#FFBD14",
+   "smoothness": 0.3,
+   "metallic": 0.0,
+   "emission": "",
+   "emission_strength": 0.0,
+   "alpha": -1,
+   "name": "ZooCaution",
+   "assets": [
+    "Lion"
+   ]
+  },
+  {
+   "hex": "#80664A",
+   "smoothness": 0.22,
+   "metallic": 0.0,
+   "emission": "",
+   "emission_strength": 0.0,
+   "alpha": -1,
+   "name": "ZooLogBark",
+   "assets": [
+    "Lion"
+   ]
+  },
+  {
+   "hex": "#CFC2AD",
+   "smoothness": 0.22,
+   "metallic": 0.0,
+   "emission": "",
+   "emission_strength": 0.0,
+   "alpha": -1,
+   "name": "blender_Stone_2",
+   "assets": [
+    "Lion"
+   ]
+  }
+ ]
+}

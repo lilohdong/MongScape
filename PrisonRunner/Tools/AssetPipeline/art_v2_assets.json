@@ -1,0 +1,52 @@
+{
+ "items": [
+  {
+   "name": "Animals/AN_Lion_CageBreakout.fbx",
+   "kind": "generic_clip",
+   "group": "Lion",
+   "loop": false,
+   "avatar_from": "Animals/Lion.fbx",
+   "frames": 60
+  },
+  {
+   "name": "Animals/AN_Lion_Pounce.fbx",
+   "kind": "generic_clip",
+   "group": "Lion",
+   "loop": false,
+   "avatar_from": "Animals/Lion.fbx",
+   "frames": 28
+  },
+  {
+   "name": "Animals/AN_Lion_Roar.fbx",
+   "kind": "generic_clip",
+   "group": "Lion",
+   "loop": false,
+   "avatar_from": "Animals/Lion.fbx",
+   "frames": 46
+  },
+  {
+   "name": "Animals/AN_Lion_Run.fbx",
+   "kind": "generic_clip",
+   "group": "Lion",
+   "loop": true,
+   "avatar_from": "Animals/Lion.fbx",
+   "frames": 17
+  },
+  {
+   "name": "Animals/Lion.fbx",
+   "kind": "generic_model",
+   "group": "Lion",
+   "loop": false,
+   "avatar_from": "",
+   "frames": 0
+  },
+  {
+   "name": "Models/MD_Zoo_LionCage.fbx",
+   "kind": "prop_anim",
+   "group": "Lion",
+   "loop": false,
+   "avatar_from": "",
+   "frames": 60
+  }
+ ]
+}
