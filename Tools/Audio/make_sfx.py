@@ -27,7 +27,7 @@ import numpy as np
 HERE = os.path.dirname(os.path.abspath(__file__))
 UNITY = os.path.normpath(os.path.join(HERE, "..", "..", "Unity", "Assets", "Game", "Content", "Audio"))
 LIVE = os.path.join(UNITY, "Resources", "MuhanokAudio", "Sfx")   # loaded by GameAudio at runtime
-NEXT = os.path.join(UNITY, "SfxV2")                               # picked for v2, not wired yet
+NEXT = LIVE   # the v2 effects are wired too now (they used to wait in SfxV2)
 SR = 44100
 PEAK_DB = -1.2   # true peak, leaves 0.2 dB for the OGG encoder
 
@@ -189,5 +189,4 @@ def build(kenney, table, folder, synth=()):
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         sys.exit(__doc__)
-    build(sys.argv[1], LIVE_SFX, LIVE, SYNTH)
-    build(sys.argv[1], NEXT_SFX, NEXT)
+    build(sys.argv[1], LIVE_SFX + NEXT_SFX, LIVE, SYNTH)

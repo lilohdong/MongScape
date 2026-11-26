@@ -19,7 +19,7 @@ Factory Kit, Furniture Kit, Modular Cave Kit, Nature Kit, Survival Kit은 CC0 �
 
 사자 포효(`lion_roar.ogg`)만 Kenney가 아니라 OpenGameArt의 "80 CC0 creature SFX #2"(작성자 rubberduck, CC0, https://opengameart.org/content/80-cc0-creture-sfx-2, ZIP SHA256 `6d251aeaaaa9c2fffed8fc2f64bab3104725ceabf9259a8441994e7a20cfe22f`)의 roar_04를 3반음 올려 썼습니다.
 
-필요한 파일만 다듬어(모노, 앞뒤 무음 제거, 피크 -1 dBFS) 넣었습니다. 쓰는 효과음은 `Unity/Assets/Game/Content/Audio/Resources/MuhanokAudio/Sfx/`, 2차용으로 골라 둔 효과음은 `Unity/Assets/Game/Content/Audio/SfxV2/`에 있고, 파일별 원본 팩, 원본 파일 이름, 원본 SHA256은 각 폴더의 `SOURCES.json`에 있습니다. Kenney 라이선스 원문은 `Unity/Assets/Game/Content/Audio/Kenney-License.txt`에 보존합니다. 다시 만드는 방법은 `Tools/Audio/make_sfx.py`를 보세요.
+필요한 파일만 다듬어(모노, 앞뒤 무음 제거, 피크 -1 dBFS) 넣었습니다. 효과음은 모두 `Unity/Assets/Game/Content/Audio/Resources/MuhanokAudio/Sfx/`에 있고, 파일별 원본 팩, 원본 파일 이름, 원본 SHA256은 그 폴더의 `SOURCES.json`에 있습니다. Kenney 라이선스 원문은 `Unity/Assets/Game/Content/Audio/Kenney-License.txt`에 보존합니다. 다시 만드는 방법은 `Tools/Audio/make_sfx.py`를 보세요.
 
 ## 배경음
 

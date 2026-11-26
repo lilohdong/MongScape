@@ -154,6 +154,7 @@ namespace Mongscape.Bootstrap
                 RestartTutorial,FinishTutorial,()=>!hud.Hidden&&!hud.Loading&&!hud.Revealing&&RunCalibration==RunCalibrationState.None);
             audioPlayer = gameObject.AddComponent<GameAudio>();
             audioPlayer.Configure(Session, Settings != null ? Settings.MusicVolume : .35f, Settings != null ? Settings.EffectsVolume : .7f);
+            audioPlayer.NewBest = () => Results != null && Results.LastNewBest;
             hud.RankCracked = audioPlayer.Crack;
             // The prison's cell door, lock gauge and searchlight (plan 2-3a).
             gameObject.AddComponent<PrisonStage>().Configure(Session, audioPlayer);

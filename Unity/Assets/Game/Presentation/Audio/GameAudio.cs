@@ -4,8 +4,9 @@ using UnityEngine;
 
 namespace Mongscape.Presentation
 {
-    // Effects come from Kenney CC0 files in Resources/MuhanokAudio/Sfx (see Content/Audio/README.md). An effect whose file is
-    // missing falls back to the tone synthesised below. Music: a step sequencer whose tempo/energy follows the interval phase.
+    // Effects come from the files in Resources/MuhanokAudio/Sfx (docs/AUDIO.md). An effect whose file is missing falls back to
+    // the tone synthesised below. Music: the layered loops of MusicLibrary through MusicPlayer (menu, mine, prison, result);
+    // without the library, a synthesised step sequencer. The zoo map plays its own song (MapMusicPlaying).
     // Siren: synthesised (Kenney has none), rises with chase pressure.
     public sealed class GameAudio : MonoBehaviour
     {
@@ -18,6 +19,11 @@ namespace Mongscape.Presentation
         private const string SfxFolder = "MuhanokAudio/Sfx/";
         private AudioClip crack, coin;
         private AudioClip[] jump, land, hit, bonk, cue, item, shield, beep, go, step, slip;
+        private AudioClip[] warning, caught, newRecord, forkBlocked, gateDown, rescue;
+        // Effects that wait a moment (warning after a slip, caught after the hit).
+        private readonly System.Collections.Generic.List<(float at, AudioClip[] clips, float gain, bool duck)> later =
+            new System.Collections.Generic.List<(float at, AudioClip[] clips, float gain, bool duck)>();
+        private float lastSlipAt = -10f, lastForkBlockedAt = -10f, resultAt = -1f;
         private readonly System.Random pick = new System.Random();
         private float musicVolume = .35f, effectsVolume = .7f;
         // Read on the audio thread.
@@ -26,10 +32,20 @@ namespace Mongscape.Presentation
         private int lastCoins, lastItems, lastShields;
         private bool wasAirborne, wasSlowing;
         private GameFlowState lastState;
+        private MusicPlayer loops;
+        // A map that plays its own song (the zoo) silences the loops meanwhile.
+        public bool MapMusicPlaying { get; set; }
+        public float MusicVolume => musicVolume;
+        public float EffectsVolume => effectsVolume;
+        // Whether the run that just ended set a new personal best (the bootstrap reads RunResults); new_record on the result.
+        public Func<bool> NewBest { get; set; }
+        public MusicSong Song => loops != null ? loops.Current : MusicSong.None;
         public void Configure(RunSession run, float musicLevel, float effectsLevel)
         {
             session = run; musicVolume = musicLevel; effectsVolume = effectsLevel;
-            music = Source("Music", true); music.clip = AudioClip.Create("Muhanok Music", Rate * 2, 1, Rate, true, FillMusic); music.loop = true; music.Play();
+            music = Source("Music", true); music.clip = AudioClip.Create("Muhanok Music", Rate * 2, 1, Rate, true, FillMusic); music.loop = true;
+            var library = MusicLibrary.Load();
+            if (MusicPlayer.Complete(library)) loops = new MusicPlayer(library, transform); else music.Play();
             siren = Source("Siren", true); siren.clip = Siren(); siren.loop = true; siren.volume = 0; siren.Play();
             effects = Source("Effects", false);
             varied = Source("Varied effects", false);
@@ -45,6 +61,12 @@ namespace Mongscape.Presentation
             slip = Load(() => Tone(.3f, f => 700 - f * 500, .4f), "slip");
             item = Load(() => Tone(.4f, f => 523 * Mathf.Pow(2, Mathf.Floor(f * 10) / 12f * 4), .4f), "item");
             shield = Load(() => Tone(.35f, f => 880 - f * 900, .45f), "shield");
+            warning = Load(() => Tone(.3f, f => 700 - f * 300, .45f), "warning");
+            caught = Load(() => Tone(.6f, f => 520 - f * 260, .45f), "caught");
+            newRecord = Load(() => Tone(.6f, f => 523 * Mathf.Pow(2, Mathf.Floor(f * 4) / 12f * 4), .45f), "new_record");
+            forkBlocked = Load(() => Noise(.25f), "fork_blocked");
+            gateDown = Load(() => Noise(.5f), "gate_down");
+            rescue = Load(() => Tone(.4f, f => 600 + f * 600, .4f), "monkey_rescue");
             crack = Shatter(.16f);
         }
         private AudioSource Source(string id, bool loop)
@@ -80,6 +102,25 @@ namespace Mongscape.Presentation
         // Tuned with Tools/Audio/check_sfx_mix.py against the loudest state of every song (see docs/AUDIO.md).
         private const float JumpGain = .8f, LandGain = .6f, StepGain = .6f, HitGain = 1f, BonkGain = .75f, CueGain = .75f,
             BeepGain = .9f, GoGain = .75f, SlipGain = .75f, ItemGain = .8f, ShieldGain = .6f;
+        private const float WarningGain = 1f, CaughtGain = 1f, NewRecordGain = 1f, ForkBlockedGain = 1f, GateGain = .9f, RescueGain = .7f,
+            RoarGain = .6f, AlarmGain = .45f;
+        // Sound review: the warning waits 0.15 s after a slip so the two do not smear; the blocked-fork clunk repeats at most
+        // every 0.4 s while the runner keeps leaning; caught follows the hit; new record a moment after the result opens.
+        public const float WarningAfterSlip = .15f, ForkBlockedGap = .4f, CaughtAfterHit = .35f, NewRecordDelay = .8f;
+        private void Later(float delay, AudioClip[] clips, float gain, bool duck)
+        {
+            if (delay <= 0f) { Play(clips, gain); if (duck) Duck(); } else later.Add((Time.unscaledTime + delay, clips, gain, duck));
+        }
+        // Leaning into the blocked rail at the fork (closed map): a short clunk, at most every ForkBlockedGap seconds.
+        public void ForkBlocked()
+        {
+            if (Time.unscaledTime - lastForkBlockedAt < ForkBlockedGap) return;
+            lastForkBlockedAt = Time.unscaledTime; Play(forkBlocked, ForkBlockedGain); Duck();
+        }
+        // The iron gate of the zoo comes down.
+        public void GateDown() => Play(gateDown, GateGain);
+        // A monkey joins the troop (the prison stage plays its own rescue clip at the cell door).
+        public void MonkeyRescued() => Play(rescue, RescueGain);
         public void SetVolumes(float musicLevel, float effectsLevel) { musicVolume = Mathf.Clamp01(musicLevel); effectsVolume = Mathf.Clamp01(effectsLevel); }
         public void Countdown(bool final) { if (final) Play(go, GoGain); else Play(beep, BeepGain); }
         // A short step for a KneeStep on the stairs (the bootstrap calls it with the camera effect), under the music.
@@ -101,12 +142,19 @@ namespace Mongscape.Presentation
         {
             if (sound == ChaserSound.Siren) { if (siren != null) siren.volume = Mathf.Max(siren.volume, effectsVolume * .45f); return; }
             if (roar == null) { roar = Load(() => hit[0], "lion_roar"); alarmBell = Load(() => hit[0], "alarm_bell"); }
-            Play(sound == ChaserSound.Roar ? roar : alarmBell, HitGain);
+            if (sound == ChaserSound.Roar) Play(roar, RoarGain); else Play(alarmBell, AlarmGain);
+            Duck();
         }
         private void Update()
         {
             if (session == null) return;
-            if (session.Warnings > lastWarnings && session.Flow.State == GameFlowState.Running) ChaserCue(session.Chaser.Sound);
+            if (session.Warnings > lastWarnings && session.Flow.State == GameFlowState.Running)
+            {
+                ChaserCue(session.Chaser.Sound);
+                Later(Time.unscaledTime - lastSlipAt < .3f ? WarningAfterSlip : 0f, warning, WarningGain, true);
+            }
+            for (int i = later.Count - 1; i >= 0; i--)
+                if (Time.unscaledTime >= later[i].at) { var due = later[i]; later.RemoveAt(i); Play(due.clips, due.gain); if (due.duck) Duck(); }
             lastWarnings = session.Warnings;
             var state = session.Flow.State;
             bool running = state == GameFlowState.Running && !session.Paused;
@@ -119,7 +167,14 @@ namespace Mongscape.Presentation
             level = Mathf.MoveTowards(level, target, Time.unscaledDeltaTime);
             duck = Time.unscaledTime < duckUntil ? Mathf.Pow(10f, -DuckDb / 20f)
                 : Mathf.MoveTowards(duck, 1f, (1f - Mathf.Pow(10f, -DuckDb / 20f)) * Time.unscaledDeltaTime / DuckRelease);
-            music.volume = musicVolume * duck;
+            music.volume = loops != null || MapMusicPlaying ? 0f : musicVolume * duck;
+            if (loops != null)
+            {
+                var prison = session.Prison;
+                var musicTarget = MusicPlayer.Decide(state, session.Paused, session.Sections.Current.Kind, prison.Phase, prison.WardenChasing,
+                    Mathf.Max(session.ChaserGauge, Mathf.Max(session.PolicePressure, session.SlipPursuit ? 1f : 0f)), MapMusicPlaying, loops.Hiding);
+                loops.Tick(musicTarget, musicVolume * duck, Time.unscaledDeltaTime);
+            }
             float danger = running ? Mathf.Max(session.SlipPursuit ? 1f : 0f, Mathf.InverseLerp(.35f, .9f, session.Chase.Pressure)) : 0f;
             // The looping siren is the police; the lion and the warden have their own cue (ChaserCue) until they get loops.
             if (session.Chaser.Sound != ChaserSound.Siren) danger = 0f;
@@ -135,10 +190,16 @@ namespace Mongscape.Presentation
                 wasAirborne = airborne;
                 // A missed knee step on the stairs also slows the runner; only a real slip (banana, floor) squelches.
                 bool slowing = session.Runner.Slowing;
-                if (slowing && !wasSlowing && (session.LastSlipSource == SlipSource.Banana || session.LastSlipSource == SlipSource.Floor)) Play(slip, SlipGain);
+                if (slowing && !wasSlowing && (session.LastSlipSource == SlipSource.Banana || session.LastSlipSource == SlipSource.Floor)) { Play(slip, SlipGain); lastSlipAt = Time.unscaledTime; }
                 wasSlowing = slowing;
             }
-            if (state == GameFlowState.Caught && lastState != GameFlowState.Caught) { Play(hit, HitGain); Duck(); }
+            if (state == GameFlowState.Caught && lastState != GameFlowState.Caught) { Play(hit, HitGain); Duck(); Later(CaughtAfterHit, caught, CaughtGain, true); }
+            if (state == GameFlowState.Result && lastState != GameFlowState.Result) resultAt = Time.unscaledTime + NewRecordDelay;
+            if (resultAt >= 0f && Time.unscaledTime >= resultAt)
+            {
+                resultAt = -1f;
+                if (state == GameFlowState.Result && NewBest != null && NewBest()) { Play(newRecord, NewRecordGain); Duck(); }
+            }
             lastCoins = session.Score.Coins; lastItems = session.Items.Collected; lastShields = session.ShieldSaves; lastState = state;
         }
 
