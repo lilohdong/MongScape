@@ -5,7 +5,7 @@ namespace Mongscape.Domain
 {
     public enum GameFlowState { Boot, TitleIdle, IntroTimeline, FirstPersonTakeover, Running, Caught, Result, Retry, LoadingIntro }
     // ReachLeft/ReachRight: one arm out to that side of the screen (the mine rescue, plan 3-0), sent again while held.
-    public enum MotionCommand { Center, Left, Right, Jump, Crouch, KneeStep, ReachLeft, ReachRight }
+    public enum MotionCommand { Center, Left, Right, Jump, Crouch, KneeStep, ReachLeft, ReachRight, ArmsUp }
     public enum ObstacleKind { Crate, Pipe, Barrier, Cart, Laser }
     // SlipPursuit: caught after the second warning (by the section's chaser); kept under its old name.
     public enum CaptureReason { Collision, BrokenRail, SlipPursuit }
@@ -171,9 +171,20 @@ namespace Mongscape.Domain
         public float SlowRemaining => slowLeft;
         public float SpeedMultiplier => slowLeft>0?config.SlipSpeedMultiplier:1;
         public RunnerController(RunConfig tuning) { config = tuning; Reset(); }
+        // Every jump and arms-up command seen (the zoo judges them against its notes, even in the air).
+        public int JumpCommands { get; private set; }
+        public int ArmsUpCommands { get; private set; }
+        // The zoo branch has one lane (plan 1-1): lane commands are ignored there.
+        public bool OneLane => RouteSurface.ActivePlan != null && RouteSurface.ActivePlan.Extended && !Riding
+            && SectionSpan.At(RouteSurface.ActivePlan, RouteSurface.SequenceAt(Z)).Kind == SectionKind.Zoo
+            && SectionSpan.At(RouteSurface.ActivePlan, RouteSurface.SequenceAt(Z)).Branch;
+        public void CenterLane() { if (Lane != 0) { laneFrom = X; laneTime = 0f; Lane = 0; } }
         public void Command(MotionCommand command)
         {
             if(RouteSurface.ActivePlan?.RailChoiceLocked(Z)??false)return;
+            if (command == MotionCommand.Jump) JumpCommands++;
+            if (command == MotionCommand.ArmsUp) { ArmsUpCommands++; return; }
+            if ((command == MotionCommand.Left || command == MotionCommand.Right) && OneLane) return;
             int next = Lane;
             if (command == MotionCommand.Left) next = LaneRules.Move(Lane, -1);
             if (command == MotionCommand.Right) next = LaneRules.Move(Lane, 1);
@@ -334,7 +345,10 @@ namespace Mongscape.Domain
         }
         public float CurrentSpeed => Flow.State == GameFlowState.Running && !Paused ? MoveSpeed * Runner.SpeedMultiplier * SpeedScale : 0f;
         // On foot the cadence sets the pace (CadencePace: 0.7 walking to 1.3 sprinting); the cart keeps its own speed.
-        private float MoveSpeed => (Smoothed ? smoothSpeed : TargetSpeed) * (Runner.Riding ? 1f : CadenceScale);
+        private float MoveSpeed => SongPaced ? SectionSpeed.Value / Math.Max(.01f, Runner.SpeedMultiplier) : (Smoothed ? smoothSpeed : TargetSpeed) * (Runner.Riding ? 1f : CadenceScale);
+        // The zoo song sets the speed exactly (plan 1-2b): no smoothing, no cadence and no slip slowdown, so the notes stay on
+        // the beat. The running beat moves the lion instead.
+        private bool SongPaced => Section.Speed == SpeedRule.SongFixed && SectionSpeed.HasValue && !Runner.Riding;
         // Set each frame from CadencePace (1 for the keyboard, the option off, or the tutorial).
         public float CadenceScale { get; set; } = 1f;
         // How close the police come because the player is below the target cadence (0..CadencePace.MaxPressure).

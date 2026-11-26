@@ -103,7 +103,7 @@ namespace Mongscape.Tests
             Assert.AreEqual(created,game.Map.CreatedCount);
         }
         // Zoo chunks hold either an animal or (ZooDuckChance) the duck row, so walk the zoo branch until one shows.
-        [UnityTest] public IEnumerator ZooAnimalRowsRequireAndAcceptARealJump()
+        [UnityTest][Ignore("v2 zoo (plan 1-2b): the zoo branch lays only its song notes, no random animal or log rows; see ZooPlayModeTests")] public IEnumerator ZooAnimalRowsRequireAndAcceptARealJump()
         {
             yield return Load();var game=Object.FindFirstObjectByType<GameBootstrap>();
             int animals=0;
@@ -130,7 +130,7 @@ namespace Mongscape.Tests
             }
             Assert.Greater(animals,0);
         }
-        [UnityTest] public IEnumerator ZooDuckRowIsALogThatNeedsACrouch()
+        [UnityTest][Ignore("v2 zoo (plan 1-2b): the zoo branch lays only its song notes, no random animal or log rows; see ZooPlayModeTests")] public IEnumerator ZooDuckRowIsALogThatNeedsACrouch()
         {
             yield return Load();var game=Object.FindFirstObjectByType<GameBootstrap>();
             ObstacleController[] row=null;
@@ -223,7 +223,8 @@ namespace Mongscape.Tests
         }
         [UnityTest] public IEnumerator RandomBlockersAndBananasAlwaysLeaveAClearLaneAndResetInPools()
         {
-            yield return Load();var game=Object.FindFirstObjectByType<GameBootstrap>();int branch=ZooBranch(game);Seek(game,264,branch);
+            // The mine branch: the zoo lays only its song notes (one lane, no random blockers or peels, plan 1-2b).
+            yield return Load();var game=Object.FindFirstObjectByType<GameBootstrap>();int branch=BranchFor(game,1);Seek(game,264,branch);
             int blocks=0,peels=0;
             for(int step=0;step<30;step++)
             {
@@ -281,8 +282,9 @@ namespace Mongscape.Tests
         }
         [UnityTest] public IEnumerator OnePeelShowsOnlySirenAlertAndCapturedFaceFollowsProneHead()
         {
-            yield return Load();var game=Object.FindFirstObjectByType<GameBootstrap>();Seek(game,264,ZooBranch(game));
-            FloorItemController peel=null;foreach(var entry in game.Map.Active)if(entry.Chunk.DynamicFloorItems.Count>0){peel=entry.Chunk.DynamicFloorItems[0];break;}
+            // Peels lie in the mine branch (the zoo has one lane and only its notes, plan 1-2b, 6-8).
+            yield return Load();var game=Object.FindFirstObjectByType<GameBootstrap>();Seek(game,264,BranchFor(game,1));
+            FloorItemController peel=null;foreach(var entry in game.Map.Active)if(entry.Chunk.DynamicFloorItems.Count>0&&entry.Chunk.DynamicFloorItems[0].gameObject.activeSelf){peel=entry.Chunk.DynamicFloorItems[0];break;}
             Assert.IsNotNull(peel);float z=peel.transform.position.z;RouteSurface.Sample(z,out float x,out _);
             int lane=Mathf.RoundToInt((peel.transform.position.x-x)/2.2f);game.Session.Runner.SetStartZ(z);
             while(game.Session.Runner.Lane!=lane)game.Session.Runner.Command(lane<game.Session.Runner.Lane?MotionCommand.Left:MotionCommand.Right);game.Session.Runner.Tick(.25f,0);

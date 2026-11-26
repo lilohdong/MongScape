@@ -122,6 +122,8 @@ namespace Mongscape.Presentation.Map
                 chunk.Prepare(sequence, session.OddsAt(sequence * RouteSurface.Length), random, Pacer, session.PlannedSpeed(sequence * RouteSurface.Length));
                 chunk.gameObject.SetActive(true); active.Add(new ActiveChunk(type, chunk));
                 Decorator?.Decorate(chunk, sequence, type, random);
+                // The zoo branch places its notes from the song (ZooMapView): no random hazards or items there.
+                if (plan != null && plan.Extended) { var span = SectionSpan.At(plan, sequence); if (span.Kind == SectionKind.Zoo && span.Branch) chunk.ClearForZoo(); }
                 nextPosition = chunk.Exit.position; sequence++;
             }
             if (budget != null && Time.unscaledTime >= nextBudgetUpdate)

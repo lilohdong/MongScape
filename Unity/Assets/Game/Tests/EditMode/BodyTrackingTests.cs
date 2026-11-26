@@ -172,6 +172,27 @@ namespace Mongscape.Tests
             Assert.IsEmpty(Play(PlayStyle.FullBody, t => new Body(), 3));
             Assert.IsEmpty(Play(PlayStyle.FullBody, t => { int s = (int)(t / .3) % 2; return new Body { KneeL = s == 0 ? .025f : 0, KneeR = s == 1 ? .025f : 0 }; }, 3));
         }
+        // Arms-up (zoo squeeze note, plan 5-1): both wrists over the head in both styles, one edge per raise.
+        [TestCase(PlayStyle.FullBody)][TestCase(PlayStyle.UpperBody)]
+        public void ArmsUpIsOneEdgePerRaiseInBothStyles(PlayStyle style)
+        {
+            var classifier = new MotionClassifier(new MotionTuning()); classifier.SetStyle(style);
+            for (int i = 0; i < 30; i++) classifier.Update(Frame(new Body { Legs = style == PlayStyle.FullBody }, i / 30.0));
+            int edges = 0; bool held = false;
+            for (double t = 0; t < 2.4; t += 1 / 30.0)
+            {
+                bool up = In(t, .2, .7) || In(t, 1.4, 1.9);
+                var r = classifier.Update(Frame(new Body { Legs = style == PlayStyle.FullBody, WristL = up ? .08f : .6f, WristR = up ? .08f : .6f }, 1 + t));
+                if (r.ArmsUpEdge) edges++;
+                if (In(t, .5, .6)) held |= r.ArmsUp;
+            }
+            Assert.AreEqual(2, edges); Assert.IsTrue(held);
+            var one = new MotionClassifier(new MotionTuning()); one.SetStyle(style);
+            for (int i = 0; i < 30; i++) one.Update(Frame(new Body { Legs = style == PlayStyle.FullBody }, i / 30.0));
+            int oneHand = 0;
+            for (double t = 0; t < 1.2; t += 1 / 30.0) if (one.Update(Frame(new Body { Legs = style == PlayStyle.FullBody, WristL = In(t, .2, .8) ? .08f : .6f }, 1 + t)).ArmsUpEdge) oneHand++;
+            Assert.AreEqual(0, oneHand, "One hand up is a reach, not an arms-up");
+        }
         [Test] public void UpperBodyUsesLeanHandsDuckAndArmPumps()
         {
             CollectionAssert.AreEqual(new[] { "lane-1", "lane0" }, Play(PlayStyle.UpperBody, t => new Body { Dx = In(t, .2, .8) ? -.10f : 0 }, 1.3));

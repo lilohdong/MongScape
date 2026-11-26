@@ -60,7 +60,7 @@ namespace Mongscape.Tests
             }
             Assert.AreEqual(7,seen,"Giraffe, elephant and tree should all be available in one zoo route");
         }
-        [UnityTest] public IEnumerator FallenTreeGivesWarningThenLiesLowAndCanBeJumped()
+        [UnityTest][Ignore("v2 zoo (plan 1-2b): the zoo branch lays only its song notes, no random fallen trees; see ZooPlayModeTests")] public IEnumerator FallenTreeGivesWarningThenLiesLowAndCanBeJumped()
         {
             yield return Load();var game=Object.FindFirstObjectByType<GameBootstrap>();FallenTreeHazard tree=null;
             for(float z=180;z<700&&tree==null;z+=24)
