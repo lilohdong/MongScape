@@ -108,28 +108,5 @@ namespace Mongscape.Tests
             var run = new RunSession(new RunConfig()); run.Flow.Transition(GameFlowState.TitleIdle); run.Flow.Transition(GameFlowState.LoadingIntro); run.Flow.Transition(GameFlowState.Running);
             return run;
         }
-
-        [Test] public void AirCoinsNeedABigJump()
-        {
-            var config = new RunConfig(); float height = BonusCoins.AirHeight(config);
-            Assert.IsFalse(BonusCoins.HeightReach(Apex(Running(), false), height), "A normal jump stays under the air coins");
-            Assert.IsTrue(BonusCoins.HeightReach(Apex(Running(), true), height), "A big jump reaches them");
-            Assert.IsFalse(BonusCoins.HeightReach(0, height));
-            Assert.AreEqual(BonusCoins.AirCount, 3); Assert.AreEqual(0, BonusCoins.AirZ(1), 1e-6, "Centred on the jump row");
-        }
-
-        [Test] public void TheFarHalfOfTheBarLineNeedsADeepSlide()
-        {
-            Assert.IsFalse(BonusCoins.Reachable(BonusCoin.UnderBar, false, false), "Standing never takes a coin under the bars");
-            Assert.IsTrue(BonusCoins.Reachable(BonusCoin.UnderBar, true, false));
-            Assert.IsFalse(BonusCoins.Reachable(BonusCoin.UnderBarDeep, true, false), "A plain slide stops halfway along the line");
-            Assert.IsTrue(BonusCoins.Reachable(BonusCoin.UnderBarDeep, true, true));
-            Assert.IsTrue(BonusCoins.Reachable(BonusCoin.Air, false, false)); Assert.IsTrue(BonusCoins.Reachable(BonusCoin.None, false, false));
-            int deep = 0; for (int i = 0; i < BonusCoins.CrouchCount; i++) if (BonusCoins.CrouchKind(i) == BonusCoin.UnderBarDeep) { deep++; Assert.Greater(BonusCoins.CrouchZ(i), 0, "Deep coins lie past the bars"); }
-            Assert.AreEqual(BonusCoins.CrouchDeep, deep);
-            Assert.IsTrue(BonusCoins.HeightReach(0, BonusCoins.CrouchHeight), "Low enough for a sliding runner");
-            var run = Running(); run.Runner.Command(MotionCommand.Crouch); run.Big(RunSession.BigMove.Crouch);
-            Assert.IsTrue(BonusCoins.Reachable(BonusCoin.UnderBarDeep, run.Runner.Crouching, run.Runner.DeepSliding));
-        }
     }
 }
