@@ -30,6 +30,17 @@ namespace Mongscape.Tests
             Assert.AreEqual(1f, off.Scale); Assert.AreEqual(0, off.Pressure); Assert.IsFalse(off.Lagging);
         }
 
+        [Test] public void NoPoliceGaugeForThreeSecondsAfterStepsOffTheCart()
+        {
+            var pace = new CadencePace();
+            Assert.IsTrue(pace.OnFootActive(.1f, false), "A run on foot has no grace");
+            for (int i = 0; i < 20; i++) Assert.IsFalse(pace.OnFootActive(.1f, true));
+            for (int i = 0; i < 29; i++) { bool on = pace.OnFootActive(.1f, false); Assert.IsFalse(on, "Resting " + i); pace.Tick(.1f, on, 0, Tuning, 90); }
+            Assert.AreEqual(0, pace.LagFor); Assert.AreEqual(0, pace.Pressure);
+            Assert.IsTrue(pace.OnFootActive(.2f, false), "Active after 3 s on foot");
+            pace.Reset(); Assert.IsTrue(pace.OnFootActive(.1f, false));
+        }
+
         [Test] public void PoliceCloseInOnlyAfterThreeSecondsBelowTargetAndNeverCatch()
         {
             var pace = new CadencePace();
