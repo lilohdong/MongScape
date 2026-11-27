@@ -17,6 +17,8 @@ namespace Mongscape.DevTools
     {
         private GameBootstrap game; private ZooMapView zoo; private string output; private float began;
         private bool driving, done; private string failure;
+        // --mongscape-miss-stairs: head straight for the prison and never step on its stairs, shooting the guard gauge as it fills.
+        private readonly bool missStairs = Array.IndexOf(Environment.GetCommandLineArgs(), "--mongscape-miss-stairs") >= 0;
         private readonly List<SectionKind> visited = new List<SectionKind>();
         private readonly Dictionary<int, int> lanes = new Dictionary<int, int>();
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)] private static void Install()
@@ -46,6 +48,7 @@ namespace Mongscape.DevTools
             yield return new WaitUntil(() => !game.IsLoading && !game.IsRevealing && game.Session.Flow.State == GameFlowState.Running);
             zoo = game.GetComponent<ZooMapView>();
             game.Session.Invincible = true; driving = true; Time.timeScale = 1.5f;
+            if (missStairs) { yield return MissStairs(); Finish(failure); yield break; }
             StartCoroutine(Moments());
             yield return Wait(5f); yield return Capture("01_mine_start");
             // The warning slots: one handcuff lighting up (the flash), then held.
@@ -125,6 +128,22 @@ namespace Mongscape.DevTools
                 yield return null;
             }
         }
+        private IEnumerator MissStairs()
+        {
+            yield return Until(() => game.Session.Sections.Current.Kind == SectionKind.Prison);
+            game.Session.Invincible = false; float gauge = 0f; int warnings = 0, shots = 0;
+            while (!done && game.Session.Flow.State == GameFlowState.Running && shots < 6)
+            {
+                var run = game.Session;
+                if (run.ChaserGauge != gauge || run.Warnings != warnings)
+                {
+                    gauge = run.ChaserGauge; warnings = run.Warnings;
+                    yield return Wait(.3f); yield return Capture("stair_gauge_" + (++shots) + "_g" + Mathf.RoundToInt(gauge * 100) + "_w" + warnings);
+                }
+                yield return null;
+            }
+            Debug.Log("MONGSCAPE_ROUTE stair gauge shots " + shots + " state " + game.Session.Flow.State);
+        }
         private int lastSqueeze, puddle; private float puddleZ;
         private IEnumerator Moment(string name) { capturing = true; yield return Capture(name); capturing = false; }
         // Thirty guests above any run (the result table has to scroll), and one name with several runs.
@@ -169,7 +188,7 @@ namespace Mongscape.DevTools
                 int sequence = RouteSurface.SequenceAt(z), lap = plan.CycleAt(sequence);
                 if (!lanes.TryGetValue(lap, out int lane))
                 {
-                    var want = lanes.Count == 0 ? SectionKind.Zoo : lanes.Count == 1 ? SectionKind.Prison : SectionKind.Mine;
+                    var want = missStairs ? SectionKind.Prison : lanes.Count == 0 ? SectionKind.Zoo : lanes.Count == 1 ? SectionKind.Prison : SectionKind.Mine;
                     for (int l = -1; l <= 1; l++) if (SectionDef.KindOfDestination(plan.DestinationFor(sequence, l)) == want) lane = l;
                     lanes[lap] = lane; Debug.Log("MONGSCAPE_ROUTE fork lap " + lap + " wants " + want + " lane " + lane);
                 }
@@ -185,7 +204,7 @@ namespace Mongscape.DevTools
                         runner.Command(obstacle.Kind == ZooNoteKind.Jump ? MotionCommand.Jump : MotionCommand.ArmsUp);
                 }
             if (run.Prison.Phase == PrisonPhase.Hold) runner.Command(MotionCommand.Crouch);
-            if (StairJudge.StepDue(runner)) runner.Command(MotionCommand.KneeStep);
+            if (StairJudge.StepDue(runner) && !(missStairs && !run.Invincible)) runner.Command(MotionCommand.KneeStep);
             if (runner.Riding)
                 foreach (var chunk in game.Map.Active) foreach (var gap in chunk.Chunk.RailGaps)
                     if (gap.gameObject.activeInHierarchy && !gap.Passed && gap.transform.position.z >= z && gap.transform.position.z - z < Mathf.Max(1, run.CurrentSpeed) * .8f)
