@@ -65,7 +65,8 @@ namespace Mongscape.Presentation
         {
             // Same proportions as the approved mockup (ui-review/tools/ui.py ic_cuff).
             float s = Mathf.Min(r.width, r.height); var c = r.center; Color col = color();
-            float rr = s * .2f, w = Mathf.Max(6, s * .09f), cy = c.y + s * .14f;
+            // cy sits so the whole shape (lock boxes to ring bottoms) is centred on the rect.
+            float rr = s * .2f, w = Mathf.Max(6, s * .09f), cy = c.y + s * .05f;
             foreach (float cx in new[] { c.x - s * .29f, c.x + s * .29f })
             {
                 Ring(p, new Vector2(cx, cy), rr - w / 2, w, col);

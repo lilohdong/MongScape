@@ -13,6 +13,8 @@ namespace Mongscape.Presentation
         public enum Mode { AfterSignUp, BeforePlay, FromMenu, Short }
         readonly OverlaySkin skin;
         PlayStyle? picked;
+        // 72 px between buttons at 1080p (48 in this 720 layout).
+        const float Gap = 48f, CardWidth = (1080f - 2 * Gap) / 3f, Pitch = CardWidth + Gap, StyleWidth = 250f, StyleLeft = 640f - (3 * StyleWidth + 2 * Gap) / 2f;
         public TutorialOfferScreen(OverlaySkin overlaySkin) { skin = overlaySkin; }
         // A fresh visit starts on the player's own style.
         public void Open() { picked = null; }
@@ -34,7 +36,7 @@ namespace Mongscape.Presentation
             var choice = TutorialChoice.None;
             if (mode == Mode.Short)
             {
-                skin.Text(new Rect(100, 160, 1080, 40), "보정  구출  바나나", 28, Palette.Cream, TextAnchor.MiddleCenter, false, true);
+                skin.Text(new Rect(100, 160, 1080, 40), "몸 맞추기  구출  바나나", 28, Palette.Cream, TextAnchor.MiddleCenter, false, true);
                 if (skin.Button(new Rect(400, 250, 480, 84), "해 보기", Palette.Gold, Color.clear, Palette.Outline, 34)) choice = TutorialChoice.Start;
             }
             else
@@ -42,7 +44,7 @@ namespace Mongscape.Presentation
                 for (int i = 0; i < 3; i++)
                 {
                     var option = (TutorialChapter)i;
-                    var card = new Rect(100 + i * 370, 150, 340, 290);
+                    var card = new Rect(100 + i * Pitch, 150, CardWidth, 270);
                     if (Card(card, option, mask, i + 1)) { choice = TutorialChoice.Start; chapter = option; }
                 }
             }
@@ -51,13 +53,13 @@ namespace Mongscape.Presentation
             {
                 var option = (PlayStyle)i;
                 bool allowed = PlayStyleInfo.Allowed(option, bodyOk), on = option == style;
-                var r = new Rect(240 + i * 270, 470, 250, 56);
+                var r = new Rect(StyleLeft + i * (StyleWidth + Gap), 468, StyleWidth, 56);
                 bool was = GUI.enabled; GUI.enabled = was && allowed;
                 if (skin.Button(r, PlayStyleInfo.Label(option), on ? Palette.Gold : Palette.A(Palette.Ground, .9f), on ? Color.clear : Palette.Wood, on ? Palette.Outline : allowed ? Palette.Cream : Palette.Muted, 24)) picked = option;
                 GUI.enabled = was;
             }
             string skip = mode == Mode.AfterSignUp ? "나중에 하기" : mode == Mode.BeforePlay ? "건너뛰기" : mode == Mode.Short ? "건너뛰기" : "돌아가기";
-            if (skin.Button(new Rect(440, 560, 400, 62), skip, Palette.A(Palette.Ground, 0.92f), Palette.Wood, Palette.Cream, 26)) choice = TutorialChoice.Skip;
+            if (skin.Button(new Rect(440, 572, 400, 62), skip, Palette.A(Palette.Ground, 0.92f), Palette.Wood, Palette.Cream, 26)) choice = TutorialChoice.Skip;
             // Esc skips; the number of an open card starts it.
             var e = Event.current;
             if (e.type == EventType.KeyDown)
@@ -81,7 +83,7 @@ namespace Mongscape.Presentation
             var dim = open ? Palette.Cream : Palette.Muted;
             skin.Text(new Rect(r.x, r.y + 18, r.width, 96), number.ToString(), 82, open ? Palette.Gold : Palette.Muted, TextAnchor.MiddleCenter);
             skin.Text(new Rect(r.x + 10, r.y + 138, r.width - 20, 50), TutorialScript.ChapterTitle(chapter), 34, dim, TextAnchor.MiddleCenter, false, true);
-            var badge = new Rect(r.x + 90, r.y + 224, r.width - 180, 44);
+            var badge = new Rect(r.x + 90, r.y + 206, r.width - 180, 44);
             skin.BorderBox(badge, done ? new Color(.2f, .5f, .3f, .9f) : open ? Palette.A(Palette.Gold, .9f) : Palette.A(Palette.Track, .9f), Color.clear, 0);
             skin.Text(badge, TutorialProgress.State(mask, chapter), 24, done ? Palette.Cream : open ? Palette.Outline : Palette.Muted, TextAnchor.MiddleCenter, false, true);
             return pressed && open;

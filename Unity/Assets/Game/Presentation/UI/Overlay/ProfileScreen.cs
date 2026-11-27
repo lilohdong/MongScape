@@ -103,40 +103,42 @@ namespace Mongscape.Presentation
             float x = 230, w = 820;
             bool asking = form.Deleting != ProfileDeleteStep.None;
             skin.Text(new Rect(x, 36, 600, 48), "내 정보", 44, Palette.Cream, TextAnchor.MiddleLeft);
-            skin.Text(new Rect(x, 88, w, 24), "닉네임과 설정은 회원 계정에 저장됩니다. 닉네임은 다른 회원과 겹칠 수 없습니다.", 15, Palette.Sand, TextAnchor.MiddleLeft, false, true);
+            skin.Text(new Rect(x, 86, w, 34), "닉네임과 설정은 계정에 저장돼요.", 22, Palette.Sand, TextAnchor.MiddleLeft, false, true);
 
             bool wasEnabled = GUI.enabled; GUI.enabled = wasEnabled && !form.Busy && !asking;
-            skin.Text(new Rect(x, 130, 300, 28), "닉네임 (1~10자)", 18, Palette.Sand, TextAnchor.MiddleLeft, false, true);
+            skin.Text(new Rect(x, 126, 300, 34), "닉네임 (1~10자)", 24, Palette.Sand, TextAnchor.MiddleLeft, false, true);
             GUI.SetNextControlName("MongscapeProfileName");
             form.Nickname = skin.Input(new Rect(x, 162, 400, 52), form.Nickname, AccountSession.MaxNicknameInput);
             if (focusName && e.type == EventType.Repaint) { GUI.FocusControl("MongscapeProfileName"); focusName = false; }
-            skin.Text(new Rect(x, 232, 200, 28), "몸무게", 18, Palette.Sand, TextAnchor.MiddleLeft, false, true);
+            skin.Text(new Rect(x, 228, 200, 34), "몸무게", 24, Palette.Sand, TextAnchor.MiddleLeft, false, true);
             GUI.SetNextControlName("MongscapeProfileWeight");
             form.Weight = skin.Input(new Rect(x, 264, 150, 52), form.Weight, 6);
-            skin.Text(new Rect(x + 158, 264, 50, 52), "kg", 20, Palette.Sand, TextAnchor.MiddleLeft);
-            skin.Text(new Rect(x, 334, 300, 28), "기본 플레이 방식", 18, Palette.Sand, TextAnchor.MiddleLeft, false, true);
+            skin.Text(new Rect(x + 158, 264, 60, 52), "kg", 26, Palette.Sand, TextAnchor.MiddleLeft);
+            skin.Text(new Rect(x, 330, 300, 34), "기본 플레이 방식", 24, Palette.Sand, TextAnchor.MiddleLeft, false, true);
             for (int i = 0; i < 3; i++)
             {
                 var option = (PlayStyle)i;
-                var r = new Rect(x + i * 136, 366, 128, 48);
+                var r = new Rect(x + i * 136, 366, 128, 60);
                 bool on = option == form.Style;
-                if (skin.Button(r, PlayStyleInfo.Label(option), on ? Palette.Gold : Palette.A(Palette.Ground, 0.9f), on ? Color.clear : Palette.Wood, on ? Palette.Outline : Palette.Cream, 20))
+                if (skin.Button(r, PlayStyleInfo.Label(option), on ? Palette.Gold : Palette.A(Palette.Ground, 0.9f), on ? Color.clear : Palette.Wood, on ? Palette.Outline : Palette.Cream, 24))
                     form.Style = option;
             }
             GUI.enabled = wasEnabled;
-            skin.Text(new Rect(x, 426, 420, 26), form.Message, 16, form.Failed ? Palette.Error : Palette.Sand, TextAnchor.MiddleLeft, false, true);
+            skin.Text(new Rect(x, 432, 420, 30), form.Message, 22, form.Failed ? Palette.Error : Palette.Sand, TextAnchor.MiddleLeft, false, true);
 
             DrawStats(form, new Rect(x + 450, 130, w - 450, 300));
             if (asking) DrawDeleteQuestion(form, new Rect(x, 462, w, 128), delete, escape);
             else DrawWeek(form, new Rect(x + 450, 444, w - 450, 110));
 
+            // 120px high buttons. Delete sits in the far corner from Back, so a hand drifting to Back cannot hit it; it still asks twice.
+            var plain = Palette.A(Palette.Ground, 0.9f);
             GUI.enabled = wasEnabled && !form.Busy && !asking;
-            if (skin.Button(new Rect(98, 606, 190, 56), "저장", Palette.Gold, Color.clear, Palette.Outline, 22) || enter && GUI.enabled) form.Save();
-            if (skin.Button(new Rect(336, 606, 190, 56), "로그아웃", Palette.A(Palette.Ground, 0.9f), Palette.Wood, Palette.Cream, 22)) logout?.Invoke();
-            if (skin.Button(new Rect(574, 606, 190, 56), "회원 탈퇴", Palette.A(Palette.Ground, 0.9f), new Color(.75f, .25f, .18f), new Color(1, .7f, .6f), 22)) delete?.Invoke();
+            if (skin.Button(new Rect(44, 620, 200, 80), "회원 탈퇴", plain, new Color(.75f, .25f, .18f), new Color(1, .7f, .6f), 26)) delete?.Invoke();
+            if (skin.Button(new Rect(292, 620, 200, 80), "저장", Palette.Gold, Color.clear, Palette.Outline, 28) || enter && GUI.enabled) form.Save();
+            if (skin.Button(new Rect(540, 620, 200, 80), "로그아웃", plain, Palette.Wood, Palette.Cream, 26)) logout?.Invoke();
             GUI.enabled = wasEnabled && !form.Busy;
-            if (week != null && skin.Button(new Rect(1050, 606, 190, 56), "이번 주 운동", Palette.A(Palette.Ground, 0.9f), Palette.Wood, Palette.Cream, 22)) week();
-            if (skin.Button(new Rect(812, 606, 190, 56), "뒤로", Palette.A(Palette.Ground, 0.9f), Palette.Wood, Palette.Cream, 22) || escape && !asking && GUI.enabled) back?.Invoke();
+            if (week != null && skin.Button(new Rect(788, 620, 200, 80), "이번 주 운동", plain, Palette.Wood, Palette.Cream, 24)) week();
+            if (skin.Button(new Rect(1036, 620, 200, 80), "뒤로", plain, Palette.Wood, Palette.Cream, 28) || escape && !asking && GUI.enabled) back?.Invoke();
             GUI.enabled = wasEnabled;
         }
 
@@ -174,7 +176,7 @@ namespace Mongscape.Presentation
             skin.BorderBox(r, Palette.A(Palette.Panel, 0.95f), Palette.Wood, 2);
             skin.Text(new Rect(r.x + 24, r.y + 16, r.width - 48, 34), "내 기록", 24, Palette.Gold, TextAnchor.MiddleLeft);
             var stats = form.Stats;
-            if (stats == null) { skin.Text(new Rect(r.x + 24, r.y + 70, r.width - 48, 40), form.StatsNote, 16, Palette.Sand, TextAnchor.MiddleLeft, false, true); return; }
+            if (stats == null) { skin.Text(new Rect(r.x + 24, r.y + 70, r.width - 48, 40), form.StatsNote, 22, Palette.Sand, TextAnchor.MiddleLeft, false, true); return; }
             string[] labels = { "오늘 소모 칼로리", "누적 소모 칼로리", "전신 최고 점수", "상체 최고 점수", "키보드 최고 점수" };
             string[] values = { stats.today_kcal.ToString("N0", Num) + "kcal", stats.total_kcal.ToString("N0", Num) + "kcal", Best(stats, 0), Best(stats, 1), Best(stats, 2) };
             for (int i = 0; i < labels.Length; i++)
@@ -182,7 +184,7 @@ namespace Mongscape.Presentation
                 float y = r.y + 62 + i * 46;
                 // Best scores keep the previous season's record (the score formula changed and the ranking started anew) under the label.
                 string previous = i >= 2 ? ProfileForm.Previous(stats, i - 2) : "";
-                skin.Text(new Rect(r.x + 24, previous.Length > 0 ? y - 4 : y, 200, previous.Length > 0 ? 28 : 40), labels[i], 17, Palette.Sand, TextAnchor.MiddleLeft, false, true);
+                skin.Text(new Rect(r.x + 24, previous.Length > 0 ? y - 4 : y, 200, previous.Length > 0 ? 28 : 40), labels[i], 22, Palette.Sand, TextAnchor.MiddleLeft, false, true);
                 if (previous.Length > 0) skin.Text(new Rect(r.x + 24, y + 22, 220, 20), previous, 13, Palette.Sand, TextAnchor.MiddleLeft, false, true);
                 skin.Text(new Rect(r.xMax - 184, y, 160, 40), values[i], 22, Palette.Cream, TextAnchor.MiddleRight);
             }

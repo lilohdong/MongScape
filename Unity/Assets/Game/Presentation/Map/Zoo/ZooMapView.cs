@@ -64,11 +64,11 @@ namespace Mongscape.Presentation.Map
         }
         // The zoo tutorial: a short course of fences and bars on the tutorial's zoo map, no iron gate. The argument is unused
         // (the old sync offset).
-        public bool StartPractice(float unused)
+        public bool StartPractice(float unused, IList<ZooObstacle> layout = null)
         {
             if (run == null) return false;
             StopZoo(); Chase.Practice = true; Chase.LionPace = ZooChase.LionPaceFor(1);
-            Begin(ZooChase.Layout(ZooPractice.Length, 1, random, false), ZooPractice.Length, false);
+            Begin(layout != null ? new List<ZooObstacle>(layout) : ZooChase.Layout(ZooPractice.Length, 1, random, false), ZooPractice.Length, false);
             return true;
         }
         public void StopPractice() { if (Chase.Practice) StopZoo(); }
@@ -138,7 +138,7 @@ namespace Mongscape.Presentation.Map
             var obstacle = Chase.Obstacles[index];
             // A fence trip (plan 6-8): the runner falls and the lion closes in (ZooChase), no warning.
             if (!hit && obstacle.Kind == ZooNoteKind.Jump) run.Runner.Stumble();
-            if (hit && obstacle.Kind == ZooNoteKind.ArmsUp && index < noteViews.Count && noteViews[index] != null) noteViews[index].localScale = new Vector3(1.25f, 1f, 1f);
+            if (hit && obstacle.Kind == ZooNoteKind.ArmsUp && index < noteViews.Count && noteViews[index] != null) Squeeze(noteViews[index], 0f);
         }
         // The lion's paws (about 2.7 strides a second) once it is out of the cage, louder the closer it is.
         private void PlaySteps()
@@ -190,7 +190,16 @@ namespace Mongscape.Presentation.Map
                 // Every third jump is a puddle, the others fences (plan 1-2c).
                 bool hasContent = content != null;
                 GameObject prefab = !hasContent ? null : jump ? (jumps++ % 3 == 2 ? content.Puddle : content.Fence) : content.SqueezeBars;
-                var view = Spawn(prefab, jump ? new Vector3(3f, .9f, .25f) : new Vector3(.3f, 2.6f, .3f), jump ? new Color(.55f, .38f, .2f) : new Color(.35f, .36f, .4f), Chase.ObstacleZ(i), 0f);
+                GameObject view;
+                if (jump) view = Spawn(prefab, new Vector3(3f, .9f, .25f), new Color(.55f, .38f, .2f), Chase.ObstacleZ(i), 0f);
+                else
+                {
+                    // Two barred walls closing to a tall slot (SqueezeGateView), in place of the single bar prop.
+                    view = SqueezeGateView.Build().gameObject;
+                    RouteSurface.Sample(Chase.ObstacleZ(i), out float gx, out float gy);
+                    view.transform.position = new Vector3(gx, gy, Chase.ObstacleZ(i));
+                    props.Add(view);
+                }
                 noteViews.Add(view != null ? view.transform : null);
             }
             if (Chase.HasGate && !Chase.Practice)
@@ -255,9 +264,15 @@ namespace Mongscape.Presentation.Map
                 var view = noteViews[i];
                 if (view == null || Chase.Obstacles[i].Kind != ZooNoteKind.ArmsUp || Chase.WasHit(i)) continue;
                 float ahead = Chase.Obstacles[i].Distance - Chase.Distance;
-                float squeeze = Mathf.Clamp01(1f - ahead / (1.2f * BaseSpeed));
-                view.localScale = new Vector3(Mathf.Lerp(1.2f, .8f, squeeze), 1f, 1f);
+                float squeeze = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(1f - (ahead - .15f * BaseSpeed) / (1.6f * BaseSpeed)));
+                Squeeze(view, squeeze);
             }
+        }
+        private static void Squeeze(Transform view, float amount)
+        {
+            var gate = view.GetComponent<SqueezeGateView>();
+            if (gate != null) gate.SetSqueeze(amount);
+            else view.localScale = new Vector3(Mathf.Lerp(1.25f, .8f, amount), 1f, 1f);
         }
 
         // ---- the lion ----------------------------------------------------------------------------------------------------

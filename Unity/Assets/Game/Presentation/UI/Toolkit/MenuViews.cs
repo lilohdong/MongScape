@@ -289,7 +289,7 @@ namespace Mongscape.Presentation
             Color main = mine ? UiTokens.Panel : UiTokens.Text, dim = mine ? UiTokens.Panel : UiTokens.TextDim;
             var rank = UiTokens.Label(r.Rank.ToString(), 52, dim, TextAnchor.MiddleLeft, !mine); rank.style.width = 140;
             var name = UiTokens.Label(r.Name, 52, main, TextAnchor.MiddleLeft, !mine); name.style.flexGrow = 1; name.style.overflow = Overflow.Hidden; name.style.textOverflow = TextOverflow.Ellipsis;
-            var score = UiTokens.Label(UiTokens.N(r.Score), 52, main, TextAnchor.MiddleRight, !mine); score.style.width = 360;
+            var score = UiTokens.Label(UiTokens.Points(r.Score), 52, main, TextAnchor.MiddleRight, !mine); score.style.width = 360;
             var dist = UiTokens.Label(UiTokens.N(Mathf.FloorToInt(r.Distance)) + " m", 44, dim, TextAnchor.MiddleRight, !mine); dist.style.width = 300;
             row.Add(rank); row.Add(name); row.Add(score); row.Add(dist);
             return row;
