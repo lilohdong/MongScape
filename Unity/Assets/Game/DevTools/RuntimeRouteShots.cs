@@ -39,10 +39,10 @@ namespace Mongscape.DevTools
             yield return new WaitUntil(() => game.Session != null && game.Session.Flow.State == GameFlowState.TitleIdle);
             var settings = ((ISettingsHost)game).Settings; settings.Fullscreen = false; settings.PerformanceOverlay = false; settings.AutoPerformance = false;
             settings.MusicVolume = settings.EffectsVolume = 0; game.ApplySettings(false);
-            Screen.SetResolution(1920, 1080, false);
+            { var a = Environment.GetCommandLineArgs(); int sz = Array.IndexOf(a, "--mongscape-audit-size"); var wh = sz >= 0 && sz + 1 < a.Length ? a[sz + 1].Split('x') : new[] { "1920", "1080" }; Screen.SetResolution(int.Parse(wh[0]), int.Parse(wh[1]), false); }
             game.UseAccountServices(new RuntimeUiReview.ReviewAccountGateway());
             Seed();
-            game.StartPlayerRun(new PlayerProfile { Name = "", Weight = "70", Style = PlayStyle.Keyboard });
+            game.KeyStepsOverride = 120f; game.StartPlayerRun(new PlayerProfile { Name = "", Weight = "70", Style = PlayStyle.Keyboard });
             yield return new WaitUntil(() => !game.IsLoading && !game.IsRevealing && game.Session.Flow.State == GameFlowState.Running);
             zoo = game.GetComponent<ZooMapView>();
             game.Session.Invincible = true; driving = true; Time.timeScale = 1.5f;
@@ -117,11 +117,12 @@ namespace Mongscape.DevTools
                 return;
             }
             if (zoo != null && zoo.Chase.Active)
-                for (int i = 0; i < zoo.Chase.Map.Notes.Count; i++)
+                for (int i = 0; i < zoo.Chase.Obstacles.Count; i++)
                 {
-                    var note = zoo.Chase.Map.Notes[i];
-                    if (!zoo.Chase.IsJudged(i) && Mathf.Abs(note.Time - zoo.Chase.SongTime) < .08f)
-                        runner.Command(note.Kind == ZooNoteKind.Jump ? MotionCommand.Jump : MotionCommand.ArmsUp);
+                    var obstacle = zoo.Chase.Obstacles[i];
+                    float ahead = obstacle.Distance - zoo.Chase.Distance;
+                    if (!zoo.Chase.IsJudged(i) && ahead > 0f && ahead < 3f)
+                        runner.Command(obstacle.Kind == ZooNoteKind.Jump ? MotionCommand.Jump : MotionCommand.ArmsUp);
                 }
             if (run.Prison.Phase == PrisonPhase.Hold) runner.Command(MotionCommand.Crouch);
             if (StairJudge.StepDue(runner)) runner.Command(MotionCommand.KneeStep);

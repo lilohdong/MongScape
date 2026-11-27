@@ -149,7 +149,9 @@ namespace Mongscape.Presentation
                 "웹캠으로 추정한 값이라 실제와 다를 수 있어요",
                 "자세한 건 도움말에",
             };
-            foreach (var line in lines) { var l = UiTokens.Label(line, 48, UiTokens.Text); l.style.marginBottom = 22; infoBody.Add(l); }
+            // A page to read at arm's length: smaller type than the buttons (title 52, text 34, airy lines).
+            ((Label)info[0][0]).style.fontSize = 52; infoBody.style.top = 150;
+            foreach (var line in lines) { var l = UiTokens.Label(line, 34, UiTokens.Text); l.style.marginBottom = 8; l.style.height = 48; infoBody.Add(l); }
             frame.Add(more); frame.Add(info);
             Gestures.Add(moreClose); Gestures.Add(infoClose);
             Root.Visible = false;
@@ -269,7 +271,7 @@ namespace Mongscape.Presentation
         void LayoutButtons(bool withCalibrate)
         {
             // Left edge of the left panel to the right edge of the right panel; gaps of 90.
-            const float y = 920, h = 130;
+            const float y = 932, h = 120;
             if (withCalibrate)
             {
                 float w = (RightX + RightW - LeftX - 2 * 90) / 3f;

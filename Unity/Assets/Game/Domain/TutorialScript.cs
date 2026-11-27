@@ -9,14 +9,15 @@ namespace Mongscape.Domain
     // Plan 6-1b: the tutorial is three chapters. A visit plays one chapter and goes back to the menu.
     public enum TutorialChapter { Basics, Zoo, Prison }
 
-    // Basics (mine): camera, calibration, running in place, lane, jump, crouch, rescue, banana with the warning rule picture,
-    // the X pause, cart fork. Zoo: beat sync, one verse, the lion's mirror. Prison: one stair, one searchlight set, the alarm rule.
+    // Basics (mine): camera, calibration, running in place, lane, jump, crouch, rescue, the warning (step on the first banana and see
+    // the slot fill), the banana (dodge the second while the empty slot blinks), the X pause, cart fork. Zoo: beat sync, one verse,
+    // the lion's mirror. Prison: one stair, the alarm (stand under the searchlight and see the slot fill), hiding.
     public enum TutorialStep { Camera, Calibrate, Cadence, Lane, Jump, Crouch, Rescue, Banana, WarnRule, PauseX, Fork, Sync, Verse, Rearview, Stair, Hide, AlarmRule, Done }
 
     // What a step waits for: a framed body, a calibrated body, a held pace, a lesson obstacle (or both bananas, or the stair)
     // passed cleanly, a lean at the cart fork, a station the director runs itself (rescue, beat sync, verse, hiding),
-    // a picture shown for a few seconds, or the pause (gesture or Esc).
-    public enum TutorialPass { Framed, Calibrated, Paced, ObstaclePassed, ForkChosen, Station, Picture, Paused, None }
+    // one real warning taken on purpose, or the pause (gesture or Esc).
+    public enum TutorialPass { Framed, Calibrated, Paced, ObstaclePassed, ForkChosen, Station, Warned, Paused, None }
 
     // The lesson hazards of the course; every random hazard, item and coin is removed.
     public enum TutorialHazard { None, LaneBlock, JumpRow, CrouchRow, Rescue, Bananas }
@@ -40,7 +41,7 @@ namespace Mongscape.Domain
         // From this many retries of one step, the demo window grows into the joint comparison (plan 6-0).
         public const int FollowAlongRetries = 3;
         public bool FollowAlong => Retries >= FollowAlongRetries;
-        public static readonly TutorialStep[] UpdateSteps = { TutorialStep.Calibrate, TutorialStep.Rescue, TutorialStep.Banana, TutorialStep.WarnRule };
+        public static readonly TutorialStep[] UpdateSteps = { TutorialStep.Calibrate, TutorialStep.Rescue, TutorialStep.WarnRule, TutorialStep.Banana };
 
         public TutorialScript(TutorialChapter chapter, PlayStyle style, bool forks = true, bool shortVersion = false)
         {
@@ -57,9 +58,9 @@ namespace Mongscape.Domain
         }
         public static IReadOnlyList<TutorialStep> StepsOf(TutorialChapter chapter) => chapter == TutorialChapter.Zoo ? ZooSteps : chapter == TutorialChapter.Prison ? PrisonSteps : BasicsSteps;
         private static readonly TutorialStep[] BasicsSteps = { TutorialStep.Camera, TutorialStep.Calibrate, TutorialStep.Cadence, TutorialStep.Lane, TutorialStep.Jump, TutorialStep.Crouch,
-            TutorialStep.Rescue, TutorialStep.Banana, TutorialStep.WarnRule, TutorialStep.PauseX, TutorialStep.Fork };
+            TutorialStep.Rescue, TutorialStep.WarnRule, TutorialStep.Banana, TutorialStep.PauseX, TutorialStep.Fork };
         private static readonly TutorialStep[] ZooSteps = { TutorialStep.Sync, TutorialStep.Verse, TutorialStep.Rearview };
-        private static readonly TutorialStep[] PrisonSteps = { TutorialStep.Stair, TutorialStep.Hide, TutorialStep.AlarmRule };
+        private static readonly TutorialStep[] PrisonSteps = { TutorialStep.Stair, TutorialStep.AlarmRule, TutorialStep.Hide };
         public bool Has(TutorialStep step) => steps.Contains(step);
         // The step's pass condition was met: the next lesson starts with a fresh retry count.
         public bool Pass() { if (Finished) return false; Index++; Retries = 0; return true; }
@@ -76,7 +77,7 @@ namespace Mongscape.Domain
                 case TutorialStep.Cadence: return TutorialPass.Paced;
                 case TutorialStep.Fork: return TutorialPass.ForkChosen;
                 case TutorialStep.Rescue: case TutorialStep.Sync: case TutorialStep.Verse: case TutorialStep.Rearview: case TutorialStep.Hide: return TutorialPass.Station;
-                case TutorialStep.WarnRule: case TutorialStep.AlarmRule: return TutorialPass.Picture;
+                case TutorialStep.WarnRule: case TutorialStep.AlarmRule: return TutorialPass.Warned;
                 case TutorialStep.PauseX: return TutorialPass.Paused;
                 case TutorialStep.Done: return TutorialPass.None;
                 default: return TutorialPass.ObstaclePassed;
@@ -106,13 +107,12 @@ namespace Mongscape.Domain
         }
 
         public static string ChapterTitle(TutorialChapter chapter) => chapter == TutorialChapter.Zoo ? "동물원 연습" : chapter == TutorialChapter.Prison ? "감옥 연습" : "기본";
-        public static string ChapterLength(TutorialChapter chapter) => chapter == TutorialChapter.Zoo ? "1분" : chapter == TutorialChapter.Prison ? "40초" : "2분";
         public static string Title(TutorialStep step)
         {
             switch (step)
             {
-                case TutorialStep.Camera: return "카메라 확인"; case TutorialStep.Calibrate: return "보정"; case TutorialStep.Cadence: return "제자리 달리기";
-                case TutorialStep.Lane: return "레인 이동"; case TutorialStep.Jump: return "점프"; case TutorialStep.Crouch: return "숙이기";
+                case TutorialStep.Camera: return "카메라 확인"; case TutorialStep.Calibrate: return "몸 맞추기"; case TutorialStep.Cadence: return "제자리 달리기";
+                case TutorialStep.Lane: return "옆으로 가기"; case TutorialStep.Jump: return "점프"; case TutorialStep.Crouch: return "숙이기";
                 case TutorialStep.Rescue: return "구출"; case TutorialStep.Banana: return "바나나"; case TutorialStep.WarnRule: return "경고";
                 case TutorialStep.PauseX: return "일시정지"; case TutorialStep.Fork: return "갈림길"; case TutorialStep.Sync: return "싱크 조절";
                 case TutorialStep.Verse: return "노트"; case TutorialStep.Rearview: return "사자"; case TutorialStep.Stair: return "계단";
@@ -140,7 +140,8 @@ namespace Mongscape.Domain
                 case TutorialStep.Stair: return keys ? "W 번갈아 누르기" : upper ? "팔꿈치 당겨 내리기" : "제자리에서 걷듯 무릎 들기";
                 case TutorialStep.Hide: return keys ? "S 누르고 버티기" : upper ? "상체 숙여 버티기" : "숙여서 버티기";
                 case TutorialStep.Rearview: return "거울 속 사자 보기";
-                case TutorialStep.WarnRule: case TutorialStep.AlarmRule: return "그림 보기";
+                case TutorialStep.WarnRule: return keys ? "A 또는 D로 바나나 밟기" : "바나나 밟아 보기";
+                case TutorialStep.AlarmRule: return keys ? "S 떼고 서 있기" : "서서 기다리기";
                 default: return "다 했어요";
             }
         }
@@ -216,10 +217,10 @@ namespace Mongscape.Domain
             if (chapter == TutorialChapter.Prison) return (PrisonCellChunk + 1) * RouteSurface.Length + 4f;
             return step == TutorialStep.Cadence ? (PaceChunk + 1) * RouteSurface.Length - 4f
                 : step == TutorialStep.Rescue ? RescueChunk * RouteSurface.Length + 14f
-                : step == TutorialStep.WarnRule ? (BananaChunk + 1) * RouteSurface.Length + 2f : (PauseChunk) * RouteSurface.Length + 10f;
+                : (PauseChunk) * RouteSurface.Length + 10f;
         }
-        // Two peels in the blocked lane of the banana chunk: step aside for both.
-        public static readonly float[] BananaZ = { 8f, 16f };
+        // Two peels in the blocked lane of the banana chunk: step on the first (the warning), aside for the second.
+        public static readonly float[] BananaZ = { 6f, 18f };
         // The prison chapter is the real branch (PrisonCourse); this tells it where the first set starts.
         public static bool PrisonChapter => Script != null && Script.Chapter == TutorialChapter.Prison;
         public static int PrisonIndex(int sequence) => PrisonChapter && sequence >= 0 && sequence < PrisonLap.Length ? sequence : -1;
@@ -251,14 +252,16 @@ namespace Mongscape.Domain
                 case TutorialStep.Jump: return JumpChunk * RouteSurface.Length - 8f;
                 case TutorialStep.Crouch: return CrouchChunk * RouteSurface.Length - 8f;
                 case TutorialStep.Rescue: return RescueChunk * RouteSurface.Length;
-                case TutorialStep.Banana: return BananaChunk * RouteSurface.Length - 6f;
+                case TutorialStep.WarnRule: return BananaChunk * RouteSurface.Length - 6f;
+                // Past the first peel (stepped on already), in front of the second.
+                case TutorialStep.Banana: return BananaChunk * RouteSurface.Length + BananaZ[0] + 2f;
                 // Early in the corridor before the stair, with time to read the call.
                 case TutorialStep.Stair: return 2f;
                 // On the cart, before the fork window.
                 case TutorialStep.Fork: return (ForkLapStart + 1) * RouteSurface.Length + 2f;
                 case TutorialStep.Sync: case TutorialStep.Verse: case TutorialStep.Rearview: return HoldZ(TutorialChapter.Zoo, step);
                 case TutorialStep.Hide: return PrisonCellChunk * RouteSurface.Length + 2f;
-                case TutorialStep.AlarmRule: return HoldZ(TutorialChapter.Prison, step);
+                case TutorialStep.AlarmRule: return PrisonCellChunk * RouteSurface.Length + 2f;
                 default: return 2f;
             }
         }

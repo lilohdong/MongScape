@@ -306,6 +306,18 @@ namespace Mongscape.Domain
         // Demo invincibility (development builds only, toggled by the operator): no capture, fall or slip ends or slows the run.
         // It survives Reset so it stays on across runs until switched off. Tutorial lessons still count mistakes.
         public bool Invincible {get;set;}
+        // The tutorial's warning lessons let one warning land for real (the slot fills, the chaser's sound) instead of a miss.
+        public bool TutorialWarnings {get;set;}
+        // The HUD blinks the empty warning slot: one more is the capture (the tutorial's banana lesson).
+        public bool BlinkNextWarning {get;set;}
+        private bool TutorialWarn(WarningCause cause)
+        {
+            SlipStrikes = Math.Min(MaxWarnings - 1, SlipStrikes + 1); lastStrike = clock; lastHit = clock; lastWarnedAt = clock; LastWarning = cause;
+            Warned?.Invoke(cause, Chaser);
+            return true;
+        }
+        // Puts back the tutorial's lesson warning after a restart (never the capture).
+        public void SetTutorialWarnings(int count) { if (tutorial) SlipStrikes = Math.Max(0, Math.Min(MaxWarnings - 1, count)); }
         // Warnings in the current map (plan 6-8): two slots, the second starts the chaser's pursuit and the capture.
         // They last until the map is left; there is no timed clear any more. SlipStrikes is the old name.
         public const int MaxWarnings = 2;
@@ -330,7 +342,7 @@ namespace Mongscape.Domain
         public readonly SectionTracker Sections = new SectionTracker();
         public SectionDef Section => Sections.Def;
         public ChaserDef Chaser => Sections.Chaser;
-        // Speed of a map that does not follow the distance curve: the zoo sets it from the song, the prison from its set.
+        // Base speed of a map that does not follow the distance curve: the zoo sets its base speed, the prison its set.
         // Unset falls back to BaseSpeed. Cleared at every section boundary.
         public float? SectionSpeed { get; set; }
         private bool Smoothed => Curve || !Section.UsesDistanceCurve;
@@ -345,10 +357,11 @@ namespace Mongscape.Domain
         }
         public float CurrentSpeed => Flow.State == GameFlowState.Running && !Paused ? MoveSpeed * Runner.SpeedMultiplier * SpeedScale : 0f;
         // On foot the cadence sets the pace (CadencePace: 0.7 walking to 1.3 sprinting); the cart keeps its own speed.
-        private float MoveSpeed => SongPaced ? SectionSpeed.Value / Math.Max(.01f, Runner.SpeedMultiplier) : (Smoothed ? smoothSpeed : TargetSpeed) * (Runner.Riding ? 1f : CadenceScale);
-        // The zoo song sets the speed exactly (plan 1-2b): no smoothing, no cadence and no slip slowdown, so the notes stay on
-        // the beat. The running beat moves the lion instead.
-        private bool SongPaced => Section.Speed == SpeedRule.SongFixed && SectionSpeed.HasValue && !Runner.Riding;
+        // Every map on foot (the zoo too, owner 2026-11-27): the map's base speed times the cadence pace (CadencePace: 0.7
+        // walking to 1.3 sprinting), at most MaxFootSpeed; the cart keeps its own speed.
+        private float MoveSpeed => Runner.Riding ? (Smoothed ? smoothSpeed : TargetSpeed) : Math.Min(MaxFootSpeed, (Smoothed ? smoothSpeed : TargetSpeed) * CadenceScale);
+        // The top on-foot speed (m/s): the mine curve tops out at 17, so a sprint at the end never runs away.
+        public const float MaxFootSpeed = 18f;
         // Set each frame from CadencePace (1 for the keyboard, the option off, or the tutorial).
         public float CadenceScale { get; set; } = 1f;
         // How close the police come because the player is below the target cadence (0..CadencePace.MaxPressure).
@@ -515,7 +528,7 @@ namespace Mongscape.Domain
         public bool Warn(WarningCause cause)
         {
             if (Flow.State != GameFlowState.Running || Paused) return false;
-            if (tutorial) { lastHit = clock; TutorialMisses++; return true; }
+            if (tutorial) { if (TutorialWarnings) return TutorialWarn(cause); lastHit = clock; TutorialMisses++; return true; }
             if (Invincible || SlipPursuit) return false;
             // One collision event is one warning: right after one, the fall makes the runner untouchable for a moment.
             if (InWarningGrace) return false;
@@ -601,7 +614,7 @@ namespace Mongscape.Domain
         {
             if(Flow.State!=GameFlowState.Running||Paused||Runner.Riding||Invincible&&!tutorial)return false;
             // The tutorial's banana lesson: stepping on a peel is a counted miss that restarts the step, never a strike or pursuit.
-            if(tutorial&&source==SlipSource.Banana){Runner.Slip();LastSlipSource=source;lastHit=clock;TutorialMisses++;return true;}
+            if(tutorial&&source==SlipSource.Banana){Runner.Slip();LastSlipSource=source;lastHit=clock;if(TutorialWarnings)TutorialWarn(WarningCause.Banana);else TutorialMisses++;return true;}
             if(source==SlipSource.Banana)
             {
                 // The shield (or a loyal monkey) absorbs the peel: no slowdown and no warning. During a pursuit it only slows.

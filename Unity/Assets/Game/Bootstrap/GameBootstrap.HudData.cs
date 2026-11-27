@@ -38,7 +38,7 @@ namespace Mongscape.Bootstrap
         float IHudData.SecondsSinceKneeStep => (float)(Time.realtimeSinceStartupAsDouble - Pose.LastKneeStepTime);
         float IHudData.CalibrationProgress => Pose.CalibrationProgress;
         bool IHudData.PoseKneesMissing => Pose.KneesMissing;
-        float IHudData.StepsPerMinute => Pose.StepsPerMinute;
+        float IHudData.StepsPerMinute => StepRate;
         CadenceStage IHudData.Cadence => Pose.CadenceStage;
         bool IHudData.PoseCalibrationMoving => Pose.CalibrationMoving;
         FramingIssue IHudData.PoseFraming => Pose.Framing;

@@ -80,8 +80,7 @@ namespace Mongscape.Presentation
             GUI.enabled = was;
             var dim = open ? Palette.Cream : Palette.Muted;
             skin.Text(new Rect(r.x, r.y + 18, r.width, 96), number.ToString(), 82, open ? Palette.Gold : Palette.Muted, TextAnchor.MiddleCenter);
-            skin.Text(new Rect(r.x + 10, r.y + 124, r.width - 20, 50), TutorialScript.ChapterTitle(chapter), 34, dim, TextAnchor.MiddleCenter, false, true);
-            skin.Text(new Rect(r.x + 10, r.y + 176, r.width - 20, 34), TutorialScript.ChapterLength(chapter), 22, Palette.Muted, TextAnchor.MiddleCenter, false, true);
+            skin.Text(new Rect(r.x + 10, r.y + 138, r.width - 20, 50), TutorialScript.ChapterTitle(chapter), 34, dim, TextAnchor.MiddleCenter, false, true);
             var badge = new Rect(r.x + 90, r.y + 224, r.width - 180, 44);
             skin.BorderBox(badge, done ? new Color(.2f, .5f, .3f, .9f) : open ? Palette.A(Palette.Gold, .9f) : Palette.A(Palette.Track, .9f), Color.clear, 0);
             skin.Text(badge, TutorialProgress.State(mask, chapter), 24, done ? Palette.Cream : open ? Palette.Outline : Palette.Muted, TextAnchor.MiddleCenter, false, true);

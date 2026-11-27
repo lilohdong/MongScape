@@ -33,7 +33,8 @@ namespace Mongscape.DevTools
             settings.MusicVolume = settings.EffectsVolume = 0; game.ApplySettings(false);
             Screen.SetResolution(1280, 720, false);
             game.Session.Config.ExtendedRoutes = true;
-            game.StartPlayerRun(new PlayerProfile { Name = "Zoo QA", Weight = "70", Style = PlayStyle.Keyboard });
+            // F and J held at a running pace until the normal shots are taken, then walking so the lion closes in.
+            game.KeyStepsOverride = 120f; game.StartPlayerRun(new PlayerProfile { Name = "Zoo QA", Weight = "70", Style = PlayStyle.Keyboard });
             yield return new WaitUntil(() => !game.IsLoading && !game.IsRevealing);
             zoo = game.GetComponent<ZooMapView>();
             var plan = new RoutePlan(game.Session.Config, 723); ZooMapView.Register(plan);
@@ -44,14 +45,18 @@ namespace Mongscape.DevTools
             game.Session.Runner.SetStartZ(start); game.Map.Reset(); game.Map.Tick(start);
             yield return new WaitUntil(() => zoo.Chase.Active);
             yield return At(1.4f); yield return Capture("zoo_cut");
-            // Notes are hit until the normal shot is taken, then missed so the lion closes in.
-            yield return At(7.2f); yield return Capture("zoo_normal");
-            keepUp = false;
+            yield return At(3.3f); yield return Capture("zoo_shout");
+            // Fences and bars are passed until the normal shots are taken, then missed so the lion closes in (the keyboard run
+            // without F and J walks, so the lion comes anyway).
+            yield return new WaitUntil(() => zoo.Chase.Hits >= 1); yield return Capture("zoo_pass_1");
+            yield return new WaitUntil(() => NextAhead(ZooNoteKind.ArmsUp) is float a && a < 6f); yield return Capture("zoo_bars_ahead");
+            yield return new WaitUntil(() => NextAhead(ZooNoteKind.Jump) is float b && b < 6f); yield return Capture("zoo_fence_ahead");
+            keepUp = false; game.KeyStepsOverride = 60f;
             yield return new WaitUntil(() => zoo.Chase.MirrorVisible); yield return new WaitForSeconds(.6f); yield return Capture("zoo_mirror");
             yield return new WaitUntil(() => zoo.Chase.Roaring); yield return new WaitForSeconds(1.2f); yield return Capture("zoo_roar");
             yield return new WaitUntil(() => zoo.Chase.Bites > 0); yield return new WaitForSeconds(.35f); yield return Capture("zoo_pounce");
             // Side view of the lion beside the next props, for sizes.
-            var brain = game.OutputCamera.GetComponent<CinemachineBrain>(); brain.enabled = false;
+            var brain = game.OutputCamera.GetComponent<CinemachineBrain>(); brain.enabled = false; game.OutputCamera.cullingMask = ~0;
             game.GetComponent<HUDPresenter>().Hidden = true;
             yield return new WaitForSeconds(1.2f);
             var lion = GameObject.Find("Zoo_Lion").transform;
@@ -72,17 +77,24 @@ namespace Mongscape.DevTools
             var bounds = renderers[0].bounds; foreach (var r in renderers) bounds.Encapsulate(r.bounds);
             Debug.Log("MONGSCAPE_ZOO_SIZE " + name + " " + bounds.size.ToString("F2"));
         }
-        private IEnumerator At(float songTime) { yield return new WaitUntil(() => zoo.Chase.SongTime >= songTime); }
+        private IEnumerator At(float seconds) { yield return new WaitUntil(() => zoo.Chase.Clock >= seconds); }
+        private float? NextAhead(ZooNoteKind kind)
+        {
+            for (int i = 0; i < zoo.Chase.Obstacles.Count; i++)
+                if (!zoo.Chase.IsJudged(i) && zoo.Chase.Obstacles[i].Kind == kind) return zoo.Chase.Obstacles[i].Distance - zoo.Chase.Distance;
+            return null;
+        }
         private IEnumerator Capture(string name) { yield return new WaitForEndOfFrame(); ScreenCapture.CaptureScreenshot(Path.Combine(output, name + ".png")); yield return null; yield return null; }
         private void Update()
         {
             if (done) return;
             if (keepUp && zoo != null && zoo.Chase.Active)
-                for (int i = 0; i < zoo.Chase.Map.Notes.Count; i++)
+                for (int i = 0; i < zoo.Chase.Obstacles.Count; i++)
                 {
-                    var note = zoo.Chase.Map.Notes[i];
-                    if (!zoo.Chase.IsJudged(i) && Mathf.Abs(note.Time - zoo.Chase.SongTime) < .08f)
-                        game.Session.Runner.Command(note.Kind == ZooNoteKind.Jump ? MotionCommand.Jump : MotionCommand.ArmsUp);
+                    var obstacle = zoo.Chase.Obstacles[i];
+                    float ahead = obstacle.Distance - zoo.Chase.Distance;
+                    if (!zoo.Chase.IsJudged(i) && ahead > 0f && ahead < 2.5f)
+                        game.Session.Runner.Command(obstacle.Kind == ZooNoteKind.Jump ? MotionCommand.Jump : MotionCommand.ArmsUp);
                 }
             if (Time.realtimeSinceStartup - began > 120) Finish();
         }

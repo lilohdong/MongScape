@@ -62,7 +62,11 @@ namespace Mongscape.Presentation
         {
             var screen = Add(root, "traits-root");
             var header = Add(screen, "traits-header");
-            Text(header, "특성", "traits-title");
+            var lead = Add(header, "traits-lead");
+            Text(lead, "특성", "traits-title");
+            var back = new Button(Close) { name = "traits-back" }; back.AddToClassList("traits-back");
+            Icon(back, "back", "traits-back-icon"); Text(back, "뒤로", "traits-back-label");
+            lead.Add(back); gestureActions[back] = Close;
             var held = Add(header, "traits-held");
             Icon(held, "monkey", "traits-held-icon");
             monkeys = Text(held, "0", "traits-held-count");
@@ -75,9 +79,6 @@ namespace Mongscape.Presentation
                 foreach (var trait in TraitCatalog.All) if ((int)trait.Branch == b) BuildCard(column, trait);
             }
 
-            var back = new Button(Close) { name = "traits-back" }; back.AddToClassList("traits-back");
-            Icon(back, "back", "traits-back-icon"); Text(back, "뒤로", "traits-back-label");
-            screen.Add(back); gestureActions[back] = Close;
 
             // Detail box: what the next level does, its cost, and the one unlock button.
             detail = Add(root, "traits-detail-shade");

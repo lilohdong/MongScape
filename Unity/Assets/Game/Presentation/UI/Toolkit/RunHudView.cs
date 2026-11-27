@@ -260,10 +260,12 @@ namespace Mongscape.Presentation
                 bool full = i < w || (now - clearAt < .4f && now - clearAt < .2f * (i + 1) && slotFull[i]);
                 if (full != slotFull[i]) SetSlot(i, full);
                 float t = (now - slotFilledAt[i]) / .25f;
-                float sc = t >= 0 && t <= 1 ? 1 + .3f * Mathf.Sin(t * Mathf.PI) : 1;
+                // The tutorial's banana lesson: the empty slot blinks (one more is the capture).
+                bool next = session.BlinkNextWarning && i == w && w < 2, on = next && Mathf.Repeat(now, .6f) < .3f;
+                float sc = t >= 0 && t <= 1 ? 1 + .3f * Mathf.Sin(t * Mathf.PI) : on ? 1.12f : 1;
                 slots[i].style.scale = new Scale(new Vector3(sc, sc, 1));
                 float b = now - slotFilledAt[i];
-                UiTokens.Show(slotRings[i], b >= 0 && b < .72f && Mathf.Repeat(b, .24f) < .12f);
+                UiTokens.Show(slotRings[i], (b >= 0 && b < .72f && Mathf.Repeat(b, .24f) < .12f) || on);
             }
             int saved = session.ShieldSaves;
             if (saved > shields) shieldAt = now;
