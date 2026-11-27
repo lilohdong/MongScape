@@ -20,6 +20,8 @@ namespace Mongscape.Presentation
         static readonly CultureInfo Num = CultureInfo.InvariantCulture;
         // 12,480 (style guide 1: thousands separator).
         public static string N(int value) => value.ToString("N0", Num);
+        // A score with its unit, so a bare number never stands alone on screen ("12,480점").
+        public static string Points(int value) => N(value) + "점";
 
         public static Label Label(string text, int size, Color color, TextAnchor align = TextAnchor.MiddleLeft, bool shadow = true)
         {

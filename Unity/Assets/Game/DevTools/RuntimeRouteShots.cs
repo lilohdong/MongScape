@@ -46,7 +46,11 @@ namespace Mongscape.DevTools
             yield return new WaitUntil(() => !game.IsLoading && !game.IsRevealing && game.Session.Flow.State == GameFlowState.Running);
             zoo = game.GetComponent<ZooMapView>();
             game.Session.Invincible = true; driving = true; Time.timeScale = 1.5f;
+            StartCoroutine(Moments());
             yield return Wait(5f); yield return Capture("01_mine_start");
+            // The warning slots: one handcuff lighting up (the flash), then held.
+            RunHudView.PreviewWarnings = 1; yield return Wait(.1f); yield return Capture("01b_warning_flash");
+            yield return Wait(1.5f); yield return Capture("01c_warning_one"); RunHudView.PreviewWarnings = null;
             yield return Until(() => Plan() != null && Plan().ForkWindow(game.Session.Runner.Z)); yield return Wait(.6f); yield return Capture("02_fork_first");
             yield return Section(SectionKind.Zoo); yield return Wait(1.2f); yield return Capture("03_zoo_entry_cut");
             yield return Wait(10f); yield return Capture("04_zoo_run");
@@ -56,6 +60,14 @@ namespace Mongscape.DevTools
             yield return Wait(8f); yield return Capture("08_prison_run");
             yield return Wait(10f); yield return Capture("09_prison_later");
             yield return Section(SectionKind.Mine); yield return Wait(5f); yield return Capture("10_mine_after_prison");
+            // A wall monkey two chunks ahead on each side, so the shot shows one up close even when the route had none.
+            for (int ahead = 2; ahead <= 3; ahead++)
+            {
+                int seq = RouteSurface.SequenceAt(game.Session.Runner.Z) + ahead;
+                foreach (var a in game.Map.Active)
+                    if (a.Chunk != null && Mathf.Abs(a.Chunk.Entry.position.z - seq * RouteSurface.Length) < 1f) game.Content.PlaceTutorialMonkey(a.Chunk, seq, ahead == 2 ? -1 : 1);
+            }
+            yield return Wait(12f);
             driving = false; Time.timeScale = 1f;
             game.Session.Invincible = false; game.Session.ForceCatch();
             yield return Until(() => game.Session.Flow.State == GameFlowState.Result);
@@ -69,6 +81,44 @@ namespace Mongscape.DevTools
             game.OpenMainMenu(); yield return new WaitForSecondsRealtime(.8f);
             Finish(failure);
         }
+        // Side shots taken whenever the run meets them: the wall monkey up close, the stair gauge, the squeeze bars closing.
+        private bool capturing, shooting;
+        private IEnumerator Moments()
+        {
+            int monkey = 0, stair = 0, squeeze = 0;
+            while (!done && driving)
+            {
+                var run = game.Session; float z = run.Runner.Z;
+                if (!capturing && monkey < 2)
+                    foreach (var m in game.Content.StuckMonkeys)
+                        if (m != null && m.isActiveAndEnabled && !m.Popped && m.transform.position.z - z > 7f && m.transform.position.z - z < 10f)
+                        {
+                            var wm = m.transform.Find("WallMonkey") ?? m.GetComponentInChildren<Animator>(true)?.transform;
+                            var rs = m.GetComponentsInChildren<Renderer>(false); var b = rs.Length > 0 ? rs[0].bounds : new Bounds();
+                            foreach (var r in rs) b.Encapsulate(r.bounds);
+                            Debug.Log("MONGSCAPE_ROUTE monkey at " + m.transform.position + " side " + m.Side + " runner x " + run.Runner.X + " bounds " + b);
+                            foreach (var r in rs) Debug.Log("MONGSCAPE_ROUTE monkey part " + r.name + " " + r.GetType().Name + " " + r.bounds + " scale " + r.transform.lossyScale);
+                            yield return Moment("m_monkey_" + (++monkey));
+                            // A second look from beside the track, straight at the hole.
+                            var look = new GameObject("MonkeyLook").AddComponent<Camera>(); look.depth = 100; look.fieldOfView = 50;
+                            var face = m.transform.position + m.transform.forward * 3f + Vector3.up * 1.7f - Vector3.forward * 3.2f;
+                            look.transform.position = face; look.transform.LookAt(m.transform.position + Vector3.up * 1.4f);
+                            yield return Moment("m_monkey_" + monkey + "_close"); Destroy(look.gameObject);
+                            break;
+                        }
+                if (!capturing && stair < 3 && run.InStair && run.StairProgress > .2f + stair * .3f) yield return Moment("m_stair_" + run.Section.Kind + "_" + (++stair));
+                if (!capturing && squeeze < 2 && zoo != null && zoo.Chase.Active)
+                    for (int i = 0; i < zoo.Chase.Obstacles.Count; i++)
+                    {
+                        float ahead = zoo.Chase.Obstacles[i].Distance - zoo.Chase.Distance;
+                        if (zoo.Chase.Obstacles[i].Kind == ZooNoteKind.ArmsUp && ahead > 2.5f && ahead < 4f && (squeeze == 0 || i > lastSqueeze))
+                        { lastSqueeze = i + 6; yield return Moment("m_squeeze_" + (++squeeze)); break; }
+                    }
+                yield return null;
+            }
+        }
+        private int lastSqueeze;
+        private IEnumerator Moment(string name) { capturing = true; yield return Capture(name); capturing = false; }
         // Thirty guests above any run (the result table has to scroll), and one name with several runs.
         private void Seed()
         {
@@ -90,12 +140,14 @@ namespace Mongscape.DevTools
         // The demo invincibility note is left out of the picture: off for the captured frame only.
         private IEnumerator Capture(string name)
         {
+            while (shooting) yield return null;
+            shooting = true;
             bool was = game.Session.Invincible; float scale = Time.timeScale;
             Time.timeScale = 0f; game.Session.Invincible = false;
             yield return null; yield return new WaitForEndOfFrame();
             ScreenCapture.CaptureScreenshot(Path.Combine(output, name + ".png"));
             yield return null; yield return null;
-            game.Session.Invincible = was; Time.timeScale = scale;
+            game.Session.Invincible = was; Time.timeScale = scale; shooting = false;
             Debug.Log("MONGSCAPE_ROUTE shot " + name + " at " + Mathf.RoundToInt(game.Session.Runner.Z) + "m " + game.Session.Flow.State);
         }
         private void Update()
