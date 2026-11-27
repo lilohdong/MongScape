@@ -17,8 +17,9 @@ namespace Mongscape.Presentation
         VisualElement scorePanel, chase, chaseFill, chaseCap, flash, lost, lostPulse, poseWindow, mirror, mirrorRing;
         Image mirrorImage;
         Image poseImage;
-        ShapeElement skeleton, lostDrawing, shield, gesture;
-        float gestureProgress;
+        ShapeElement skeleton, lostDrawing, shield, gesture, stairDrawing;
+        VisualElement stair;
+        float gestureProgress, kneeGauge, stairProgress; bool kneeWarning;
         readonly VisualElement[] slots = new VisualElement[2], slotRings = new VisualElement[2];
         readonly ShapeElement[] slotIcons = new ShapeElement[2];
         readonly bool[] slotFull = new bool[2];
@@ -73,8 +74,10 @@ namespace Mongscape.Presentation
                 int k = i;
                 var slot = UiTokens.Box(28 + i * 116, 108, 100, 92); UiTokens.Radius(slot, 22);
                 slot.style.transformOrigin = new TransformOrigin(Length.Percent(50), Length.Percent(50));
-                var ring = UiTokens.Box(-12, -12, 124, 116); UiTokens.Radius(ring, 30); UiTokens.Border(ring, 8, UiTokens.WarnHi); ring.style.display = DisplayStyle.None;
-                var icon = UiIcons.Make(8, 4, 84, UiIcons.Handcuffs(() => slotFull[k] ? UiTokens.Panel : UiTokens.A(UiTokens.Text, .42f)));
+                // Children sit inside the slot's 4 px border: the ring lies exactly on the slot outline (same size, same
+                // radius) and the cuffs fill the inner box, centred, so the slot never shifts or grows when it lights up.
+                var ring = UiTokens.Box(-4, -4, 100, 92); UiTokens.Radius(ring, 22); UiTokens.Border(ring, 7, UiTokens.WarnHi); ring.style.display = DisplayStyle.None;
+                var icon = new ShapeElement(UiIcons.Handcuffs(() => slotFull[k] ? UiTokens.Panel : UiTokens.A(UiTokens.Text, .42f))); UiTokens.Fill(icon);
                 slot.Add(icon); slot.Add(ring);
                 slots[i] = slot; slotRings[i] = ring; slotIcons[i] = icon;
                 scorePanel.Add(slot);
@@ -98,6 +101,14 @@ namespace Mongscape.Presentation
             var runner = UiIcons.Make(560 - 30, -6, 76, UiIcons.Monkey());
             chase.Add(track); chase.Add(runner); chase.Add(chaseCap);
             frame.Add(chase);
+
+            // Under the chase bar: the stair climb (prison and mine). A raised-knee ring that empties as the next step falls
+            // late (red and pulsing near the end), and a staircase that lights step by step as the climb goes on.
+            stair = UiTokens.Box(960 - 230, 206, 460, 120);
+            stair.style.backgroundColor = UiTokens.A(UiTokens.Panel, .82f); UiTokens.Radius(stair, 26);
+            UiTokens.Border(stair, 4, UiTokens.A(UiTokens.PanelEdge, .9f));
+            stairDrawing = new ShapeElement(DrawStair); UiTokens.Fill(stairDrawing); stair.Add(stairDrawing);
+            stair.style.display = DisplayStyle.None; frame.Add(stair);
 
             // Bottom left: the rear-view mirror slot (the zoo sets the texture and the stage).
             mirror = UiTokens.Box(230 - 140, 830 - 140, 280, 280); UiTokens.Radius(mirror, 999); mirror.style.overflow = Overflow.Hidden;
@@ -208,7 +219,7 @@ namespace Mongscape.Presentation
             if (s != shownScore)
             {
                 if (shownScore >= 0 && s > shownScore) { scorePopAt = now; if (s - shownScore >= 100) scoreTintUntil = now + .3f; }
-                shownScore = s; score.text = UiTokens.N(s);
+                shownScore = s; score.text = UiTokens.Points(s);
             }
             float pop = UiTokens.Pop((now - scorePopAt) / .15f, .08f);
             score.style.scale = new Scale(new Vector3(pop, pop, 1));
@@ -223,6 +234,7 @@ namespace Mongscape.Presentation
             UpdateEdges(session, running);
             UpdateMirror();
             UpdatePose(model);
+            UpdateStair(model, running);
             gestureProgress = data?.Pause?.GestureProgress ?? 0;
             UiTokens.Show(gesture, running && gestureProgress > 0);
             if (gestureProgress > 0) gesture.MarkDirtyRepaint();
@@ -259,11 +271,8 @@ namespace Mongscape.Presentation
                 // Leaving the map empties the full slots from the left over 0.4 s.
                 bool full = i < w || (now - clearAt < .4f && now - clearAt < .2f * (i + 1) && slotFull[i]);
                 if (full != slotFull[i]) SetSlot(i, full);
-                float t = (now - slotFilledAt[i]) / .25f;
-                // The tutorial's banana lesson: the empty slot blinks (one more is the capture).
+                // The tutorial's banana lesson: the empty slot blinks its outline (one more is the capture); the slot itself stays put.
                 bool next = session.BlinkNextWarning && i == w && w < 2, on = next && Mathf.Repeat(now, .6f) < .3f;
-                float sc = t >= 0 && t <= 1 ? 1 + .3f * Mathf.Sin(t * Mathf.PI) : on ? 1.12f : 1;
-                slots[i].style.scale = new Scale(new Vector3(sc, sc, 1));
                 float b = now - slotFilledAt[i];
                 UiTokens.Show(slotRings[i], (b >= 0 && b < .72f && Mathf.Repeat(b, .24f) < .12f) || on);
             }
@@ -318,6 +327,57 @@ namespace Mongscape.Presentation
             float border = mirrorStage == 3 ? 18 : mirrorStage == 2 ? 14 : 12;
             Color col = mirrorStage == 3 ? UiTokens.Danger : mirrorStage == 2 ? Color.Lerp(UiTokens.Warn, UiTokens.Danger, .5f) : UiTokens.Warn;
             UiTokens.Border(mirrorRing, border, col);
+        }
+
+        void UpdateStair(RunHudModel model, bool running)
+        {
+            bool show = running && model.ShowStair;
+            UiTokens.Show(stair, show);
+            if (!show) return;
+            kneeGauge = model.KneeGauge; kneeWarning = model.KneeWarning; stairProgress = model.StairProgress;
+            float sc = kneeWarning ? 1 + .05f * Mathf.Abs(Mathf.Sin(now * Mathf.PI * 3)) : 1;
+            stair.style.scale = new Scale(new Vector3(sc, sc, 1));
+            stair.style.transformOrigin = new TransformOrigin(Length.Percent(50), Length.Percent(50));
+            UiTokens.Border(stair, 4, kneeWarning ? UiTokens.Danger : UiTokens.A(UiTokens.PanelEdge, .9f));
+            stairDrawing.MarkDirtyRepaint();
+        }
+
+        void DrawStair(Painter2D p, Rect r)
+        {
+            // Knee ring (left): track, then the time left before the next step is late.
+            var c = new Vector2(r.x + 60, r.y + r.height / 2);
+            Color ringCol = kneeWarning ? UiTokens.Danger : UiTokens.Accent;
+            UiIcons.Ring(p, c, 42, 12, UiTokens.A(UiTokens.Deep, .8f));
+            if (kneeGauge > .01f) UiIcons.Ring(p, c, 42, 12, ringCol, -90, -90 + 360 * Mathf.Clamp01(kneeGauge));
+            // A leg with the knee raised: thigh forward, shin down, a foot; the standing leg straight.
+            Color leg = kneeWarning ? UiTokens.Danger : UiTokens.Text;
+            var hip = c + new Vector2(-6, -18);
+            UiIcons.Line(p, hip, hip + new Vector2(-4, 40), 8, UiTokens.A(UiTokens.Text, .55f));
+            var knee = hip + new Vector2(20, 4);
+            var ankle = knee + new Vector2(2, 24);
+            UiIcons.Line(p, hip, knee, 9, leg); UiIcons.Line(p, knee, ankle, 8, leg); UiIcons.Line(p, ankle, ankle + new Vector2(10, 0), 7, leg);
+            UiIcons.Circle(p, knee, 5, leg);
+
+            // Staircase (right): eight steps climbing to the right, lit up to the progress.
+            const int steps = 8;
+            float x0 = r.x + 124, x1 = r.xMax - 22, yb = r.yMax - 18, yt = r.y + 16;
+            float sw = (x1 - x0) / steps, sh = (yb - yt) / steps;
+            float lit = Mathf.Clamp01(stairProgress) * steps;
+            for (int i = 0; i < steps; i++)
+            {
+                var box = new Rect(x0 + i * sw + 1, yb - (i + 1) * sh, sw - 2, (i + 1) * sh);
+                UiIcons.RoundRect(p, box, 4, UiTokens.A(UiTokens.Deep, .8f));
+                float f = Mathf.Clamp01(lit - i);
+                if (f > 0)
+                {
+                    var on = new Rect(box.x, box.y, box.width * f, box.height);
+                    UiIcons.RoundRect(p, on, 4, UiTokens.Accent);
+                }
+            }
+            // Where I am on the climb: a dot on the step edge.
+            float px = x0 + Mathf.Clamp01(stairProgress) * (x1 - x0);
+            float py = yb - Mathf.Min(steps, Mathf.Ceil(Mathf.Max(lit, .01f))) * sh - 10;
+            UiIcons.Circle(p, new Vector2(Mathf.Clamp(px, x0 + 10, x1 - 10), py), 9, UiTokens.Text);
         }
 
         void UpdatePose(RunHudModel model)

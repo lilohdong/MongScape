@@ -217,7 +217,7 @@ namespace Mongscape.Presentation
             rank.style.width = 110; row.Add(rank);
             if (icon != null) { var i = new ShapeElement(icon); i.style.width = 72; i.style.height = 72; i.style.marginRight = 16; row.Add(i); }
             name.style.flexGrow = 1; name.style.flexShrink = 1; name.style.overflow = Overflow.Hidden; name.style.textOverflow = TextOverflow.Ellipsis; row.Add(name);
-            score.style.width = 300; row.Add(score);
+            score.style.width = 340; row.Add(score);
             dist.style.width = 250; row.Add(dist);
         }
 
@@ -250,7 +250,7 @@ namespace Mongscape.Presentation
             modeName.text = style == PlayStyle.FullBody ? "전신" : style == PlayStyle.UpperBody ? "상체" : "키보드";
             headScore.text = UiTokens.N(finalScore) + "점";
             distanceValue.text = UiTokens.N(Mathf.FloorToInt(run?.Score.Distance ?? 0)) + " m";
-            mineScore.text = UiTokens.N(finalScore);
+            mineScore.text = UiTokens.Points(finalScore);
             mineDistance.text = UiTokens.N(Mathf.FloorToInt(run?.Score.Distance ?? 0)) + " m";
             double kcal = camera && run != null ? run.Workout.EstimatedKcal : 0;
             kcalValue.text = UiTokens.N((int)Math.Round(kcal)) + " kcal";
@@ -473,7 +473,7 @@ namespace Mongscape.Presentation
                 else
                 {
                     var rank = UiTokens.Label((r.Rank + (virtualAt >= 0 && i > virtualAt ? 1 : 0)).ToString(), 52, UiTokens.TextDim); var name = UiTokens.Label(r.Name, 48, UiTokens.Text);
-                    var score = UiTokens.Label(UiTokens.N(r.Score), 52, UiTokens.Text, TextAnchor.MiddleRight); var dist = UiTokens.Label(UiTokens.N(Mathf.FloorToInt(r.Distance)) + " m", 44, UiTokens.TextDim, TextAnchor.MiddleRight);
+                    var score = UiTokens.Label(UiTokens.Points(r.Score), 52, UiTokens.Text, TextAnchor.MiddleRight); var dist = UiTokens.Label(UiTokens.N(Mathf.FloorToInt(r.Distance)) + " m", 44, UiTokens.TextDim, TextAnchor.MiddleRight);
                     RowLayout(row, rank, name, score, dist, RowH);
                 }
                 content.Add(row); tableRows.Add(new KeyValuePair<VisualElement, float>(row, y));

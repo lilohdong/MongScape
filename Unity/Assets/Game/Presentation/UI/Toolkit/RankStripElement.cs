@@ -81,7 +81,7 @@ namespace Mongscape.Presentation
             int myRank = effect && t < .15f ? breakingRank + 1 : effect ? breakingRank : race.Rank;
             if (effect && race.Pending > 0 && t >= .15f) myRank = breakingRank;
             mineRank.text = myRank + "위";
-            mineScore.text = UiTokens.N(race.Score);
+            mineScore.text = UiTokens.Points(race.Score);
 
             // The row above: during the break the passed row, afterwards the next one (or the trophy when first).
             bool first = race.First;
@@ -135,7 +135,7 @@ namespace Mongscape.Presentation
             UiTokens.Show(trophy, false); UiTokens.Show(upperRank, true);
             upper.style.backgroundColor = UiTokens.A(UiTokens.Panel, .78f);
             SetUpperText(UiTokens.TextDim);
-            upperRank.text = rank + "위"; upperName.text = name; upperScore.text = UiTokens.N(score);
+            upperRank.text = rank + "위"; upperName.text = name; upperScore.text = UiTokens.Points(score);
         }
         void SetUpperText(Color c) { upperRank.style.color = c; upperName.style.color = c; upperScore.style.color = c; }
 
