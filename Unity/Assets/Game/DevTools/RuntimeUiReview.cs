@@ -39,6 +39,8 @@ namespace Mongscape.DevTools
             float started = Time.realtimeSinceStartup;
             while ((game = FindFirstObjectByType<GameBootstrap>()) == null || game.Session == null || game.Session.Flow.State != GameFlowState.TitleIdle) yield return null;
             yield return new WaitForSecondsRealtime(3f);
+            // --mongscape-audit-size 1280x720: capture at that window size (default is the build's own size).
+            { var a = Environment.GetCommandLineArgs(); int sz = Array.IndexOf(a, "--mongscape-audit-size"); if (sz >= 0 && sz + 1 < a.Length) { var wh = a[sz + 1].Split('x'); Screen.SetResolution(int.Parse(wh[0]), int.Parse(wh[1]), false); yield return new WaitForSecondsRealtime(1.5f); Debug.Log("UI_CAPTURE_SIZE: " + Screen.width + "x" + Screen.height); } }
             var hud = game.Hud; var data = (IHudData)game;
             // --mongscape-uicapture-quick: only the run, pause and result (no settings window or face login, which list or open cameras).
             bool quick = Array.IndexOf(Environment.GetCommandLineArgs(), "--mongscape-uicapture-quick") >= 0;
@@ -63,6 +65,10 @@ namespace Mongscape.DevTools
 
             Seed(data);
             hud.ShowPage(MenuPage.Profile); yield return Shot("04_Profile");
+            hud.ShowTutorialChoice(); yield return Shot("04t_TutorialChapters");
+            hud.ShowPage(MenuPage.Ranking); hud.Ranking.Select(false, PlayStyle.Keyboard, true); yield return Shot("06a_Ranking_Today");
+            hud.ShowPage(MenuPage.Help); yield return Shot("07h_Help");
+            hud.ShowPage(MenuPage.Week); hud.WeekCard.Show(81, new double[] { 12, 0, 25, 18, 26, 0, 0 }, new double[] { 34, 21, 26 }, 4, false); yield return Shot("07w_WeekCard");
             game.OpenTraits(); yield return Shot("05_Traits"); game.CloseTraits();
             // The review data is on this PC (keyboard runs); the member tab would ask the server.
             hud.ShowPage(MenuPage.Ranking); hud.Ranking.Select(false, PlayStyle.Keyboard, false); yield return Shot("06_Ranking");

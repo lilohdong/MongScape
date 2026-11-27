@@ -40,7 +40,7 @@ namespace Mongscape.Presentation
             var e = Event.current;
             for (int i = 0; i < Labels.Length; i++)
             {
-                var r = new Rect(760, 172 + i * 92, 440, 76);
+                var r = new Rect(760, 164 + i * 120, 440, 72);
                 bool guest = Actions[i] == LoginAction.Guest, enabled = guest || server;
                 bool wasEnabled = GUI.enabled; GUI.enabled = wasEnabled && enabled;
                 Color text = !enabled ? Palette.A(Palette.Sand, 0.5f) : i == 0 ? Palette.Outline : Palette.Cream;
@@ -65,14 +65,14 @@ namespace Mongscape.Presentation
             string note = checking ? "얼굴 서버 확인 중…" : server ? "얼굴 서버 연결됨" : "지금은 얼굴 로그인과 회원가입을 쓸 수 없어요.\n게스트로 바로 플레이할 수 있어요.";
             wrap ??= new GUIStyle(skin.Style(15, false, TextAnchor.UpperLeft, true)) { wordWrap = true, clipping = TextClipping.Clip };
             reason ??= new GUIStyle(skin.Style(13, false, TextAnchor.UpperLeft)) { wordWrap = true, clipping = TextClipping.Clip };
-            GUI.color = server || checking ? Palette.Sand : Palette.Warn; GUI.Label(new Rect(760, 446, 440, 44), note, wrap);
-            if (!server && !checking) { GUI.color = Palette.A(Palette.Sand, 0.85f); GUI.Label(new Rect(760, 490, 440, 36), "이유: " + problem, reason); }
+            GUI.color = server || checking ? Palette.Sand : Palette.Warn; GUI.Label(new Rect(760, 488, 440, 44), note, wrap);
+            if (!server && !checking) { GUI.color = Palette.A(Palette.Sand, 0.85f); GUI.Label(new Rect(760, 532, 440, 34), "이유: " + problem, reason); }
             GUI.color = Color.white;
-            skin.Text(new Rect(760, 532, 440, 26), GesturePointer.Hint("숫자키 1~3을 누르세요."), 14, Palette.Sand, TextAnchor.MiddleLeft, false);
-            if (skin.Button(new Rect(730, 590, 150, 48), "크레딧", Palette.A(Palette.Ground, 0.9f), Palette.Wood, Palette.Cream, 20)) action = LoginAction.Credits;
-            if (skin.Button(new Rect(890, 590, 150, 48), "게임 종료", Palette.A(Palette.Ground, 0.9f), Palette.Wood, Palette.Cream, 20)) action = LoginAction.Quit;
-            if (skin.Button(new Rect(1050, 590, 150, 48), "설정", Palette.A(Palette.Ground, 0.9f), Palette.Wood, Palette.Cream, 20)) action = LoginAction.Settings;
-            skin.Text(new Rect(860, 650, 340, 30), BuildInfo.Label, 14, Palette.Muted, TextAnchor.MiddleRight, false);
+            skin.Text(new Rect(760, 568, 440, 26), GesturePointer.Hint("숫자키 1~3을 누르세요."), 14, Palette.Sand, TextAnchor.MiddleLeft, false);
+            if (skin.Button(new Rect(714, 610, 130, 48), "크레딧", Palette.A(Palette.Ground, 0.9f), Palette.Wood, Palette.Cream, 20)) action = LoginAction.Credits;
+            if (skin.Button(new Rect(892, 610, 130, 48), "게임 종료", Palette.A(Palette.Ground, 0.9f), Palette.Wood, Palette.Cream, 20)) action = LoginAction.Quit;
+            if (skin.Button(new Rect(1070, 610, 130, 48), "설정", Palette.A(Palette.Ground, 0.9f), Palette.Wood, Palette.Cream, 20)) action = LoginAction.Settings;
+            skin.Text(new Rect(860, 668, 340, 30), BuildInfo.Label, 14, Palette.Muted, TextAnchor.MiddleRight, false);
             return action;
         }
     }

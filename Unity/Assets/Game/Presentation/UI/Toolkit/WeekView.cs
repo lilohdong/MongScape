@@ -28,7 +28,7 @@ namespace Mongscape.Presentation
             Gestures = new GestureButtons(frame);
             var bg = new VisualElement(); UiTokens.Fill(bg); bg.style.backgroundColor = UiTokens.Dim(UiTokens.Deep, .85f); frame.Add(bg);
             var title = UiTokens.Label("이번 주 운동", 88, UiTokens.Accent); UiTokens.Absolute(title, 110, 30, 1200, 120); frame.Add(title);
-            var panel = UiTokens.Box(110, 190, 1700, 710); panel.style.backgroundColor = UiTokens.A(UiTokens.Panel, .96f); UiTokens.Radius(panel, 36); UiTokens.Border(panel, 5, UiTokens.PanelEdge);
+            var panel = UiTokens.Box(110, 160, 1700, 710); panel.style.backgroundColor = UiTokens.A(UiTokens.Panel, .96f); UiTokens.Radius(panel, 36); UiTokens.Border(panel, 5, UiTokens.PanelEdge);
             frame.Add(panel);
             total = UiTokens.Label("", 120, UiTokens.Text); UiTokens.Absolute(total, 60, 30, 900, 150); panel.Add(total);
             var who = UiTokens.Label("WHO 권장", 44, UiTokens.TextDim, TextAnchor.MiddleRight); UiTokens.Absolute(who, 900, 60, 740, 60); panel.Add(who);
@@ -54,7 +54,7 @@ namespace Mongscape.Presentation
                 mapFill[i] = UiTokens.Box(0, 0, 0, 40); mapFill[i].style.backgroundColor = UiTokens.Focus; UiTokens.Radius(mapFill[i], 20); track.Add(mapFill[i]);
                 mapValue[i] = UiTokens.Label("", 48, UiTokens.Text, TextAnchor.MiddleRight); UiTokens.Absolute(mapValue[i], 1520, y, 120, 64); panel.Add(mapValue[i]);
             }
-            var back = Gestures.Add(new UiButton("뒤로", false, () => Back?.Invoke())); UiTokens.Absolute(back, 110, 930, 300, 120); frame.Add(back);
+            var back = Gestures.Add(new UiButton("뒤로", false, () => Back?.Invoke())); UiTokens.Absolute(back, 110, 942, 300, 120); frame.Add(back);
             Root.Visible = false;
         }
 

@@ -49,26 +49,30 @@ namespace Mongscape.Presentation
             var frame = Root.Frame;
             Gestures = new GestureButtons(frame);
             var bg = new VisualElement(); UiTokens.Fill(bg); bg.style.backgroundColor = UiTokens.Dim(UiTokens.Deep, .85f); frame.Add(bg);
-            var title = UiTokens.Label("운동은 이렇게 계산해요", 88, UiTokens.Accent); UiTokens.Absolute(title, 80, 40, 1400, 120); frame.Add(title);
+            // A reading page: the big sizes of the picking screens would be too much at arm's length. Title 48, text 32
+            // with 1.4 line spacing, one faint rule per table row; the back button keeps its size.
+            var title = UiTokens.Label("운동은 이렇게 계산해요", 48, UiTokens.Accent); UiTokens.Absolute(title, 80, 50, 1400, 70); frame.Add(title);
             var back = Gestures.Add(new UiButton("뒤로", false, () => Back?.Invoke())); UiTokens.Absolute(back, 1920 - 80 - 300, 40, 300, 120); frame.Add(back);
-            for (int i = 0; i < Lines.Length; i++) { var l = UiTokens.Label(Lines[i], 44, UiTokens.Text); UiTokens.Absolute(l, 80, 180 + i * 58, 1760, 56); frame.Add(l); }
-            var panel = UiTokens.Box(80, 430, 1760, 560); panel.style.backgroundColor = UiTokens.A(UiTokens.Panel, .9f); UiTokens.Radius(panel, 28); UiTokens.Border(panel, 5, UiTokens.PanelEdge);
+            for (int i = 0; i < Lines.Length; i++) { var l = UiTokens.Label(Lines[i], 32, UiTokens.Text); UiTokens.Absolute(l, 80, 150 + i * 45, 1500, 45); frame.Add(l); }
+            const float rowH = 56;
+            var panel = UiTokens.Box(80, 350, 1760, 20 + (Rows.Length + 1) * rowH); panel.style.backgroundColor = UiTokens.A(UiTokens.Panel, .9f); UiTokens.Radius(panel, 28); UiTokens.Border(panel, 5, UiTokens.PanelEdge);
             frame.Add(panel);
             Row(panel, 0, "하는 것", "MET", "Compendium 코드", UiTokens.Accent);
             for (int i = 0; i < Rows.Length; i++)
             {
                 var a = Rows[i];
-                Row(panel, i + 1, Label(a), IntensityMet.Of(a).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture), IntensityMet.Code(a), i % 2 == 0 ? UiTokens.Text : UiTokens.TextDim);
+                var rule = UiTokens.Box(40, 10 + (i + 1) * rowH, 1680, 2); rule.style.backgroundColor = UiTokens.A(UiTokens.TextDim, .3f); panel.Add(rule);
+                Row(panel, i + 1, Label(a), IntensityMet.Of(a).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture), IntensityMet.Code(a), UiTokens.Text);
             }
-            var src = UiTokens.Label(Sources, 36, UiTokens.TextDim); UiTokens.Absolute(src, 80, 1006, 1760, 50); frame.Add(src);
+            var src = UiTokens.Label(Sources, 30, UiTokens.TextDim); UiTokens.Absolute(src, 80, 350 + 20 + (Rows.Length + 1) * rowH + 24, 1760, 44); frame.Add(src);
             Root.Visible = false;
         }
         static void Row(VisualElement panel, int i, string what, string met, string code, Color color)
         {
-            float y = 14 + i * 48;
-            var a = UiTokens.Label(what, 38, color); UiTokens.Absolute(a, 40, y, 1100, 48);
-            var b = UiTokens.Label(met, 38, color, TextAnchor.MiddleRight); UiTokens.Absolute(b, 1140, y, 160, 48);
-            var c = UiTokens.Label(code, 38, color, TextAnchor.MiddleRight); UiTokens.Absolute(c, 1360, y, 360, 48);
+            float y = 10 + i * 56 + 4;
+            var a = UiTokens.Label(what, 32, color); UiTokens.Absolute(a, 40, y, 1100, 48);
+            var b = UiTokens.Label(met, 32, color, TextAnchor.MiddleRight); UiTokens.Absolute(b, 1140, y, 160, 48);
+            var c = UiTokens.Label(code, 32, color, TextAnchor.MiddleRight); UiTokens.Absolute(c, 1360, y, 360, 48);
             panel.Add(a); panel.Add(b); panel.Add(c);
         }
     }
