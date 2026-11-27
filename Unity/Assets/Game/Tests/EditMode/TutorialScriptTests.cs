@@ -18,8 +18,8 @@ namespace Mongscape.Tests
             CollectionAssert.AreEqual(new[] { TutorialStep.Lane, TutorialStep.Jump, TutorialStep.Crouch, TutorialStep.Rescue, TutorialStep.WarnRule, TutorialStep.Banana, TutorialStep.PauseX, TutorialStep.Fork, TutorialStep.Done },
                 Of(TutorialChapter.Basics, PlayStyle.Keyboard), "Keyboard play skips the camera check, calibration and cadence; Esc is the pause");
             CollectionAssert.DoesNotContain(Of(TutorialChapter.Basics, PlayStyle.Keyboard, false), TutorialStep.Fork, "A route without forks has no lean lesson");
-            CollectionAssert.AreEqual(new[] { TutorialStep.Sync, TutorialStep.Verse, TutorialStep.Rearview, TutorialStep.Done }, Of(TutorialChapter.Zoo, PlayStyle.FullBody));
-            CollectionAssert.AreEqual(new[] { TutorialStep.Verse, TutorialStep.Rearview, TutorialStep.Done }, Of(TutorialChapter.Zoo, PlayStyle.Keyboard), "No sync adjustment on the keyboard");
+            CollectionAssert.AreEqual(new[] { TutorialStep.ZooRun, TutorialStep.Fence, TutorialStep.Bars, TutorialStep.Rearview, TutorialStep.Done }, Of(TutorialChapter.Zoo, PlayStyle.FullBody));
+            CollectionAssert.AreEqual(new[] { TutorialStep.ZooRun, TutorialStep.Fence, TutorialStep.Bars, TutorialStep.Rearview, TutorialStep.Done }, Of(TutorialChapter.Zoo, PlayStyle.Keyboard), "The keys run with F and J too");
             CollectionAssert.AreEqual(new[] { TutorialStep.Stair, TutorialStep.AlarmRule, TutorialStep.Hide, TutorialStep.Done }, Of(TutorialChapter.Prison, PlayStyle.UpperBody));
             CollectionAssert.AreEqual(new[] { TutorialStep.Calibrate, TutorialStep.Rescue, TutorialStep.WarnRule, TutorialStep.Banana, TutorialStep.Done },
                 Of(TutorialChapter.Basics, PlayStyle.FullBody, true, true), "The short version for members: calibration, rescue, banana and the warning rule");
@@ -65,7 +65,7 @@ namespace Mongscape.Tests
             Assert.AreEqual(TutorialPass.ObstaclePassed, TutorialScript.PassOf(TutorialStep.Jump)); Assert.AreEqual(MotionCommand.Jump, TutorialScript.AwaitedOf(TutorialStep.Jump));
             Assert.AreEqual(MotionCommand.KneeStep, TutorialScript.AwaitedOf(TutorialStep.Stair));
             Assert.AreEqual(TutorialPass.ForkChosen, TutorialScript.PassOf(TutorialStep.Fork));
-            foreach (var step in new[] { TutorialStep.Rescue, TutorialStep.Sync, TutorialStep.Verse, TutorialStep.Rearview, TutorialStep.Hide }) Assert.AreEqual(TutorialPass.Station, TutorialScript.PassOf(step));
+            foreach (var step in new[] { TutorialStep.Rescue, TutorialStep.ZooRun, TutorialStep.Fence, TutorialStep.Bars, TutorialStep.Rearview, TutorialStep.Hide }) Assert.AreEqual(TutorialPass.Station, TutorialScript.PassOf(step));
             foreach (var step in new[] { TutorialStep.WarnRule, TutorialStep.AlarmRule }) Assert.AreEqual(TutorialPass.Warned, TutorialScript.PassOf(step));
             Assert.AreEqual(TutorialPass.Paused, TutorialScript.PassOf(TutorialStep.PauseX));
             Assert.IsTrue(TutorialScript.Accepts(TutorialStep.Lane, MotionCommand.Right)); Assert.IsTrue(TutorialScript.Accepts(TutorialStep.Fork, MotionCommand.Left));

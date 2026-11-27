@@ -15,7 +15,7 @@ namespace Mongscape.Presentation
     {
         // The lesson shows (and its action counts) from this far ahead.
         public const float ShowDistance = 14f;
-        public const float RetrySeconds = 1.6f, DoneSeconds = 2.5f, PraiseSeconds = .9f, PictureSeconds = 4.5f, ReachSeconds = .4f, AlarmSeconds = 1.6f;
+        public const float RetrySeconds = 1.6f, DoneSeconds = 2.5f, PraiseSeconds = .9f, PictureSeconds = 4.5f, ReachSeconds = .4f, AlarmSeconds = 1.6f, ZooRunSeconds = 2f, ZooCueDistance = 12f;
         private RunSession session;
         private ChunkSpawner map;
         private Func<bool> poseReady, visible;
@@ -46,10 +46,8 @@ namespace Mongscape.Presentation
         public Func<float> StepsPerMinute, PaceScale;
         public float RunCadence = 100f;
         // The rescue reach comes from the run (pose or Q and E).
-        // Sound hooks: a beat tick, and a cleared station. The saved sync offset in ms and where to save a new one.
+        // Sound hooks: a beat tick, and a cleared station.
         public Action Beat, Cleared;
-        public Func<int> SyncMs;
-        public Action<int> SaveSync;
         // The mirror monkey window (character clip); null keeps it hidden.
         public TutorialDemo Demo;
         // The real zoo (song, notes, lion and mirror) for chapter 2.
@@ -65,7 +63,6 @@ namespace Mongscape.Presentation
         private float framedFor, pacedFor, reachFor, pictureFor;
         private bool cadenceSpeed = true, pauseSeen, wasJumping, stationBegun;
         private int bigAtStart, lastTick;
-        private readonly BeatSync sync = new BeatSync();
 
         public void Configure(RunSession run, ChunkSpawner spawner, Func<bool> calibrated, Action<float> restartAt, Action complete, Func<bool> canDraw)
         {
@@ -232,27 +229,41 @@ namespace Mongscape.Presentation
                         Next(now);
                     }
                     return;
-                case TutorialStep.Sync:
-                {
-                    if (!stationBegun) { sync.Begin(now); stationBegun = true; lastTick = -1; }
-                    TickBeats(now, sync.Start, BeatSync.Interval);
-                    if (jumpEdge) sync.Jump(now);
-                    if (sync.Done) { SaveSync?.Invoke(Mathf.RoundToInt((float)sync.Offset * 1000f)); Next(now); }
-                    else if (sync.Over(now)) Miss(now);
-                    return;
-                }
-                case TutorialStep.Verse:
-                    // The real zoo song on the easy chart (ZooMapView judges the notes).
+                case TutorialStep.ZooRun:
+                case TutorialStep.Fence:
+                case TutorialStep.Bars:
+                    // The short zoo course runs through these lessons (ZooMapView judges the fences and bars).
                     if (!stationBegun)
                     {
-                        if (Zoo == null || !Zoo.StartPractice((SyncMs?.Invoke() ?? 0) / 1000f)) { Next(now); return; }
+                        if (Zoo == null || !Zoo.Chase.Practice && !Zoo.StartPractice(0f, TutorialCourse.ZooObstacles)) { Next(now); return; }
                         stationBegun = true;
                     }
-                    else if (Zoo.VerseOver) { if (Zoo.VersePassed) Next(now); else Miss(now); }
+                    if (!Zoo.Chase.Practice || !Zoo.Chase.Active) { Miss(now); return; }
+                    if (step == TutorialStep.ZooRun)
+                    {
+                        // Two seconds at a running pace (F and J in turn on the keys).
+                        float spm = StepsPerMinute?.Invoke() ?? RunCadence;
+                        pacedFor = spm >= RunCadence ? pacedFor + Time.deltaTime : Mathf.Max(0, pacedFor - Time.deltaTime);
+                        if (pacedFor >= ZooRunSeconds) Next(now);
+                        return;
+                    }
+                    // Only this lesson's kind counts: one passed is the lesson, one missed is another try.
+                    var kind = step == TutorialStep.Fence ? ZooNoteKind.Jump : ZooNoteKind.ArmsUp;
+                    var chase = Zoo.Chase; float ahead = float.PositiveInfinity;
+                    for (int i = 0; i < chase.Obstacles.Count; i++)
+                    {
+                        if (chase.Obstacles[i].Kind != kind) continue;
+                        if (chase.WasHit(i)) { Next(now); return; }
+                        if (chase.IsJudged(i)) { Miss(now); return; }
+                        ahead = Mathf.Min(ahead, chase.Obstacles[i].Distance - chase.Distance);
+                    }
+                    LessonDistance = ahead;
+                    cue = ahead <= ZooCueDistance ? (step == TutorialStep.Fence ? "점프!" : "만세!") : null;
                     return;
                 case TutorialStep.Rearview:
                     // One look at the real lion in the mirror while the song goes on.
                     if (!stationBegun) { if (Zoo != null) Zoo.ShowLion(); stationBegun = true; }
+                    cue = null;
                     pictureFor += Time.deltaTime;
                     if (pictureFor >= PictureSeconds) Next(now);
                     return;
@@ -396,7 +407,8 @@ namespace Mongscape.Presentation
             // Mistakes and the finish fill the banner; a lesson in view shows its call (when due) with the instruction below.
             bool praise = Time.realtimeSinceStartup < praiseUntil && !Waiting;
             string big = Retrying ? "다시!" : Script.Finished ? Message : Waiting ? cue : praise ? (bigPraise ? "크게! 좋아요!" : "좋아요!") : null;
-            if (big != null)
+            bool entry = Zoo != null && Zoo.Chase.Practice && (Zoo.Chase.Phase == ZooPhase.Cut || Zoo.Chase.Phase == ZooPhase.Shout);
+            if (big != null && !entry)
             {
                 var banner = new Rect(240, 160, 800, 110);
                 skin.Card(banner, Palette.A(Palette.Ground, .88f));
@@ -404,7 +416,6 @@ namespace Mongscape.Presentation
                 GUI.Label(banner, big, skin.Centered(58, FontStyle.Bold));
             }
             // The zoo's entry cut and its shout keep the middle of the screen to themselves.
-            bool entry = Zoo != null && Zoo.Chase.Practice && (Zoo.Chase.Phase == ZooPhase.Cut || Zoo.Chase.Phase == ZooPhase.Shout);
             if (!entry && !Retrying && !Script.Finished && !string.IsNullOrEmpty(Message))
             {
                 var line = new Rect(240, 276, 800, 46);
@@ -422,8 +433,6 @@ namespace Mongscape.Presentation
             {
                 case TutorialStep.Cadence: DrawPace(); break;
                 case TutorialStep.Rescue: TutorialPictures.Reach(skin, Mathf.Clamp01(reachFor / ReachSeconds)); break;
-                case TutorialStep.Sync: if (stationBegun) TutorialPictures.Beats(skin, now - (float)sync.Start, (float)BeatSync.Interval, BeatSync.LeadBeats, BeatSync.Beats, sync.Hits); break;
-                case TutorialStep.Verse: if (Zoo != null && Zoo.Chase.Practice && Zoo.Chase.Phase == ZooPhase.Song) TutorialPictures.Count(skin, Zoo.Chase.Hits, ZooPractice.PassHits(Zoo.Chase.Obstacles.Count)); break;
             }
         }
         // The pace lesson gauge: the speed share from the cadence (70 % walking to 130 % sprinting) and the steps a minute.

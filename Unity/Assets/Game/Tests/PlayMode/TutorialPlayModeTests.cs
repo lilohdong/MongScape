@@ -204,23 +204,26 @@ namespace Mongscape.Tests
             hud.OpenMainMenu();hud.SelectMenu(MenuAction.Tutorial);hud.ChooseTutorial(TutorialChoice.Start,PlayStyle.Keyboard,TutorialChapter.Zoo);
             yield return WaitRunning();
             Assert.IsTrue(RouteSurface.IsZoo(RouteSurface.TypeAt(0)),"The zoo chapter runs on the zoo map");
-            Assert.AreEqual(TutorialStep.Verse,game.Tutorial.Script.Current,"Keyboard play has no sync adjustment");
+            Assert.AreEqual(TutorialStep.ZooRun,game.Tutorial.Script.Current,"The zoo chapter starts with running");
             Time.timeScale=3;
             float deadline=Time.realtimeSinceStartup+30;
             while(!game.Tutorial.Waiting&&Time.realtimeSinceStartup<deadline)yield return null;
-            Assert.IsTrue(game.Tutorial.Waiting);Assert.AreEqual("Space와 W 누르기",game.Tutorial.Message);
+            Assert.IsTrue(game.Tutorial.Waiting);Assert.AreEqual("F와 J 번갈아 누르기",game.Tutorial.Message);
+            // F and J in turn at a running pace pass the running lesson.
+            game.KeyStepsOverride=160f;
             // The verse is the real zoo: the song on the easy chart. Hitting its notes leads to the lion in the mirror.
             var zoo=game.GetComponent<Mongscape.Presentation.Map.ZooMapView>();
             deadline=Time.realtimeSinceStartup+40;
             while(!zoo.Chase.Active&&Time.realtimeSinceStartup<deadline)yield return null;
             Assert.IsTrue(zoo.Chase.Active&&zoo.Chase.Practice,"The zoo song plays");Assert.Greater(zoo.Chase.Obstacles.Count,3);
-            while(game.Tutorial.Active&&game.Tutorial.Script.Current==TutorialStep.Verse&&Time.realtimeSinceStartup<deadline)
+            while(game.Tutorial.Active&&game.Tutorial.Script.Current!=TutorialStep.Rearview&&Time.realtimeSinceStartup<deadline)
             {
                 var obstacles=zoo.Chase.Obstacles;
                 for(int i=0;i<obstacles.Count;i++)if(!zoo.Chase.IsJudged(i)&&Mathf.Abs(obstacles[i].Distance-zoo.Chase.Distance)<2f)zoo.Chase.Input(obstacles[i].Kind);
                 yield return null;
             }
-            Assert.AreEqual(TutorialStep.Rearview,game.Tutorial.Script.Current,"The verse passes");
+            game.KeyStepsOverride=null;
+            Assert.AreEqual(TutorialStep.Rearview,game.Tutorial.Script.Current,"Running, the fence and the bars pass");
             yield return null;yield return null;
             Assert.IsTrue(zoo.Chase.MirrorVisible,"The lion shows in the mirror");
             deadline=Time.realtimeSinceStartup+30;
