@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Mongscape.Domain;
+using Mongscape.Presentation;
 using NUnit.Framework;
 
 namespace Mongscape.Tests
@@ -78,6 +79,20 @@ namespace Mongscape.Tests
             run.Slip(SlipSource.KneeMiss); run.Slip(SlipSource.KneeMiss);
             Assert.AreEqual(0, run.Warnings); Assert.IsTrue(run.Runner.Slowing); Assert.AreEqual(GameFlowState.Running, run.Flow.State);
             Assert.AreEqual(ChaserKind.Warden, run.Chaser.Kind);
+        }
+        [Test] public void FourMissedKneeBeatsOnThePrisonStairsFillTheGaugeIntoOneWarning()
+        {
+            RouteSurface.UsePlan(Choose(SectionKind.Prison));
+            var run = Running(); run.Runner.SetStartZ(CartFork.DestinationChunk * L + 1f); run.Tick(.01f);
+            for (int i = 0; i < 3; i++) { run.Slip(SlipSource.KneeMiss); run.Runner.Reset(); }
+            Assert.AreEqual(0, run.Warnings); Assert.AreEqual(.75f, run.ChaserGauge, .001f);
+            run.Slip(SlipSource.KneeMiss);
+            Assert.AreEqual(1, run.Warnings); Assert.AreEqual(.5f, run.ChaserGauge, .001f);
+        }
+        [Test] public void AMissedKneeBeatOnTheMineStairsFillsTheGaugeAQuarter()
+        {
+            var run = Running(); run.Slip(SlipSource.KneeMiss);
+            Assert.AreEqual(.25f, run.ChaserGauge, .001f); Assert.AreEqual(.25f, RunHudView.ChaseFraction(run), .001f);
         }
         [Test] public void ThePolicePounceWhenThePaceGaugeFillsInTheMine()
         {
