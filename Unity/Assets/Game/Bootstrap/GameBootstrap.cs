@@ -391,7 +391,7 @@ namespace Mongscape.Bootstrap
                     if (KeyboardGameInput.StepLeftPressed) keySteps.Press(0, stepAt);
                     if (KeyboardGameInput.StepRightPressed) keySteps.Press(1, stepAt);
                 }
-                pace.Tick(dt, cadenceRun && !Session.Runner.Riding, StepRate,
+                pace.Tick(dt, pace.OnFootActive(dt, Session.Runner.Riding) && cadenceRun, StepRate,
                     Settings != null ? Settings.Motion : null, MapCourse.TargetCadence(course, Settings != null ? Settings.Motion : null),
                     PaceTracked, OnOrBeforeStairs());
                 Session.ApplyPace(pace);
