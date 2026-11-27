@@ -306,6 +306,18 @@ namespace Mongscape.Domain
         // Demo invincibility (development builds only, toggled by the operator): no capture, fall or slip ends or slows the run.
         // It survives Reset so it stays on across runs until switched off. Tutorial lessons still count mistakes.
         public bool Invincible {get;set;}
+        // The tutorial's warning lessons let one warning land for real (the slot fills, the chaser's sound) instead of a miss.
+        public bool TutorialWarnings {get;set;}
+        // The HUD blinks the empty warning slot: one more is the capture (the tutorial's banana lesson).
+        public bool BlinkNextWarning {get;set;}
+        private bool TutorialWarn(WarningCause cause)
+        {
+            SlipStrikes = Math.Min(MaxWarnings - 1, SlipStrikes + 1); lastStrike = clock; lastHit = clock; lastWarnedAt = clock; LastWarning = cause;
+            Warned?.Invoke(cause, Chaser);
+            return true;
+        }
+        // Puts back the tutorial's lesson warning after a restart (never the capture).
+        public void SetTutorialWarnings(int count) { if (tutorial) SlipStrikes = Math.Max(0, Math.Min(MaxWarnings - 1, count)); }
         // Warnings in the current map (plan 6-8): two slots, the second starts the chaser's pursuit and the capture.
         // They last until the map is left; there is no timed clear any more. SlipStrikes is the old name.
         public const int MaxWarnings = 2;
@@ -516,7 +528,7 @@ namespace Mongscape.Domain
         public bool Warn(WarningCause cause)
         {
             if (Flow.State != GameFlowState.Running || Paused) return false;
-            if (tutorial) { lastHit = clock; TutorialMisses++; return true; }
+            if (tutorial) { if (TutorialWarnings) return TutorialWarn(cause); lastHit = clock; TutorialMisses++; return true; }
             if (Invincible || SlipPursuit) return false;
             // One collision event is one warning: right after one, the fall makes the runner untouchable for a moment.
             if (InWarningGrace) return false;
@@ -602,7 +614,7 @@ namespace Mongscape.Domain
         {
             if(Flow.State!=GameFlowState.Running||Paused||Runner.Riding||Invincible&&!tutorial)return false;
             // The tutorial's banana lesson: stepping on a peel is a counted miss that restarts the step, never a strike or pursuit.
-            if(tutorial&&source==SlipSource.Banana){Runner.Slip();LastSlipSource=source;lastHit=clock;TutorialMisses++;return true;}
+            if(tutorial&&source==SlipSource.Banana){Runner.Slip();LastSlipSource=source;lastHit=clock;if(TutorialWarnings)TutorialWarn(WarningCause.Banana);else TutorialMisses++;return true;}
             if(source==SlipSource.Banana)
             {
                 // The shield (or a loyal monkey) absorbs the peel: no slowdown and no warning. During a pursuit it only slows.

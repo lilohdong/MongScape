@@ -98,7 +98,7 @@ namespace Mongscape.Bootstrap
             automated=System.Array.IndexOf(flags,"--mongscape-smoke")>=0||System.Array.IndexOf(flags,"--mongscape-uicapture")>=0
                 ||System.Array.IndexOf(flags,"--mongscape-review")>=0||System.Array.IndexOf(flags,"--mongscape-tests")>=0
                 ||System.Array.IndexOf(flags,"--mongscape-capture")>=0||System.Array.IndexOf(flags,"--mongscape-recording")>=0
-                ||System.Array.IndexOf(flags,"--mongscape-exercise-review")>=0;
+                ||System.Array.IndexOf(flags,"--mongscape-exercise-review")>=0||System.Array.IndexOf(flags,"--mongscape-tutorial-review")>=0;
             Session = new RunSession(Settings != null ? JsonUtility.FromJson<RunConfig>(JsonUtility.ToJson(Settings.Run)) : new RunConfig());
             if (ChunkPrefabs == null || ChunkPrefabs.Length < 5 || CameraRig == null || OutputCamera == null)
             { Debug.LogError("GameScene requires content references. Run Mongscape/Build GameScene."); enabled = false; return; }
