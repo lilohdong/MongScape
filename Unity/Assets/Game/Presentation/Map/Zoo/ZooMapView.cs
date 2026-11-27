@@ -64,11 +64,11 @@ namespace Mongscape.Presentation.Map
         }
         // The zoo tutorial: a short course of fences and bars on the tutorial's zoo map, no iron gate. The argument is unused
         // (the old sync offset).
-        public bool StartPractice(float unused)
+        public bool StartPractice(float unused, IList<ZooObstacle> layout = null)
         {
             if (run == null) return false;
             StopZoo(); Chase.Practice = true; Chase.LionPace = ZooChase.LionPaceFor(1);
-            Begin(ZooChase.Layout(ZooPractice.Length, 1, random, false), ZooPractice.Length, false);
+            Begin(layout != null ? new List<ZooObstacle>(layout) : ZooChase.Layout(ZooPractice.Length, 1, random, false), ZooPractice.Length, false);
             return true;
         }
         public void StopPractice() { if (Chase.Practice) StopZoo(); }

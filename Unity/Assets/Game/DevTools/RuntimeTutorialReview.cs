@@ -9,7 +9,7 @@ using UnityEngine;
 
 namespace Mongscape.DevTools
 {
-    // Only runs with --mongscape-tutorial-review: plays tutorial chapters 1 and 3 in keyboard style from start to end the way a
+    // Only runs with --mongscape-tutorial-review: plays tutorial chapters 1, 2 and 3 in keyboard style from start to end the way a
     // player presses the keys (one banana missed on purpose to show the retry), with a capture at every call, warning and pass,
     // saved to --mongscape-review-output <dir>. The log ends with MONGSCAPE_TUTORIAL_REVIEW_PASS or _FAIL.
     public sealed class RuntimeTutorialReview : MonoBehaviour
@@ -40,11 +40,15 @@ namespace Mongscape.DevTools
             game.OpenMainMenu(); yield return new WaitForSecondsRealtime(.5f);
             hud.SelectMenu(MenuAction.Tutorial); yield return new WaitForSecondsRealtime(1f);
             yield return Shot("00_Chapters");
-            bool one = false, three = false;
+            bool one = false, two = false, three = false;
             yield return Chapter(TutorialChapter.Basics, ok => one = ok);
+            yield return Chapter(TutorialChapter.Zoo, ok => two = ok);
             yield return Chapter(TutorialChapter.Prison, ok => three = ok);
-            Debug.Log((one && three ? "MONGSCAPE_TUTORIAL_REVIEW_PASS: " : "MONGSCAPE_TUTORIAL_REVIEW_FAIL: basics " + one + " prison " + three + " ") + destination);
-            UnityEngine.Application.Quit(one && three ? 0 : 1);
+            game.OpenMainMenu(); hud.SelectMenu(MenuAction.Tutorial); yield return new WaitForSecondsRealtime(1f);
+            yield return Shot("00_Chapters_After");
+            bool all = one && two && three;
+            Debug.Log((all ? "MONGSCAPE_TUTORIAL_REVIEW_PASS: " : "MONGSCAPE_TUTORIAL_REVIEW_FAIL: basics " + one + " zoo " + two + " prison " + three + " ") + destination);
+            UnityEngine.Application.Quit(all ? 0 : 1);
         }
         private IEnumerator Chapter(TutorialChapter chapter, Action<bool> done)
         {
@@ -56,7 +60,7 @@ namespace Mongscape.DevTools
             while (game.IsLoading || game.IsRevealing || game.Session.Flow.State != GameFlowState.Running || !game.Tutorial.Active)
             { if (Time.realtimeSinceStartup - wait > 60) { done(false); yield break; } yield return null; }
             var t = game.Tutorial; var run = game.Session.Runner;
-            string tag = chapter == TutorialChapter.Basics ? "1" : "3";
+            string tag = chapter == TutorialChapter.Basics ? "1" : chapter == TutorialChapter.Zoo ? "2" : "3";
             float deadline = Time.realtimeSinceStartup + 240;
             int index = -1; bool missedBanana = false, called = false, warned = false, retried = false;
             TutorialStep shown = TutorialStep.Done;
@@ -92,9 +96,14 @@ namespace Mongscape.DevTools
                     else if (step == TutorialStep.Fork && (RouteSurface.ActivePlan?.ForkWindow(run.Z) ?? false) && run.Lane == 0) run.Command(MotionCommand.Left);
                     else if (step == TutorialStep.Stair && run.SinceKneeStep >= .3f && (t.LessonDistance <= 3.6f || StairJudge.StepDue(run))) run.Command(MotionCommand.KneeStep);
                     else if (step == TutorialStep.Hide && game.Session.Prison.Holding) run.Command(MotionCommand.Crouch);
+                    // F and J in turn at a running pace (the key steps a minute), Space at the fence, W under the bars.
+                    else if (step == TutorialStep.Fence && t.LessonDistance < 4f && run.Y <= .001f) run.Command(MotionCommand.Jump);
+                    else if (step == TutorialStep.Bars && t.LessonDistance < 4f) run.Command(MotionCommand.ArmsUp);
+                    game.KeyStepsOverride = chapter == TutorialChapter.Zoo ? 160f : (float?)null;
                 }
                 yield return null;
             }
+            game.KeyStepsOverride = null;
             while (game.Session.Flow.State != GameFlowState.TitleIdle && Time.realtimeSinceStartup < deadline + 10) yield return null;
             Debug.Log("TUTORIAL_REVIEW: chapter " + chapter + " finished " + !t.Active);
             done(!t.Active);

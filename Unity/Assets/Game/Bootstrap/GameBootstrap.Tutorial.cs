@@ -29,10 +29,8 @@ namespace Mongscape.Bootstrap
             Tutorial.Framed = () => Pose.Framing == FramingIssue.Ok;
             Tutorial.NoCamera = () => Pose.Status == PoseStatus.Off || Pose.Status == PoseStatus.NoCamera || Pose.Status == PoseStatus.NoModel;
             Tutorial.MyPose = TrackedFrame; Tutorial.MyBaseline = () => Pose.Baseline; Tutorial.Tuning = () => Pose.Tuning;
-            Tutorial.StepsPerMinute = () => Pose.StepsPerMinute; Tutorial.PaceScale = () => pace.Scale;
+            Tutorial.StepsPerMinute = () => StepRate; Tutorial.PaceScale = () => pace.Scale;
             Tutorial.RunCadence = Settings != null ? Settings.Motion.RunCadence : 100f;
-            Tutorial.SyncMs = () => userSettings != null ? Mathf.RoundToInt(userSettings.ZooSyncSeconds(Pose.UsesCamera) * 1000f) : 0;
-            Tutorial.SaveSync = ms => { if (userSettings == null) return; userSettings.SyncOffsetMs = ms; userSettings.SyncMeasured = true; UserSettingsStore.Save(userSettings); };
             Tutorial.Demo = gameObject.AddComponent<TutorialDemo>(); Tutorial.Demo.Configure(MonkeyPrefab);
             Tutorial.Configure(Session, Map, () => Pose.Status == PoseStatus.Tracking || Pose.Status == PoseStatus.Off || Pose.Status == PoseStatus.NoCamera || Pose.Status == PoseStatus.NoModel,
                 RestartTutorial, FinishTutorial, () => !hud.Hidden && !hud.Loading && !hud.Revealing && RunCalibration == RunCalibrationState.None);
@@ -49,7 +47,9 @@ namespace Mongscape.Bootstrap
             if (!PlayableStyle(player.Style)) player.Style = PlayStyle.Keyboard;
             Session.Workout.SetWeight(""); Session.Workout.Met = PlayStyleInfo.Met(player.Style); Session.Workout.Style = player.Style;
             menuCamera = false; Pose.SetStyle(player.Style);
-            cadenceRun = PlayStyleInfo.UsesCamera(player.Style) && userSettings.CadenceSpeed; Results.ClearRace(); Session.Workout.CadenceCounts = userSettings.CadenceSpeed;
+            // The zoo chapter teaches running: F and J in turn on the keys, the cadence with a camera.
+            keyRun = chapter == TutorialChapter.Zoo && player.Style == PlayStyle.Keyboard; keySteps.Reset();
+            cadenceRun = PlayStyleInfo.UsesCamera(player.Style) && userSettings.CadenceSpeed || keyRun; Results.ClearRace(); Session.Workout.CadenceCounts = userSettings.CadenceSpeed;
             Session.IsTutorial = true; Tutorial.Begin(chapter, player.Style, Session.Config.ExtendedRoutes, userSettings.CadenceSpeed, shortVersion);
             StartCoroutine(PrepareRun(TutorialCourse.Seed));
         }
