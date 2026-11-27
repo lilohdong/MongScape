@@ -10,9 +10,11 @@ namespace Mongscape.Presentation.Map
         public const float WallX = 4.1f;
         public const float PopSeconds = 1.4f;
         // The monkey is a little one (the troop runs at about half a runner): set back into the hole so the stone hides its
-        // legs and only the head, shoulders and the waving arm show in the opening (hole centre 1.45 m up).
+        // legs and the head, shoulders and the waving arm fill the opening (hole centre 1.45 m up).
         public const float MonkeyScale = .58f;
-        public static readonly Vector3 MonkeyInHole = new Vector3(0f, .62f, -.18f);
+        public static readonly Vector3 MonkeyInHole = new Vector3(0f, .72f, .22f);
+        // Turned a little toward the runner coming down the track, so the face and the wave read from the approach.
+        public const float TurnToRunner = 35f;
         private GameObject wallLeft, wallRight, monkey;
         private Transform anchorLeft, anchorRight;
         private Animator animator;
@@ -86,8 +88,10 @@ namespace Mongscape.Presentation.Map
             transform.SetPositionAndRotation(routePoint + Vector3.right * side * WallX, Quaternion.Euler(0, side < 0 ? 90 : -90, 0));
             wallLeft.SetActive(side < 0); wallRight.SetActive(side > 0);
             var anchor = side < 0 ? anchorLeft : anchorRight;
-            monkey.transform.SetParent(anchor, false);
-            monkey.transform.localPosition = MonkeyInHole; monkey.transform.localRotation = Quaternion.identity;
+            // The wall model is imported at 100x (centimetre FBX), so the monkey hangs off this unscaled root at the anchor's
+            // spot instead of under the anchor: under it, the monkey came out a hundred times too big and filled the tunnel.
+            monkey.transform.SetParent(transform, false);
+            monkey.transform.localPosition = transform.InverseTransformPoint(anchor.position) + MonkeyInHole; monkey.transform.localRotation = Quaternion.Euler(0, -side * TurnToRunner, 0);
             monkey.transform.localScale = Vector3.one * MonkeyScale;
             monkeyHome = monkey.transform.localPosition;
             monkey.SetActive(true); gameObject.SetActive(true);

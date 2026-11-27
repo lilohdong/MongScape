@@ -91,8 +91,21 @@ namespace Mongscape.DevTools
                 var run = game.Session; float z = run.Runner.Z;
                 if (!capturing && monkey < 2)
                     foreach (var m in game.Content.StuckMonkeys)
-                        if (m != null && m.isActiveAndEnabled && !m.Popped && m.transform.position.z - z > 5f && m.transform.position.z - z < 8f)
-                        { yield return Moment("m_monkey_" + (++monkey)); break; }
+                        if (m != null && m.isActiveAndEnabled && !m.Popped && m.transform.position.z - z > 7f && m.transform.position.z - z < 10f)
+                        {
+                            var wm = m.transform.Find("WallMonkey") ?? m.GetComponentInChildren<Animator>(true)?.transform;
+                            var rs = m.GetComponentsInChildren<Renderer>(false); var b = rs.Length > 0 ? rs[0].bounds : new Bounds();
+                            foreach (var r in rs) b.Encapsulate(r.bounds);
+                            Debug.Log("MONGSCAPE_ROUTE monkey at " + m.transform.position + " side " + m.Side + " runner x " + run.Runner.X + " bounds " + b);
+                            foreach (var r in rs) Debug.Log("MONGSCAPE_ROUTE monkey part " + r.name + " " + r.GetType().Name + " " + r.bounds + " scale " + r.transform.lossyScale);
+                            yield return Moment("m_monkey_" + (++monkey));
+                            // A second look from beside the track, straight at the hole.
+                            var look = new GameObject("MonkeyLook").AddComponent<Camera>(); look.depth = 100; look.fieldOfView = 50;
+                            var face = m.transform.position + m.transform.forward * 3f + Vector3.up * 1.7f - Vector3.forward * 3.2f;
+                            look.transform.position = face; look.transform.LookAt(m.transform.position + Vector3.up * 1.4f);
+                            yield return Moment("m_monkey_" + monkey + "_close"); Destroy(look.gameObject);
+                            break;
+                        }
                 if (!capturing && stair < 3 && run.InStair && run.StairProgress > .2f + stair * .3f) yield return Moment("m_stair_" + run.Section.Kind + "_" + (++stair));
                 if (!capturing && squeeze < 2 && zoo != null && zoo.Chase.Active)
                     for (int i = 0; i < zoo.Chase.Obstacles.Count; i++)
