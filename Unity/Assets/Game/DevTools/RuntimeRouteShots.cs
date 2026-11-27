@@ -114,10 +114,18 @@ namespace Mongscape.DevTools
                         if (zoo.Chase.Obstacles[i].Kind == ZooNoteKind.ArmsUp && ahead > 2.5f && ahead < 4f && (squeeze == 0 || i > lastSqueeze))
                         { lastSqueeze = i + 6; yield return Moment("m_squeeze_" + (++squeeze)); break; }
                     }
+                // Puddles: one shot coming in from far, one close.
+                if (!capturing && puddle < 2 && zoo != null && zoo.Chase.Active)
+                    foreach (var p in FindObjectsByType<PuddleShine>(FindObjectsSortMode.None))
+                    {
+                        float ahead = p.transform.position.z - z;
+                        if (puddle == 0 && ahead > 13f && ahead < 16f) { puddleZ = p.transform.position.z; yield return Moment("m_puddle_far"); puddle = 1; break; }
+                        if (puddle == 1 && Mathf.Abs(p.transform.position.z - puddleZ) < .5f && ahead > 3.5f && ahead < 5f) { yield return Moment("m_puddle_near"); puddle = 2; break; }
+                    }
                 yield return null;
             }
         }
-        private int lastSqueeze;
+        private int lastSqueeze, puddle; private float puddleZ;
         private IEnumerator Moment(string name) { capturing = true; yield return Capture(name); capturing = false; }
         // Thirty guests above any run (the result table has to scroll), and one name with several runs.
         private void Seed()
