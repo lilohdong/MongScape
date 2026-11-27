@@ -191,7 +191,12 @@ namespace Mongscape.Presentation.Map
                 bool hasContent = content != null;
                 GameObject prefab = !hasContent ? null : jump ? (jumps++ % 3 == 2 ? content.Puddle : content.Fence) : content.SqueezeBars;
                 GameObject view;
-                if (jump) view = Spawn(prefab, new Vector3(3f, .9f, .25f), new Color(.55f, .38f, .2f), Chase.ObstacleZ(i), 0f);
+                if (jump)
+                {
+                    view = Spawn(prefab, new Vector3(3f, .9f, .25f), new Color(.55f, .38f, .2f), Chase.ObstacleZ(i), 0f);
+                    // A puddle gets a moonlit surface, a bright rim, ripples and hopping drops so it reads at night.
+                    if (hasContent && prefab == content.Puddle) PuddleShine.Attach(view);
+                }
                 else
                 {
                     // Two barred walls closing to a tall slot (SqueezeGateView), in place of the single bar prop.
