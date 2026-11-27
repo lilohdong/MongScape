@@ -21,6 +21,15 @@ namespace Mongscape.Domain
         public float LagFor { get; private set; }
         public bool Lagging => LagFor > LagSeconds;
         public float Pressure { get; private set; }
+        // After stepping off the cart the pace rests for 3 s: the gauge does not fill and the lag stays at 0 (owner, 2026-11-27).
+        public const float OffCartGrace = 3f;
+        public float SinceCart { get; private set; } = 1000f;
+        // Call once a frame; true while on foot and past the grace after the cart. The run starts on foot with no grace.
+        public bool OnFootActive(float dt, bool riding)
+        {
+            SinceCart = riding ? 0f : Math.Min(1000f, SinceCart + Math.Max(0f, dt));
+            return !riding && SinceCart >= OffCartGrace;
+        }
         public static float Factor(float stepsPerMinute, MotionTuning tuning)
         {
             tuning ??= new MotionTuning();
@@ -48,7 +57,7 @@ namespace Mongscape.Domain
             LagFor = enabled && !stairs && stepsPerMinute < target ? LagFor + dt : 0;
             Pressure = Lagging ? Math.Min(MaxPressure, Pressure + PressureRise * dt) : Math.Max(0, Pressure - PressureFall * dt);
         }
-        public void Reset() { Scale = 1f; LagFor = 0; Pressure = 0; }
+        public void Reset() { Scale = 1f; LagFor = 0; Pressure = 0; SinceCart = 1000f; }
         // After the police pounce the gauge drops to half and the lag starts over.
         public void Halve() { Pressure *= .5f; LagFor = 0; }
         private static float Lerp(float a, float b, float t) { t = t < 0 ? 0 : t > 1 ? 1 : t; t = t * t * (3 - 2 * t); return a + (b - a) * t; }
