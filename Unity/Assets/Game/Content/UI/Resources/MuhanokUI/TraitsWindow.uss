@@ -11,7 +11,8 @@
     padding: 50px 110px 40px 110px;
 }
 
-.traits-header { flex-direction: row; justify-content: space-between; align-items: center; height: 110px; }
+.traits-header { flex-direction: row; justify-content: space-between; align-items: center; height: 130px; }
+.traits-lead { flex-direction: row; align-items: center; }
 .traits-title { font-size: 88px; color: rgb(255, 211, 107); -unity-text-align: middle-left; }
 .traits-held {
     flex-direction: row; align-items: center; width: 330px; height: 100px; padding-left: 40px;
@@ -36,7 +37,7 @@
 .trait-icon-badge { width: 100px; height: 100px; border-radius: 50px; background-color: rgba(14, 23, 31, 0.9); align-items: center; justify-content: center; }
 .trait-icon { width: 76px; height: 76px; }
 .trait-card-side { margin-left: 26px; }
-.trait-name { font-size: 52px; color: rgb(250, 245, 222); -unity-text-align: middle-left; }
+.trait-name { font-size: 46px; color: rgb(250, 245, 222); -unity-text-align: middle-left; }
 .traits-dots { flex-direction: row; margin-top: 8px; }
 .trait-dot {
     width: 56px; height: 28px; margin-right: 16px; border-radius: 14px;
@@ -51,7 +52,7 @@
 .trait-done { font-size: 40px; color: rgb(127, 192, 216); }
 
 .traits-back {
-    position: absolute; left: 110px; bottom: 30px; width: 300px; height: 120px;
+    margin-left: 120px; width: 300px; height: 120px;
     flex-direction: row; align-items: center; justify-content: center;
     background-color: rgba(42, 29, 20, 0.94); border-radius: 32px; border-width: 5px; border-color: rgb(151, 105, 61);
 }
@@ -68,12 +69,12 @@
     width: 1000px; padding: 40px 56px;
     background-color: rgba(42, 29, 20, 0.97); border-radius: 36px; border-width: 5px; border-color: rgb(151, 105, 61);
 }
-.traits-detail-name { font-size: 80px; color: rgb(255, 211, 107); }
-.traits-detail-text { font-size: 48px; color: rgb(250, 245, 222); margin-top: 24px; white-space: normal; }
+.traits-detail-name { font-size: 56px; color: rgb(255, 211, 107); }
+.traits-detail-text { font-size: 34px; color: rgb(250, 245, 222); margin-top: 24px; white-space: normal; }
 .traits-detail-cost-row { flex-direction: row; align-items: center; margin-top: 24px; height: 60px; }
-.traits-detail-cost { font-size: 56px; color: rgb(250, 245, 222); margin-left: 12px; }
-.traits-detail-note { font-size: 40px; color: rgb(199, 176, 143); margin-top: 12px; white-space: normal; }
-.traits-detail-buttons { flex-direction: row; justify-content: space-between; margin-top: 30px; }
+.traits-detail-cost { font-size: 48px; color: rgb(250, 245, 222); margin-left: 12px; }
+.traits-detail-note { font-size: 32px; color: rgb(199, 176, 143); margin-top: 12px; white-space: normal; }
+.traits-detail-buttons { flex-direction: row; justify-content: space-between; margin-top: 40px; }
 .traits-button {
     width: 400px; height: 130px; font-size: 60px; border-radius: 32px; border-width: 5px;
     color: rgb(250, 245, 222); background-color: rgba(42, 29, 20, 0.94); border-color: rgb(151, 105, 61);

@@ -131,12 +131,12 @@ namespace Mongscape.Presentation
             else DrawWeek(form, new Rect(x + 450, 444, w - 450, 110));
 
             GUI.enabled = wasEnabled && !form.Busy && !asking;
-            if (skin.Button(new Rect(242, 606, 190, 56), "저장", Palette.Gold, Color.clear, Palette.Outline, 22) || enter && GUI.enabled) form.Save();
-            if (skin.Button(new Rect(444, 606, 190, 56), "로그아웃", Palette.A(Palette.Ground, 0.9f), Palette.Wood, Palette.Cream, 22)) logout?.Invoke();
-            if (skin.Button(new Rect(646, 606, 190, 56), "회원 탈퇴", Palette.A(Palette.Ground, 0.9f), new Color(.75f, .25f, .18f), new Color(1, .7f, .6f), 22)) delete?.Invoke();
+            if (skin.Button(new Rect(98, 606, 190, 56), "저장", Palette.Gold, Color.clear, Palette.Outline, 22) || enter && GUI.enabled) form.Save();
+            if (skin.Button(new Rect(336, 606, 190, 56), "로그아웃", Palette.A(Palette.Ground, 0.9f), Palette.Wood, Palette.Cream, 22)) logout?.Invoke();
+            if (skin.Button(new Rect(574, 606, 190, 56), "회원 탈퇴", Palette.A(Palette.Ground, 0.9f), new Color(.75f, .25f, .18f), new Color(1, .7f, .6f), 22)) delete?.Invoke();
             GUI.enabled = wasEnabled && !form.Busy;
             if (week != null && skin.Button(new Rect(1050, 606, 190, 56), "이번 주 운동", Palette.A(Palette.Ground, 0.9f), Palette.Wood, Palette.Cream, 22)) week();
-            if (skin.Button(new Rect(848, 606, 190, 56), "뒤로", Palette.A(Palette.Ground, 0.9f), Palette.Wood, Palette.Cream, 22) || escape && !asking && GUI.enabled) back?.Invoke();
+            if (skin.Button(new Rect(812, 606, 190, 56), "뒤로", Palette.A(Palette.Ground, 0.9f), Palette.Wood, Palette.Cream, 22) || escape && !asking && GUI.enabled) back?.Invoke();
             GUI.enabled = wasEnabled;
         }
 

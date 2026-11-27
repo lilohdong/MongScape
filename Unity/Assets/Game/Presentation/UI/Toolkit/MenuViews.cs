@@ -174,17 +174,17 @@ namespace Mongscape.Presentation
             {
                 var s = (PlayStyle)i; int k = i;
                 var card = new UiButton("", false, () => { if (PlayStyleInfo.Allowed(s, bodyOk)) Choose?.Invoke(s); }); card.Text.style.display = DisplayStyle.None;
-                card.style.flexDirection = FlexDirection.Column; UiTokens.Absolute(card, 120 + i * 590, 180, 500, 420);
+                card.style.flexDirection = FlexDirection.Column; UiTokens.Absolute(card, 120 + i * 590, 170, 500, 420);
                 icons[i] = new ShapeElement((p, r) => ResultView.ModeIconColored(p, r, s, CardInk(k)));
-                UiTokens.Absolute(icons[i], 150, 40, 200, 220);
-                names[i] = UiTokens.Label(Names[i], 76, UiTokens.Text, TextAnchor.MiddleCenter); UiTokens.Absolute(names[i], 0, 255, 490, 90);
-                subs[i] = UiTokens.Label(Subs[i], 44, UiTokens.TextDim, TextAnchor.MiddleCenter); UiTokens.Absolute(subs[i], 0, 340, 490, 60);
+                UiTokens.Absolute(icons[i], 150, 22, 200, 200);
+                names[i] = UiTokens.Label(Names[i], 76, UiTokens.Text, TextAnchor.MiddleCenter); UiTokens.Absolute(names[i], 0, 262, 490, 90);
+                subs[i] = UiTokens.Label(Subs[i], 44, UiTokens.TextDim, TextAnchor.MiddleCenter); UiTokens.Absolute(subs[i], 0, 345, 490, 60);
                 card.Add(icons[i]); card.Add(names[i]); card.Add(subs[i]);
                 card.Look = hover => PaintCard(k, hover);
                 cards[i] = Gestures.Add(card); frame.Add(card);
             }
-            noCamera = UiTokens.Label("카메라를 연결하면 전신과 상체를 고를 수 있어요", 44, UiTokens.TextDim, TextAnchor.MiddleCenter); UiTokens.Absolute(noCamera, 0, 615, 1920, 60); frame.Add(noCamera);
-            var panel = UiTokens.Box(520, 690, 1310, 170); panel.style.backgroundColor = UiTokens.A(UiTokens.Panel, .94f); UiTokens.Radius(panel, 32); UiTokens.Border(panel, 5, UiTokens.PanelEdge); frame.Add(panel);
+            noCamera = UiTokens.Label("카메라를 연결하면 전신과 상체를 고를 수 있어요", 44, UiTokens.TextDim, TextAnchor.MiddleCenter); UiTokens.Absolute(noCamera, 0, 596, 1920, 60); frame.Add(noCamera);
+            var panel = UiTokens.Box(520, 662, 1310, 170); panel.style.backgroundColor = UiTokens.A(UiTokens.Panel, .94f); UiTokens.Radius(panel, 32); UiTokens.Border(panel, 5, UiTokens.PanelEdge); frame.Add(panel);
             speedRow = UiTokens.Box(0, 0, 1310, 170); panel.Add(speedRow);
             var speedLabel = UiTokens.Label("달리기 속도 조절", 52, UiTokens.Text); UiTokens.Absolute(speedLabel, 50, 50, 460, 70); speedRow.Add(speedLabel);
             var toggle = Gestures.Add(new UiButton("", false, () => SetCadence?.Invoke(!cadence))); toggle.Text.style.display = DisplayStyle.None; toggle.name = "button-cadence";
@@ -194,8 +194,8 @@ namespace Mongscape.Presentation
             knob = UiTokens.Box(0, 8, 84, 84); UiTokens.Radius(knob, 42); knob.style.backgroundColor = UiTokens.Text; track.Add(knob);
             speedState = UiTokens.Label("", 56, UiTokens.Accent); UiTokens.Absolute(speedState, 820, 45, 300, 80); speedRow.Add(speedState);
             keyHint = UiTokens.Label("F J 번갈아 달리기    A D 옆으로    Space 점프    S 숙이기    W 무릎", 38, UiTokens.TextDim, TextAnchor.MiddleCenter); UiTokens.Absolute(keyHint, 0, 50, 1310, 70); panel.Add(keyHint);
-            var back = Gestures.Add(new UiButton("뒤로", false, () => Back?.Invoke(), 64, MenuIcons.Back(UiTokens.Text))); UiTokens.Absolute(back, 90, 900, 300, 120); frame.Add(back);
-            var go = Gestures.Add(new UiButton("시작", true, () => Start?.Invoke(), 72, MenuIcons.Play(UiTokens.Panel))); UiTokens.Absolute(go, 1830 - 420, 900, 420, 130); frame.Add(go);
+            var back = Gestures.Add(new UiButton("뒤로", false, () => Back?.Invoke(), 64, MenuIcons.Back(UiTokens.Text))); UiTokens.Absolute(back, 90, 904, 300, 120); frame.Add(back);
+            var go = Gestures.Add(new UiButton("시작", true, () => Start?.Invoke(), 72, MenuIcons.Play(UiTokens.Panel))); UiTokens.Absolute(go, 1830 - 420, 904, 420, 130); frame.Add(go);
             Root.Visible = false;
         }
         Color CardInk(int i) => i == (int)style ? UiTokens.Panel : PlayStyleInfo.Allowed((PlayStyle)i, bodyOk) ? UiTokens.Text : UiTokens.A(UiTokens.TextDim, .5f);
@@ -230,7 +230,7 @@ namespace Mongscape.Presentation
         public Action Back; public Action<bool, PlayStyle> Pick;
         readonly UiButton[] periods = new UiButton[2], modes = new UiButton[3];
         readonly VisualElement rows; readonly Label status;
-        const float RowPitch = 76, RowH = 68;
+        const float RowPitch = 76, RowH = 68, RowsH = 610;
         int shownCount = -1; RankingStatus shownStatus; bool shownToday; PlayStyle shownMode; RankingRow shownMine;
         public RankingView(GameObject host)
         {
@@ -238,16 +238,16 @@ namespace Mongscape.Presentation
             var dim = new VisualElement { pickingMode = PickingMode.Ignore }; UiTokens.Fill(dim); dim.style.backgroundColor = UiTokens.Dim(UiTokens.Deep, .8f); frame.Add(dim);
             var title = UiTokens.Label("랭킹", 88, UiTokens.Accent); UiTokens.Absolute(title, 90, 30, 400, 120); frame.Add(title);
             string[] p = { "오늘", "전체" };
-            for (int i = 0; i < 2; i++) { bool today = i == 0; var b = new UiButton(p[i], false, () => Pick?.Invoke(today, shownMode), 56); UiTokens.Absolute(b, 380 + i * 290, 30, 260, 120); periods[i] = Gestures.Add(b); frame.Add(b); }
+            for (int i = 0; i < 2; i++) { bool today = i == 0; var b = new UiButton(p[i], false, () => Pick?.Invoke(today, shownMode), 56); UiTokens.Absolute(b, 342 + i * 312, 24, 240, 120); periods[i] = Gestures.Add(b); frame.Add(b); }
             for (int i = 0; i < 3; i++)
             {
                 var s = (PlayStyle)i; var b = new UiButton(PlayStyleInfo.Label(s), false, () => Pick?.Invoke(shownToday, s), 56);
-                UiTokens.Absolute(b, 1830 - 3 * 260 - 2 * 30 + i * 290, 30, 260, 120); modes[i] = Gestures.Add(b); frame.Add(b);
+                UiTokens.Absolute(b, 1830 - 3 * 240 - 2 * 72 + i * 312, 24, 240, 120); modes[i] = Gestures.Add(b); frame.Add(b);
             }
-            var panel = UiTokens.Box(90, 190, 1740, 680); panel.style.backgroundColor = UiTokens.A(UiTokens.Panel, .96f); UiTokens.Radius(panel, 32); UiTokens.Border(panel, 5, UiTokens.PanelEdge); panel.style.overflow = Overflow.Hidden; frame.Add(panel);
-            rows = UiTokens.Box(18, 18, 1704, 644); panel.Add(rows);
+            var panel = UiTokens.Box(90, 216, 1740, 646); panel.style.backgroundColor = UiTokens.A(UiTokens.Panel, .96f); UiTokens.Radius(panel, 32); UiTokens.Border(panel, 5, UiTokens.PanelEdge); panel.style.overflow = Overflow.Hidden; frame.Add(panel);
+            rows = UiTokens.Box(18, 18, 1704, RowsH); panel.Add(rows);
             status = UiTokens.Label("", 52, UiTokens.TextDim, TextAnchor.MiddleCenter); UiTokens.Absolute(status, 0, 260, 1704, 80); rows.Add(status);
-            var back = Gestures.Add(new UiButton("뒤로", false, () => Back?.Invoke(), 64, MenuIcons.Back(UiTokens.Text))); UiTokens.Absolute(back, 90, 920, 300, 120); frame.Add(back);
+            var back = Gestures.Add(new UiButton("뒤로", false, () => Back?.Invoke(), 64, MenuIcons.Back(UiTokens.Text))); UiTokens.Absolute(back, 90, 934, 300, 120); frame.Add(back);
             Root.Visible = false;
         }
         static void Tab(UiButton b, bool on)
@@ -270,7 +270,7 @@ namespace Mongscape.Presentation
             rows.Clear(); rows.Add(status);
             status.text = board.StatusText.Length > 0 ? board.StatusText : board.Rows.Count == 0 ? "아직 기록이 없어요" : "";
             UiTokens.Show(status, board.Rows.Count == 0);
-            int fit = Mathf.FloorToInt(644 / RowPitch);
+            int fit = Mathf.FloorToInt(RowsH / RowPitch);
             int mineIndex = board.Mine != null ? board.Rows.IndexOf(board.Mine) : -1;
             bool pinMine = board.Mine != null && (mineIndex < 0 || mineIndex >= fit);
             int count = Mathf.Min(board.Rows.Count, pinMine ? fit - 2 : fit);
