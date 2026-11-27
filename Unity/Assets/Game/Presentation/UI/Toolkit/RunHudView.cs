@@ -300,7 +300,7 @@ namespace Mongscape.Presentation
             chaseFill.style.backgroundColor = v > .7f ? UiTokens.Danger : UiTokens.Warn;
             chaseCap.style.left = Mathf.Clamp(554 * shown - 40, -8, 470);
         }
-        public static float ChaseFraction(RunSession session) => PreviewChase ?? Mathf.Clamp01(session.Section.Kind == SectionKind.Prison ? session.ChaserGauge : session.PolicePressure);
+        public static float ChaseFraction(RunSession session) => PreviewChase ?? Mathf.Clamp01(session.Section.Kind == SectionKind.Prison ? session.ChaserGauge : Mathf.Max(session.PolicePressure, session.ChaserGauge));
 
         void UpdateEdges(RunSession session, bool running)
         {

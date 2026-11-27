@@ -543,6 +543,7 @@ namespace Mongscape.Domain
             return true;
         }
         // Fills the map chaser's gauge (lion, warden); full = a warning and the gauge drops to half.
+        public const float StairMissGauge = .25f;
         public bool Approach(float amount)
         {
             if (Flow.State != GameFlowState.Running || Paused || tutorial || Invincible) return false;
@@ -628,6 +629,8 @@ namespace Mongscape.Domain
             // In the prison a missed knee beat only slows (plan 2-3a), except on the stairs the warden chases after an alarm:
             // there it is a capture on the spot.
             if(source==SlipSource.KneeMiss&&!tutorial&&Section.Kind==SectionKind.Prison&&Prison.WardenChasing)Fail(CaptureReason.SlipPursuit);
+            // Any other missed knee beat on the mine or prison stairs fills the chaser's gauge by a quarter (four misses = one warning).
+            else if(source==SlipSource.KneeMiss&&!tutorial&&(Section.Kind==SectionKind.Mine||Section.Kind==SectionKind.Prison))Approach(StairMissGauge);
             return true;
         }
         public enum BigMove { Jump, Crouch, Knee, Lane }
