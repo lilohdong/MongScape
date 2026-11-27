@@ -14,7 +14,8 @@ namespace Mongscape.Presentation
         static readonly KeyCode[] Keypad = { KeyCode.Keypad1, KeyCode.Keypad2, KeyCode.Keypad3 };
 
         readonly OverlaySkin skin;
-        GUIStyle wrap, reason;
+        GUIStyle wrap;
+        bool askQuit;
         public LoginGateScreen(OverlaySkin overlaySkin) { skin = overlaySkin; }
 
         public LoginAction Draw(IIdentityData identity, Texture2D logo)
@@ -30,17 +31,17 @@ namespace Mongscape.Presentation
             bool checking = identity == null || identity.ServerChecking;
             string problem = identity?.ServerProblem ?? "";
             bool server = !checking && string.IsNullOrEmpty(problem);
-            skin.Text(new Rect(760, 80, 440, 44), "어떻게 시작할까요?", 34, Palette.Cream, TextAnchor.MiddleLeft);
+            skin.Text(new Rect(760, 40, 440, 44), "어떻게 시작할까요?", 34, Palette.Cream, TextAnchor.MiddleLeft);
             // An expired session's notice takes the place of the member line.
             string notice = identity?.LoginNotice ?? "";
-            if (notice.Length > 0) skin.Text(new Rect(760, 126, 440, 26), notice, 17, Palette.Warn, TextAnchor.MiddleLeft, false, true);
-            else skin.Text(new Rect(760, 126, 440, 26), "회원은 구한 원숭이로 특성을 열고 기록이 계정에 남아요.", 15, Palette.Sand, TextAnchor.MiddleLeft, false, true);
+            if (notice.Length > 0) skin.Text(new Rect(760, 90, 440, 60), notice, 20, Palette.Warn, TextAnchor.MiddleLeft, false, true);
+            else skin.Text(new Rect(760, 90, 440, 60), "회원은 구한 원숭이로\n특성을 열고 기록이 남아요.", 22, Palette.Sand, TextAnchor.MiddleLeft, false, true);
 
             var action = LoginAction.None;
             var e = Event.current;
             for (int i = 0; i < Labels.Length; i++)
             {
-                var r = new Rect(760, 164 + i * 120, 440, 72);
+                var r = new Rect(760, 160 + i * 128, 440, 80);
                 bool guest = Actions[i] == LoginAction.Guest, enabled = guest || server;
                 bool wasEnabled = GUI.enabled; GUI.enabled = wasEnabled && enabled;
                 Color text = !enabled ? Palette.A(Palette.Sand, 0.5f) : i == 0 ? Palette.Outline : Palette.Cream;
@@ -54,25 +55,29 @@ namespace Mongscape.Presentation
                     skin.Text(r, Labels[i], 26, text, TextAnchor.MiddleCenter);
                     GUI.enabled = false;
                 }
-                skin.Text(new Rect(r.x + 14, r.y + 6, 30, 24), (i + 1).ToString(), 15, text, TextAnchor.UpperLeft, false, true);
+                skin.Text(new Rect(r.x + 14, r.y + 6, 30, 24), (i + 1).ToString(), 20, text, TextAnchor.UpperLeft, false, true);
                 // Keys 1-3 choose like the buttons.
                 if (GUI.enabled && e.type == EventType.KeyDown && (e.keyCode == Keys[i] || e.keyCode == Keypad[i])) { e.Use(); pressed = true; }
                 GUI.enabled = wasEnabled;
                 if (pressed) action = Actions[i];
             }
 
-            // Without the server: what still works first, then the short reason underneath.
-            string note = checking ? "얼굴 서버 확인 중…" : server ? "얼굴 서버 연결됨" : "지금은 얼굴 로그인과 회원가입을 쓸 수 없어요.\n게스트로 바로 플레이할 수 있어요.";
-            wrap ??= new GUIStyle(skin.Style(15, false, TextAnchor.UpperLeft, true)) { wordWrap = true, clipping = TextClipping.Clip };
-            reason ??= new GUIStyle(skin.Style(13, false, TextAnchor.UpperLeft)) { wordWrap = true, clipping = TextClipping.Clip };
-            GUI.color = server || checking ? Palette.Sand : Palette.Warn; GUI.Label(new Rect(760, 488, 440, 44), note, wrap);
-            if (!server && !checking) { GUI.color = Palette.A(Palette.Sand, 0.85f); GUI.Label(new Rect(760, 532, 440, 34), "이유: " + problem, reason); }
-            GUI.color = Color.white;
-            skin.Text(new Rect(760, 568, 440, 26), GesturePointer.Hint("숫자키 1~3을 누르세요."), 14, Palette.Sand, TextAnchor.MiddleLeft, false);
-            if (skin.Button(new Rect(714, 610, 130, 48), "크레딧", Palette.A(Palette.Ground, 0.9f), Palette.Wood, Palette.Cream, 20)) action = LoginAction.Credits;
-            if (skin.Button(new Rect(892, 610, 130, 48), "게임 종료", Palette.A(Palette.Ground, 0.9f), Palette.Wood, Palette.Cream, 20)) action = LoginAction.Quit;
-            if (skin.Button(new Rect(1070, 610, 130, 48), "설정", Palette.A(Palette.Ground, 0.9f), Palette.Wood, Palette.Cream, 20)) action = LoginAction.Settings;
-            skin.Text(new Rect(860, 668, 340, 30), BuildInfo.Label, 14, Palette.Muted, TextAnchor.MiddleRight, false);
+            // Only when the account server is down: what still works. Nothing is said while it is fine.
+            wrap ??= new GUIStyle(skin.Style(20, false, TextAnchor.UpperLeft, true)) { wordWrap = true, clipping = TextClipping.Clip };
+            if (!checking && !server) { GUI.color = Palette.Warn; GUI.Label(new Rect(760, 500, 440, 66), "지금은 얼굴 로그인과 회원가입을 쓸 수 없어요.\n게스트로 바로 플레이할 수 있어요.", wrap); GUI.color = Color.white; }
+            var back = Palette.A(Palette.Ground, 0.9f);
+            if (skin.Button(new Rect(504, 584, 200, 80), "크레딧", back, Palette.Wood, Palette.Cream, 26)) action = LoginAction.Credits;
+            if (skin.Button(new Rect(752, 584, 200, 80), "게임 종료", back, Palette.Wood, Palette.Cream, 26)) askQuit = true;
+            if (skin.Button(new Rect(1000, 584, 200, 80), "설정", back, Palette.Wood, Palette.Cream, 26)) action = LoginAction.Settings;
+            skin.Text(new Rect(860, 678, 340, 30), BuildInfo.Label, 14, Palette.Muted, TextAnchor.MiddleRight, false);
+            if (askQuit)
+            {
+                GUI.matrix = Matrix4x4.identity; skin.Fill(new Rect(0, 0, Screen.width, Screen.height), Palette.A(Palette.Ground, 0.8f)); GUI.matrix = oldMatrix;
+                skin.BorderBox(new Rect(340, 220, 600, 280), Palette.A(Palette.Panel, 0.98f), Palette.Wood, 3);
+                skin.Text(new Rect(340, 250, 600, 60), "게임을 끝낼까요?", 40, Palette.Gold, TextAnchor.MiddleCenter);
+                if (skin.Button(new Rect(380, 360, 240, 80), "끝내기", back, Palette.Wood, Palette.Cream, 30)) { askQuit = false; action = LoginAction.Quit; }
+                if (skin.Button(new Rect(660, 360, 240, 80), "취소", Palette.Gold, Color.clear, Palette.Outline, 30)) askQuit = false;
+            }
             return action;
         }
     }
